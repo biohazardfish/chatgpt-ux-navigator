@@ -15,6 +15,7 @@ This file provides context and guidelines for AI agents working on this codebase
 
 - **Tech**: Vanilla JavaScript (ES Modules), CSS3, HTML.
 - **Build**: **NO BUILD STEP.** The code runs directly in the browser.
+- **Global Namespace**: The extension uses `window.CGPT_NAV` to store its state and core objects.
 - **Manifest**: V3 (`manifest.json`).
 - **Key Files**:
     - `content/bootstrap.js`: Entry point for content scripts.
@@ -32,48 +33,55 @@ This file provides context and guidelines for AI agents working on this codebase
 - **Key Logic**:
     - **Prompt Parsing**: Reads `.md` files and resolves `@path` (single file), `@@path` (dir content), and directory trees. Located in `src/prompts/buildPrompt.ts`.
     - **Thread Parsing**: Splits prompts into `# {{USER}}` and `# {{ASSISTANT}}` blocks. Located in `src/prompts/thread.ts`.
-    - **API**:
-        - `GET /list`: Lists available prompt files.
-        - `GET /prompt/:filename`: Returns processed prompt content.
-        - `POST /prompt/:filename`: Appends assistant response to the file.
-        - `POST /responses`: Streams assistant output using the current ChatGPT conversation (no forced reset).
-        - `POST /responses/new`: Same as `/responses` but starts a temporary chat before injecting the prompt.
-        - `GET /ws`: WebSocket endpoint for extension communication.
+    - **API Routes**:
+        - `GET /list`: Lists all available prompt files (`.md`).
+        - `GET /prompt/<filename>`: Returns processed prompt content with resolved includes.
+        - `POST /prompt/<filename>`: Appends assistant response to the specified file.
+        - `POST /responses`: Streams assistant output using the current ChatGPT conversation.
+        - `POST /responses/new`: Streams assistant output after starting a temporary new chat.
+        - `POST /responses/:id`: Per-client response streaming.
+        - `POST /responses/:id/new`: Per-client response streaming with new chat.
+        - `GET /ws`: WebSocket endpoint for real-time extension communication.
 
-## Development Workflow
+## Extension Development Rules
 
-### Extension
+- **No Build Steps**: Do NOT introduce Webpack, Babel, or any build tools. The extension must remain readable and runnable directly from source.
+- **Vanilla JS Modules**: Use standard ES Modules for organization.
+- **DOM Stability**: ChatGPT's CSS classes are dynamic. Prefer stable selectors (e.g., `[data-message-author-role]`) over obfuscated classes.
+- **State Management**: Use `window.CGPT_NAV` for persistent state within a page session.
+- **UI Consistency**: Sidebar styles in `extension/styles.css` should adapt to ChatGPT's light/dark modes using CSS variables.
 
-- **Modifying Code**: Edit files in `extension/` directly.
-- **Testing**: Go to `chrome://extensions`, find the extension, and click **Reload**. Refresh the ChatGPT tab to see changes.
-- **Styling**: `extension/styles.css` handles sidebar appearance. It uses standard CSS variables for theming (often imitating ChatGPT's dark/light mode).
+## Security Guardrails
 
-### Server
+- **Path Traversal Protection**: ALL file system operations MUST be validated using `isPathInsideRoot` from `server/src/fs/security.ts`.
+- **Root Enforcement**: Ensure no operation can read or write files outside the configured `promptsDir` or `filesRoot`.
+- **Input Sanitization**: Always sanitize content when rendering markdown or injecting text into the DOM.
 
-- **Running**: `cd server && bun run src/index.ts`
-- **Dependencies**: managed via `bun install`.
-- **Structure**:
-    - `src/http/`: Server setup (`server.ts`), routing (`router.ts`), and route handlers (`routes/`).
-    - `src/prompts/`: Core logic for parsing and building prompts.
-    - `src/fs/`: File system utilities and security checks.
-    - `src/ws/`: WebSocket logic.
+## Testing & Verification
+
+- **Test Runner**: The project uses `bun test` for server-side testing.
+- **Test Location**: Tests are located in `server/test/` and use `.test.ts` extension.
+- **Mandatory Check**: Run `bun test` inside the `server/` directory before submitting any changes to the server logic.
+- **Coverage**: Ensure new features include corresponding test cases in `server/test/`.
 
 ## Code Conventions
 
 - **Extension**:
-    - Use **ES Modules** (`import`/`export`) for content scripts.
-    - Avoid external libraries in the extension unless absolutely necessary to keep it lightweight and reviewable.
-    - Use `document.querySelector` robustly as ChatGPT's DOM classes are obfuscated/dynamic. Prefer selector strategies that are less likely to break (e.g., `[data-message-author-role]`).
+    - Use **ES Modules** (`import`/`export`).
+    - Avoid external libraries to keep the footprint small.
 - **Server**:
-    - **Modular & Declarative**: Prefer declarative code styles. The server uses a `Router` class for clear route definitions.
-    - **Native APIs**: Use Bun native APIs (`Bun.file`, `Bun.write`, `Bun.serve`) over Node.js `fs` where possible.
-    - **Formatting**: Code should be easy to read and documented where necessary.
+    - **Modular & Declarative**: Use the internal `Router` for defining routes.
+    - **Native Bun APIs**: Prefer `Bun.file`, `Bun.write`, and `Bun.serve` over Node.js equivalents.
+    - **Types**: Maintain strict TypeScript typing for all new logic.
 
 ## Common Tasks for Agents
 
-- **"Fix the sidebar not appearing"**: Check `extension/content/bootstrap.js` or `observer.js`. The ChatGPT DOM might have changed.
+- **"Fix the sidebar not appearing"**: Check `extension/content/bootstrap.js` or `observer.js`. The ChatGPT DOM structure may have changed.
 - **"Add a new feature to the server"**:
     1.  Create a new handler in `server/src/http/routes/`.
     2.  Register it in `server/src/http/server.ts` using the router.
-- **"Improve prompt parsing"**: Modify `server/src/prompts/buildPrompt.ts`. This handles the `@` syntax.
-- **"Update extension styling"**: Check `extension/styles.css`. Ensure z-indices are high enough to sit above ChatGPT's UI but not block critical modals.
+    3.  Add a test in `server/test/`.
+- **"Improve prompt parsing"**: Modify `server/src/prompts/buildPrompt.ts`.
+- **"Verify local changes"**:
+    - For server: Run `cd server && bun test`.
+    - For extension: Reload the extension in `chrome://extensions` and refresh ChatGPT.
