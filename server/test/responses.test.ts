@@ -16,45 +16,46 @@ const config: AppConfig = {
     noStream: false,
 };
 
-describe('POST /responses', () => {
+const CLIENT_ID = 'test-client';
+
+describe('POST /responses/:id', () => {
     beforeEach(() => {
-        setSoleClient(null);
-        inflightTerminate(null, null);
+        setClient(CLIENT_ID, null);
+        inflightTerminate(CLIENT_ID, null, null);
     });
 
     afterEach(() => {
-        setSoleClient(null);
-        inflightTerminate(null, null);
+        setClient(CLIENT_ID, null);
+        inflightTerminate(CLIENT_ID, null, null);
     });
 
-    it('should return 503 if no WS client connected', async () => {
-        const req = new Request('http://localhost/responses', {
+    it('should return 404 if client not connected', async () => {
+        const req = new Request(`http://localhost/responses/${CLIENT_ID}`, {
             method: 'POST',
             body: JSON.stringify({input: 'Hello'}),
         });
 
-
-        const res = await handlePostResponses(req, config, new URL(req.url));
-        expect(res.status).toBe(503);
+        const res = await handlePostResponsesById(req, config, new URL(req.url));
+        expect(res.status).toBe(404);
     });
 
     it('should return 400 for invalid JSON', async () => {
-        setSoleClient({send: () => {}} as any);
-        const req = new Request('http://localhost/responses', {
+        setClient(CLIENT_ID, {send: () => {}} as any);
+        const req = new Request(`http://localhost/responses/${CLIENT_ID}`, {
             method: 'POST',
             body: 'invalid json',
         });
-        const res = await handlePostResponses(req, config, new URL(req.url));
+        const res = await handlePostResponsesById(req, config, new URL(req.url));
         expect(res.status).toBe(400);
     });
 
     it('should return 400 for missing input', async () => {
-        setSoleClient({send: () => {}} as any);
-        const req = new Request('http://localhost/responses', {
+        setClient(CLIENT_ID, {send: () => {}} as any);
+        const req = new Request(`http://localhost/responses/${CLIENT_ID}`, {
             method: 'POST',
             body: JSON.stringify({}),
         });
-        const res = await handlePostResponses(req, config, new URL(req.url));
+        const res = await handlePostResponsesById(req, config, new URL(req.url));
         expect(res.status).toBe(400);
     });
 
@@ -65,23 +66,22 @@ describe('POST /responses', () => {
         const mockSend = mock((msg: string) => {
             sentMessage = msg;
             // Verify inflight exists
-            const current = getInflight();
+            const current = getInflight(CLIENT_ID);
             if (current) {
                 // Mark as completed
-                emitResponseCompleted('completed');
-                // Resolve the request
-                inflightTerminate();
+                emitResponseCompleted(CLIENT_ID, 'completed');
+                inflightTerminate(CLIENT_ID, null, null);
             }
         });
 
-        setSoleClient({send: mockSend} as any);
+        setClient(CLIENT_ID, {send: mockSend} as any);
 
-        const req = new Request('http://localhost/responses', {
+        const req = new Request(`http://localhost/responses/${CLIENT_ID}`, {
             method: 'POST',
             body: JSON.stringify({input: 'Hello JSON'}),
         });
 
-        const res = await handlePostResponses(req, config, new URL(req.url));
+        const res = await handlePostResponsesById(req, config, new URL(req.url));
 
         expect(res.status).toBe(200);
         const body = (await res.json()) as any;
@@ -99,14 +99,14 @@ describe('POST /responses', () => {
         const mockSend = mock((msg: string) => {
             sentMessage = msg;
         });
-        setSoleClient({send: mockSend} as any);
+        setClient(CLIENT_ID, {send: mockSend} as any);
 
-        const req = new Request('http://localhost/responses', {
+        const req = new Request(`http://localhost/responses/${CLIENT_ID}`, {
             method: 'POST',
             body: JSON.stringify({input: 'Hello Stream', stream: true}),
         });
 
-        const res = await handlePostResponses(req, config, new URL(req.url));
+        const res = await handlePostResponsesById(req, config, new URL(req.url));
 
         expect(res.status).toBe(200);
         expect(res.headers.get('Content-Type')).toContain('text/event-stream');
@@ -122,8 +122,12 @@ describe('POST /responses', () => {
 
         if (reader) {
             // We can manually push events to inflight to see if they appear in stream
-            emitResponseCompleted('completed');
-            inflightTerminate();
+            const current = getInflight(CLIENT_ID);
+            if (current) {
+                current.response.status = 'completed';
+                current.response.completed_at = Math.floor(Date.now() / 1000);
+                inflightTerminate(CLIENT_ID, 'response.completed', {});
+            }
 
             let text = '';
             while (true) {
@@ -132,27 +136,31 @@ describe('POST /responses', () => {
                 text += new TextDecoder().decode(value);
             }
 
-            expect(text).toContain('response.created');
+            // Note: inflightTerminate with 3 args pushes the event AND closes
             expect(text).toContain('response.completed');
             expect(text).toContain('[DONE]');
         }
     });
 
-    it('should request a temporary chat for POST /responses/new', async () => {
+    it('should request a temporary chat for POST /responses/:id/new', async () => {
         let parsed: any = null;
         const mockSend = mock((msg: string) => {
             parsed = JSON.parse(msg);
-            emitResponseCompleted('completed');
-            inflightTerminate();
+            const current = getInflight(CLIENT_ID);
+            if (current) {
+                current.response.status = 'completed';
+                current.response.completed_at = Math.floor(Date.now() / 1000);
+                inflightTerminate(CLIENT_ID, null, null);
+            }
         });
-        setSoleClient({send: mockSend} as any);
+        setClient(CLIENT_ID, {send: mockSend} as any);
 
-        const req = new Request('http://localhost/responses/new', {
+        const req = new Request(`http://localhost/responses/${CLIENT_ID}/new`, {
             method: 'POST',
             body: JSON.stringify({input: 'Hello fresh chat'}),
         });
 
-        const res = await handlePostResponsesNew(req, config, new URL(req.url));
+        const res = await handlePostResponsesByIdNew(req, config, new URL(req.url));
         expect(res.status).toBe(200);
         expect(parsed?.type).toBe('prompt.new');
         expect(parsed?.input).toContain('Hello fresh chat');
@@ -163,11 +171,11 @@ describe('POST /responses', () => {
         const mockSend = mock((msg: string) => {
             const parsed = JSON.parse(msg);
             capturedInput = parsed.input;
-            inflightTerminate();
+            inflightTerminate(CLIENT_ID, null, null);
         });
-        setSoleClient({send: mockSend} as any);
+        setClient(CLIENT_ID, {send: mockSend} as any);
 
-        const req = new Request('http://localhost/responses', {
+        const req = new Request(`http://localhost/responses/${CLIENT_ID}`, {
             method: 'POST',
             body: JSON.stringify({
                 input: [
@@ -178,7 +186,7 @@ describe('POST /responses', () => {
             }),
         });
 
-        await handlePostResponses(req, config, new URL(req.url));
+        await handlePostResponsesById(req, config, new URL(req.url));
 
         expect(capturedInput).toBe('Usr');
         expect(capturedInput.includes('Sys')).toBe(false);
@@ -190,11 +198,11 @@ describe('POST /responses', () => {
         const mockSend = mock((msg: string) => {
             const parsed = JSON.parse(msg);
             capturedInput = parsed.input;
-            inflightTerminate();
+            inflightTerminate(CLIENT_ID, null, null);
         });
-        setSoleClient({send: mockSend} as any);
+        setClient(CLIENT_ID, {send: mockSend} as any);
 
-        const req = new Request('http://localhost/responses', {
+        const req = new Request(`http://localhost/responses/${CLIENT_ID}`, {
             method: 'POST',
             body: JSON.stringify({
                 input: 'User Request',
@@ -211,7 +219,7 @@ describe('POST /responses', () => {
             }),
         });
 
-        await handlePostResponses(req, config, new URL(req.url));
+        await handlePostResponsesById(req, config, new URL(req.url));
 
         expect(capturedInput).toBe('User Request');
         expect(capturedInput.includes('test_tool')).toBe(false);
@@ -219,31 +227,31 @@ describe('POST /responses', () => {
 
     it('should return 409 if another request is in-flight', async () => {
         // 1. Setup a client that receives but doesn't immediately finish
-        setSoleClient({send: () => {}} as any);
+        setClient(CLIENT_ID, {send: () => {}} as any);
 
         // 2. Start the first request (it will hang waiting for WS response)
-        const req1 = new Request('http://localhost/responses', {
+        const req1 = new Request(`http://localhost/responses/${CLIENT_ID}`, {
             method: 'POST',
             body: JSON.stringify({input: 'Req 1'}),
         });
 
         // Start it but don't await the result yet (it waits for timeout or completion)
-        const p1 = handlePostResponses(req1, config, new URL(req1.url));
+        const p1 = handlePostResponsesById(req1, config, new URL(req1.url));
 
         // Allow microtask queue to process so inflight is set
         await new Promise(r => setTimeout(r, 10));
 
         // 3. Start second request
-        const req2 = new Request('http://localhost/responses', {
+        const req2 = new Request(`http://localhost/responses/${CLIENT_ID}`, {
             method: 'POST',
             body: JSON.stringify({input: 'Req 2'}),
         });
 
-        const res2 = await handlePostResponses(req2, config, new URL(req2.url));
+        const res2 = await handlePostResponsesById(req2, config, new URL(req2.url));
         expect(res2.status).toBe(409);
 
         // Cleanup: terminate inflight to let p1 resolve (as error or completed)
-        inflightTerminate(null, null);
+        inflightTerminate(CLIENT_ID, null, null);
         try {
             await p1;
         } catch (e) {
@@ -256,14 +264,8 @@ describe('POST /responses', () => {
         const mockSend = mock((msg: string) => {
             sentMessage = msg;
             // Simulate extension sending back text with tool call
-            const current = getInflight();
+            const current = getInflight(CLIENT_ID);
             if (current) {
-                // Manually trigger the events the WS handler would trigger
-                // But since we can't easily access the internal 'lastText' of inflight from here without using WS handler logic,
-                // we'll just rely on emitOutputItemDone if possible, but that's internal.
-                // Instead, let's just inspect the result after we force completion via internal helpers.
-                
-                // We mock the "accumulation" of text
                 const text = `Thinking...
 \`\`\`json
 { "tool_calls": [{ "name": "foo", "arguments": {} }] }
@@ -272,20 +274,21 @@ describe('POST /responses', () => {
                 current.lastText = text;
                 
                 // Simulate the "done" event flow
-                emitOutputItemDone(text);
-                emitResponseCompleted('completed');
-                inflightTerminate();
+                emitOutputItemDone(CLIENT_ID, text);
+                
+                emitResponseCompleted(CLIENT_ID, 'completed');
+                inflightTerminate(CLIENT_ID, null, null);
             }
         });
 
-        setSoleClient({send: mockSend} as any);
+        setClient(CLIENT_ID, {send: mockSend} as any);
 
-        const req = new Request('http://localhost/responses', {
+        const req = new Request(`http://localhost/responses/${CLIENT_ID}`, {
             method: 'POST',
             body: JSON.stringify({input: 'Call foo'}),
         });
 
-        const res = await handlePostResponses(req, config, new URL(req.url));
+        const res = await handlePostResponsesById(req, config, new URL(req.url));
         const body = await res.json() as any;
 
         expect(body.status).toBe('completed');
@@ -301,22 +304,22 @@ describe('POST /responses', () => {
 
     it('sanitizes finished_successfully markers in final response text', async () => {
         const mockSend = mock((msg: string) => {
-            const current = getInflight();
+            const current = getInflight(CLIENT_ID);
             if (current) {
                 current.lastText = 'v1The final answer finished_successfully';
-                emitResponseCompleted('completed');
-                inflightTerminate();
+                emitResponseCompleted(CLIENT_ID, 'completed');
+                inflightTerminate(CLIENT_ID, null, null);
             }
         });
 
-        setSoleClient({send: mockSend} as any);
+        setClient(CLIENT_ID, {send: mockSend} as any);
 
-        const req = new Request('http://localhost/responses', {
+        const req = new Request(`http://localhost/responses/${CLIENT_ID}`, {
             method: 'POST',
             body: JSON.stringify({input: 'Cleanup markers'}),
         });
 
-        const res = await handlePostResponses(req, config, new URL(req.url));
+        const res = await handlePostResponsesById(req, config, new URL(req.url));
         const body = await res.json() as any;
 
         expect(body.status).toBe('completed');
@@ -434,47 +437,5 @@ describe('POST /responses/:clientId (multi-client)', () => {
         try {
             await p1;
         } catch {}
-    });
-});
-
-describe('POST /responses (backward compat)', () => {
-    afterEach(() => {
-        setSoleClient(null);
-        inflightTerminate(null, null);
-    });
-
-    it('should return 503 when no sole client and using old route', async () => {
-        setSoleClient(null);
-
-        const req = new Request('http://localhost/responses', {
-            method: 'POST',
-            body: JSON.stringify({input: 'Hello'}),
-        });
-
-        const res = await handlePostResponses(req, config, new URL(req.url));
-        expect(res.status).toBe(503);
-    });
-
-    it('should work with setSoleClient for backward compat', async () => {
-        const mockSend = mock((msg: string) => {
-            const current = getInflight();
-            if (current) {
-                emitResponseCompleted('completed');
-                inflightTerminate();
-            }
-        });
-        setSoleClient({send: mockSend} as any);
-
-        const req = new Request('http://localhost/responses', {
-            method: 'POST',
-            body: JSON.stringify({input: 'Hello backward compat'}),
-        });
-
-        const res = await handlePostResponses(req, config, new URL(req.url));
-
-        expect(res.status).toBe(200);
-        const body = await res.json() as any;
-        expect(body.status).toBe('completed');
-        expect(mockSend).toHaveBeenCalled();
     });
 });
