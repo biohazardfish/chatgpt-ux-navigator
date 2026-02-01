@@ -22,6 +22,9 @@ This project consists of two components:
 - **Save Responses**: Save the last Assistant response directly back to the local prompt file (appending it to the thread).
 - **Copy Thread**: One-click copy of the entire visible conversation as structured Markdown (`# {{USER}}` / `# {{ASSISTANT}}`).
 - **Filters**: Toggle visibility of User or Assistant messages in the sidebar.
+- **WebSocket Streaming**: Toggle between standard and real-time streaming modes (🔌🟢/🔌❌) for instant response saving.
+- **Temporary Chat**: Start a new, temporary chat session with one click (🆕).
+- **Token Estimation**: Real-time token count estimation for your messages.
 
 ### Local Prompt Server
 
@@ -33,6 +36,7 @@ This project consists of two components:
     - Paths are resolved relative to the configured files root and cannot escape it.
 - **Advanced Directory Includes**: Use `@dir` for structure, or `@@dir` to inline all files in that directory (non-recursive).
 - **Thread History**: Supports "chat mode" in Markdown files using `# {{USER}}` and `# {{ASSISTANT}}` headers to preserve context.
+- **WebSocket API**: Supports low-latency, real-time response streaming from ChatGPT directly to your local files.
 - **Privacy-First**: Your files stay on your machine. The extension only talks to `localhost`.
 
 ## Installation
@@ -99,6 +103,11 @@ Refactor the following code to be more functional:
 
 - **Extension**: Vanilla JS/CSS. No build step required. Just reload the extension in `chrome://extensions` after changes.
 - **Server**: TypeScript running on Bun.
+- **Testing**: The server includes a test suite. Run it using:
+    ```bash
+    cd server
+    bun test
+    ```
 
 ## License
 

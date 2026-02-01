@@ -1,4 +1,6 @@
-# AI Agent Guide for ChatGPT UX Navigator
+# AGENTS.md
+
+_(AI Agent Guide for ChatGPT UX Navigator)_
 
 This file provides context and guidelines for AI agents working on this codebase.
 
