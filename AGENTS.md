@@ -39,8 +39,6 @@ This file provides context and guidelines for AI agents working on this codebase
         - `GET /list`: Lists all available prompt files (`.md`).
         - `GET /prompt/<filename>`: Returns processed prompt content with resolved includes.
         - `POST /prompt/<filename>`: Appends assistant response to the specified file.
-        - `POST /responses`: Streams assistant output using the current ChatGPT conversation.
-        - `POST /responses/new`: Streams assistant output after starting a temporary new chat.
         - `POST /responses/:id`: Per-client response streaming.
         - `POST /responses/:id/new`: Per-client response streaming with new chat.
         - `GET /ws`: WebSocket endpoint for real-time extension communication.
