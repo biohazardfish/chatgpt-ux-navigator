@@ -9,6 +9,9 @@ export function parseArgv(argv: string[]): Partial<AppConfig> {
     if (args.includes('--no-stream')) {
         config.noStream = true;
     }
+    if (args.includes('--debug-events')) {
+        config.debugEvents = true;
+    }
 
     // Positional arguments (keep your existing behavior):
     // args[0] = promptsDir, args[1] = filesRoot

@@ -123,4 +123,31 @@ describe('extractTextUpdateFromChatGPTPayload', () => {
         expect(result?.mode).toBe('delta');
         expect(result?.text).toBe('v1The final answer. finished_successfully');
     });
+
+    it('ignores v field when it contains only version markers', () => {
+        const result = extractTextUpdateFromChatGPTPayload({
+            payload: {
+                json: {v: 'v1'},
+            },
+        });
+        expect(result).toBeNull();
+    });
+
+    it('ignores v field with version marker and whitespace', () => {
+        const result = extractTextUpdateFromChatGPTPayload({
+            payload: {
+                json: {v: 'v2  '},
+            },
+        });
+        expect(result).toBeNull();
+    });
+
+    it('extracts v field when it contains real text after version', () => {
+        const result = extractTextUpdateFromChatGPTPayload({
+            payload: {
+                json: {v: 'v1Hello!'},
+            },
+        });
+        expect(result?.text).toBe('v1Hello!');
+    });
 });

@@ -317,10 +317,10 @@ export function emitOutputTextDelta(clientIdOrDelta: string | undefined, delta?:
 
     if (typeof delta === 'string') {
         clientId = clientIdOrDelta;
-        text = delta;
+        text = sanitizeAssistantText(delta);
     } else {
         clientId = undefined;
-        text = clientIdOrDelta || '';
+        text = sanitizeAssistantText(clientIdOrDelta || '');
     }
 
     const id = clientId || defaultClientId;

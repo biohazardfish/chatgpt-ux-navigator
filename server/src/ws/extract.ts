@@ -220,6 +220,9 @@ function extractFromStructuredPayload(data: any): ExtractedTextUpdate | null {
     if ('v' in (data as any)) {
         const v = (data as any).v;
         if (typeof v === 'string') {
+            if (/^v\d+\s*$/.test(v)) {
+                return null;
+            }
             return v.length ? {mode: 'delta', text: v} : null;
         }
         const nested = extractFromStructuredPayload(v);

@@ -4,7 +4,7 @@ import {Router} from './router';
 import {handleIndex} from './routes/indexRoute';
 import {handleListPrompts, handleGetPrompt, handlePostPrompt} from './routes/prompts';
 import {handlePostResponses, handlePostResponsesNew, handlePostResponsesById, handlePostResponsesByIdNew} from './routes/responses';
-import {websocketHandlers} from '../ws/handler';
+import {createWebSocketHandlers} from '../ws/handler';
 import type {WsData} from '../types/ws';
 import type {Server} from 'bun';
 
@@ -56,7 +56,7 @@ export function startServer(cfg: AppConfig): void {
             });
         },
 
-        websocket: websocketHandlers,
+        websocket: createWebSocketHandlers(cfg),
     });
 
     console.log(`Bun prompt server running: http://localhost:${cfg.port}`);

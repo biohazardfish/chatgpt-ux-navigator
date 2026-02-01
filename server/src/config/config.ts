@@ -6,6 +6,10 @@ export type AppConfig = {
     // If true, /responses will return a single JSON response (no SSE streaming),
     // regardless of request body `stream`.
     noStream: boolean;
+
+    // If true, emit raw upstream events as response.event (for debugging).
+    // Default: false (hides internal protocol events from clients).
+    debugEvents: boolean;
 };
 
 export function makeConfig(partial: Partial<AppConfig>): AppConfig {
@@ -14,5 +18,6 @@ export function makeConfig(partial: Partial<AppConfig>): AppConfig {
         promptsDir: partial.promptsDir ?? process.cwd(),
         filesRoot: partial.filesRoot ?? process.cwd(),
         noStream: partial.noStream ?? false,
+        debugEvents: partial.debugEvents ?? false,
     };
 }
