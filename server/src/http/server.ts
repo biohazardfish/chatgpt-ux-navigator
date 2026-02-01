@@ -3,7 +3,7 @@ import {corsHeaders, handleOptions} from './cors';
 import {Router} from './router';
 import {handleIndex} from './routes/indexRoute';
 import {handleListPrompts, handleGetPrompt, handlePostPrompt} from './routes/prompts';
-import {handlePostResponses, handlePostResponsesNew, handlePostResponsesById, handlePostResponsesByIdNew} from './routes/responses';
+import {handlePostResponsesById, handlePostResponsesByIdNew} from './routes/responses';
 import {createWebSocketHandlers} from '../ws/handler';
 import type {WsData} from '../types/ws';
 import type {Server} from 'bun';
@@ -18,8 +18,6 @@ export function startServer(cfg: AppConfig): void {
     router.post(/\/prompt\/.+/, handlePostPrompt);
     router.post(/\/responses\/[^\/]+\/new/, handlePostResponsesByIdNew);
     router.post(/\/responses\/[^\/]+/, handlePostResponsesById);
-    router.post('/responses/new', handlePostResponsesNew);
-    router.post('/responses', handlePostResponses);
 
     router.options(/.*/, handleOptions);
 
@@ -63,7 +61,5 @@ export function startServer(cfg: AppConfig): void {
     console.log(`Serving prompts from:      ${cfg.promptsDir}`);
     console.log(`Resolving @files from:     ${cfg.filesRoot}`);
     console.log(`List endpoint:             http://localhost:${cfg.port}/list`);
-    console.log(`Responses endpoint:        http://localhost:${cfg.port}/responses`);
-    console.log(`New chat endpoint:         http://localhost:${cfg.port}/responses/new`);
     console.log(`WebSocket endpoint:        ws://localhost:${cfg.port}/ws`);
 }

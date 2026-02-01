@@ -1,6 +1,6 @@
 import type {AppConfig} from '../../config/config';
 import {applyPromptTemplate} from '../../prompts/resolveIncludes';
-import {getSoleClient, sendToSoleClient, getClient, sendToClient} from '../../ws/hub';
+import {getClient, sendToClient} from '../../ws/hub';
 import {
     getInflight,
     createInflight,
@@ -143,9 +143,8 @@ function sendPromptToExtension(
     
     if (clientId) {
         return sendToClient(clientId, msg);
-    } else {
-        return sendToSoleClient(msg);
     }
+    return false;
 }
 
 function handleStreamingResponse(
@@ -175,17 +174,6 @@ function handleStreamingResponse(
 
             if (clientId) {
                 createInflight(clientId, {
-                    id,
-                    createdAt,
-                    mode: 'stream',
-                    controller,
-                    encoder,
-                    timeoutHandle,
-                    response: responseObj,
-                    messageItemId,
-                });
-            } else {
-                createInflight({
                     id,
                     createdAt,
                     mode: 'stream',
@@ -270,19 +258,6 @@ async function handleJsonResponse(
                     jsonResolve: resolve,
                     jsonReject: reject,
                 });
-            } else {
-                createInflight({
-                    id,
-                    createdAt,
-                    mode: 'json',
-                    controller: null,
-                    encoder: null,
-                    timeoutHandle,
-                    response: responseObj,
-                    messageItemId,
-                    jsonResolve: resolve,
-                    jsonReject: reject,
-                });
             }
 
             const ok = sendPromptToExtension(id, createdAt, prompt, createTemporaryChat, clientId);
@@ -355,13 +330,10 @@ async function handleResponsesRequest(
             );
         }
     } else {
-        // Old behavior: check sole client
-        if (!getSoleClient()) {
-            return new Response(JSON.stringify({error: 'No WebSocket client connected (/ws).'}), {
-                status: 503,
-                headers: {...cors, 'Content-Type': 'application/json'},
-            });
-        }
+        return new Response(JSON.stringify({error: 'Client ID is required.'}), {
+            status: 400,
+            headers: {...cors, 'Content-Type': 'application/json'},
+        });
     }
 
     let body: any;
@@ -422,32 +394,7 @@ async function handleResponsesRequest(
     }
 }
 
-/**
- * Controller for POST /responses (reuses existing chat)
- */
-export function handlePostResponses(
-    req: Request,
-    cfg: AppConfig,
-    url: URL
-): Promise<Response> {
-    return handleResponsesRequest(req, cfg, url, {createTemporaryChat: false});
-}
-
-/**
- * Controller for POST /responses/new (forces new temporary chat)
- */
-export function handlePostResponsesNew(
-    req: Request,
-    cfg: AppConfig,
-    url: URL
-): Promise<Response> {
-    return handleResponsesRequest(req, cfg, url, {createTemporaryChat: true});
-}
-
-/**
- * Controller for POST /responses/:id (per-client, reuses existing chat)
- */
-export async function handlePostResponsesById(
+export function handlePostResponsesById(
     req: Request,
     cfg: AppConfig,
     url: URL

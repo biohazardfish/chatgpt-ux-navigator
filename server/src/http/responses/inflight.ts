@@ -455,14 +455,30 @@ export function emitResponseCompleted(clientIdOrStatus?: string, statusOrExtra?:
     let status: ResponseObject['status'];
     let extraData: any;
 
-    if (typeof statusOrExtra === 'string' || statusOrExtra === undefined) {
-        clientId = undefined;
-        status = clientIdOrStatus as any;
-        extraData = statusOrExtra;
-    } else {
+    // Helper to determine if the first argument is a status string (global mode)
+    // or a client ID (specific mode).
+    // Statuses are limited, but Client IDs can be anything.
+    // However, looking at usage signatures:
+    // 1. (status) -> statusOrExtra is undefined
+    // 2. (status, extra) -> statusOrExtra is object
+    // 3. (clientId, status) -> statusOrExtra is string
+    // 4. (clientId, status, extra) -> extra is defined
+
+    if (extra !== undefined) {
+        // Case 4
         clientId = clientIdOrStatus;
         status = statusOrExtra;
         extraData = extra;
+    } else if (typeof statusOrExtra === 'string') {
+        // Case 3
+        clientId = clientIdOrStatus;
+        status = statusOrExtra;
+        extraData = undefined;
+    } else {
+        // Case 1 or 2
+        clientId = undefined;
+        status = clientIdOrStatus as any;
+        extraData = statusOrExtra;
     }
 
     const id = clientId || defaultClientId;
@@ -515,14 +531,4 @@ export function emitGenericEvent(clientIdOrObj?: string, rawObj?: any) {
     });
 }
 
-export function setSoleInflight(inflight: InflightResponses | null) {
-    if (inflight) {
-        inflights.set(defaultClientId, inflight);
-    } else {
-        inflights.delete(defaultClientId);
-    }
-}
 
-export function getSoleInflight(): InflightResponses | null {
-    return inflights.get(defaultClientId) || null;
-}
