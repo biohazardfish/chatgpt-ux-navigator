@@ -66,13 +66,13 @@ This file provides context and guidelines for AI agents working on this codebase
 
 ## Code Conventions
 
-- **Extension**:
-    - Use **ES Modules** (`import`/`export`).
-    - Avoid external libraries to keep the footprint small.
-- **Server**:
-    - **Modular & Declarative**: Use the internal `Router` for defining routes.
-    - **Native Bun APIs**: Prefer `Bun.file`, `Bun.write`, and `Bun.serve` over Node.js equivalents.
-    - **Types**: Maintain strict TypeScript typing for all new logic.
+Please refer to [CODE_CONVENTIONS.md](./CODE_CONVENTIONS.md) for detailed coding standards.
+
+**Key Highlights:**
+-   **Extension**: No build steps, use ES Modules, use `window.CGPT_NAV` namespace.
+-   **Server**: Native Bun APIs (`Bun.file`, `Bun.serve`), strict TypeScript.
+-   **Security**: MANDATORY use of `isPathInsideRoot()` for all file operations.
+-   **Git**: Atomic commits, `bun test` required before commit.
 
 ## Common Tasks for Agents
 
