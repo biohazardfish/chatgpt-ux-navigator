@@ -1,16 +1,16 @@
 {
-  "name": "chatgpt-ux-navigator-monorepo",
-  "private": true,
-  "workspaces": [
-    "server",
-    "nexus",
-    "extension"
-  ],
-  "scripts": {
-    "dev": "bun --filter server dev",
-    "test": "bun --filter '*' test",
-    "lint": "bun --filter '*' lint",
-    "format": "bun --filter '*' format",
-    "typecheck": "bun --filter '*' typecheck"
-  }
+    "name": "chatgpt-ux-navigator-monorepo",
+    "private": true,
+    "workspaces": [
+        "server",
+        "nexus",
+        "extension"
+    ],
+    "scripts": {
+        "dev": "bun --filter @repo/server dev",
+        "test": "bun --filter '*' test",
+        "lint": "bun --filter '*' lint",
+        "format": "bun --filter '*' format",
+        "typecheck": "bun --filter '*' typecheck"
+    }
 }

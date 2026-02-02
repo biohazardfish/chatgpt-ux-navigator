@@ -1,0 +1,66 @@
+import {resolve} from 'node:path';
+import {existsSync, readFileSync} from 'node:fs';
+import type {AppConfig} from './config';
+
+function parseBooleanEnv(value: string | undefined, defaultValue: boolean): boolean {
+    if (!value) return defaultValue;
+    return value.toLowerCase() === 'true';
+}
+
+function loadEnvFile(): void {
+    const projectRoot = resolve(import.meta.dir, '../../..');
+    const envPath = resolve(projectRoot, '.env');
+    
+    if (!existsSync(envPath)) {
+        return;
+    }
+
+    const envContent = readFileSync(envPath, 'utf-8');
+    const lines = envContent.split('\n');
+
+    for (const line of lines) {
+        const trimmed = line.trim();
+        
+        const isEmptyOrComment = !trimmed || trimmed.startsWith('#');
+        if (isEmptyOrComment) {
+            continue;
+        }
+
+        const keyValueMatch = trimmed.match(/^([^=]+)=(.*)$/);
+        if (keyValueMatch) {
+            const key = keyValueMatch[1].trim();
+            const value = keyValueMatch[2].trim();
+            
+            const notAlreadyDefined = process.env[key] === undefined;
+            if (notAlreadyDefined) {
+                process.env[key] = value;
+            }
+        }
+    }
+}
+
+export function parseEnv(): Partial<AppConfig> {
+    loadEnvFile();
+
+    const config: Partial<AppConfig> = {};
+
+    if (process.env.PORT) {
+        const port = parseInt(process.env.PORT, 10);
+        if (!isNaN(port)) {
+            config.port = port;
+        }
+    }
+
+    if (process.env.PROMPTS_DIR) {
+        config.promptsDir = resolve(process.env.PROMPTS_DIR);
+    }
+
+    if (process.env.FILES_ROOT) {
+        config.filesRoot = resolve(process.env.FILES_ROOT);
+    }
+
+    config.noStream = parseBooleanEnv(process.env.NO_STREAM, false);
+    config.debugEvents = parseBooleanEnv(process.env.DEBUG_EVENTS, false);
+
+    return config;
+}

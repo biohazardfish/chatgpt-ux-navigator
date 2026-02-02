@@ -45,6 +45,35 @@ This project consists of two components:
 
 The server is built with [Bun](https://bun.sh).
 
+#### Configuration
+
+Create a `.env` file in the project root to configure the server:
+
+```bash
+cp .env.example .env
+```
+
+Edit `.env` to customize settings:
+
+```bash
+# Server Configuration
+PORT=8765
+
+# Directory where prompt markdown files are stored
+PROMPTS_DIR=./server
+
+# Root directory for file inclusion (@path syntax)
+FILES_ROOT=./server
+
+# If true, disable SSE streaming and return single JSON responses
+NO_STREAM=false
+
+# If true, emit raw upstream events for debugging
+DEBUG_EVENTS=false
+```
+
+#### Starting the Server
+
 ```bash
 cd server
 bun install
@@ -55,12 +84,6 @@ _For development with automatic restarts, use:_
 
 ```bash
 bun run dev
-```
-
-_By default, it serves markdown files from the `server/` directory. You can pass arguments to serve other folders:_
-
-```bash
-bun run src/index.ts <path-to-prompts> <path-to-files-root>
 ```
 
 ### 2. Install the Extension

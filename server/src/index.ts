@@ -1,8 +1,8 @@
-import {parseArgv} from './config/argv';
+import {parseEnv} from './config/env';
 import {makeConfig} from './config/config';
 import {startServer} from './http/server';
 
-const partialConfig = parseArgv(process.argv);
+const partialConfig = parseEnv();
 const config = makeConfig(partialConfig);
 
 startServer(config);

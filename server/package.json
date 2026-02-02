@@ -1,5 +1,5 @@
 {
-    "name": "server",
+    "name": "@repo/server",
     "module": "src/index.ts",
     "scripts": {
         "start": "bun run src/index.ts",
