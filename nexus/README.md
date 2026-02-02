@@ -1,15 +1,16 @@
-# nexus
+# Nexus
 
-To install dependencies:
+The Nexus module for ChatGPT UX Navigator.
+
+## Usage
 
 ```bash
+# Install dependencies
 bun install
+
+# Run dev server
+bun dev
+
+# Run tests
+bun test
 ```
-
-To run:
-
-```bash
-bun run index.ts
-```
-
-This project was created using `bun init` in bun v1.3.5. [Bun](https://bun.com) is a fast all-in-one JavaScript runtime.

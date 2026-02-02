@@ -1,12 +1,17 @@
 {
-  "name": "nexus",
-  "module": "index.ts",
+  "name": "@repo/nexus",
+  "version": "0.1.0",
+  "module": "src/index.ts",
   "type": "module",
-  "private": true,
+  "scripts": {
+    "dev": "bun src/index.ts",
+    "start": "bun src/index.ts",
+    "test": "bun test"
+  },
   "devDependencies": {
     "@types/bun": "latest"
   },
   "peerDependencies": {
-    "typescript": "^5"
+    "typescript": "^5.0.0"
   }
 }
