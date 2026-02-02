@@ -41,6 +41,13 @@ export function hasClient(clientId: string): boolean {
 }
 
 /**
+ * List all connected client IDs.
+ */
+export function listClients(): string[] {
+    return Array.from(clients.keys());
+}
+
+/**
  * Send a message to a specific client. Returns false if client not found.
  */
 export function sendToClient(clientId: string, obj: any): boolean {

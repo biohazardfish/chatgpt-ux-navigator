@@ -4,6 +4,7 @@ import {Router} from './router';
 import {handleIndex} from './routes/indexRoute';
 import {handleListPrompts, handleGetPrompt, handlePostPrompt} from './routes/prompts';
 import {handlePostResponsesById, handlePostResponsesByIdNew} from './routes/responses';
+import {handleListClients} from './routes/clients';
 import {createWebSocketHandlers} from '../ws/handler';
 import type {WsData} from '../types/ws';
 import type {Server} from 'bun';
@@ -14,6 +15,7 @@ export function startServer(cfg: AppConfig): void {
     // Register routes
     router.get('/', handleIndex);
     router.get('/list', handleListPrompts);
+    router.get('/clients', handleListClients);
     router.get(/\/prompt\/.+/, handleGetPrompt);
     router.post(/\/prompt\/.+/, handlePostPrompt);
     router.post(/\/responses\/[^\/]+\/new/, handlePostResponsesByIdNew);
