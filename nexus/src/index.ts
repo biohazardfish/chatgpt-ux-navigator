@@ -1,11 +1,14 @@
-import { bootstrap } from './app/bootstrap';
+import {bootstrap} from './app/bootstrap.ts';
 
-console.log('Nexus — starting...');
-
-try {
-  await bootstrap();
-  console.log('Nexus — ready');
-} catch (error) {
-  console.error(error);
-  process.exit(1);
+async function main() {
+    try {
+        console.log('Nexus — starting...');
+        await bootstrap();
+        console.log('Nexus — ready');
+    } catch (error) {
+        console.error('Fatal error during startup:', error);
+        process.exit(1);
+    }
 }
+
+main();
