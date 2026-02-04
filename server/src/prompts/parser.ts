@@ -1,4 +1,3 @@
-
 /**
  * Parses tool calls from the model's text output.
  * ChatGPT (via the prompts we inject) outputs tool calls in a markdown JSON block:

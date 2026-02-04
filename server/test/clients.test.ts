@@ -22,10 +22,10 @@ describe('GET /clients', () => {
         // This might be flaky if other tests leave clients connected.
         // Ideally we'd clear the map.
         // Let's rely on the fact that we can check for specific clients we add.
-        
+
         const req = new Request('http://localhost/clients');
         const res = await handleListClients(req, config);
-        
+
         expect(res.status).toBe(200);
         const body = (await res.json()) as {clients: string[]};
         expect(Array.isArray(body.clients)).toBe(true);
@@ -34,13 +34,13 @@ describe('GET /clients', () => {
     it('should return connected clients', async () => {
         const clientId = 'test-client-123';
         const mockWs = {send: mock(() => {}), close: mock(() => {})} as any;
-        
+
         setClient(clientId, mockWs);
 
         try {
             const req = new Request('http://localhost/clients');
             const res = await handleListClients(req, config);
-            
+
             expect(res.status).toBe(200);
             const body = (await res.json()) as {clients: string[]};
             expect(body.clients).toContain(clientId);
@@ -60,7 +60,7 @@ describe('GET /clients', () => {
         try {
             const req = new Request('http://localhost/clients');
             const res = await handleListClients(req, config);
-            
+
             const body = (await res.json()) as {clients: string[]};
             expect(body.clients).toContain(id1);
             expect(body.clients).toContain(id2);

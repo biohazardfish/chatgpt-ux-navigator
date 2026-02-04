@@ -62,7 +62,9 @@ export function createWebSocketHandlers(cfg: AppConfig) {
                         } else {
                             const delta = upd.text;
                             inflight.lastText = (inflight.lastText || '') + delta;
-                            inflight.response.output_text = sanitizeAssistantText(inflight.lastText);
+                            inflight.response.output_text = sanitizeAssistantText(
+                                inflight.lastText
+                            );
                             emitOutputTextDelta(clientId, delta);
                         }
                     } else {

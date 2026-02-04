@@ -1,5 +1,10 @@
 import {describe, it, expect, beforeEach, afterEach, mock} from 'bun:test';
-import {handlePostResponses, handlePostResponsesNew, handlePostResponsesById, handlePostResponsesByIdNew} from '../src/http/routes/responses';
+import {
+    handlePostResponses,
+    handlePostResponsesNew,
+    handlePostResponsesById,
+    handlePostResponsesByIdNew,
+} from '../src/http/routes/responses';
 import type {AppConfig} from '../src/config/config';
 import {setSoleClient, setClient, removeClient} from '../src/ws/hub';
 import {
@@ -192,7 +197,6 @@ describe('POST /responses/:id', () => {
         expect(capturedInput.includes('Sys')).toBe(false);
     });
 
-
     it('should ignore tool definitions in the payload', async () => {
         let capturedInput = '';
         const mockSend = mock((msg: string) => {
@@ -272,10 +276,10 @@ describe('POST /responses/:id', () => {
 \`\`\`
 `;
                 current.lastText = text;
-                
+
                 // Simulate the "done" event flow
                 emitOutputItemDone(CLIENT_ID, text);
-                
+
                 emitResponseCompleted(CLIENT_ID, 'completed');
                 inflightTerminate(CLIENT_ID, null, null);
             }
@@ -289,12 +293,12 @@ describe('POST /responses/:id', () => {
         });
 
         const res = await handlePostResponsesById(req, config, new URL(req.url));
-        const body = await res.json() as any;
+        const body = (await res.json()) as any;
 
         expect(body.status).toBe('completed');
         // Check if text was cleaned
         expect(body.output_text.trim()).toBe('Thinking...');
-        
+
         // Check output item structure
         const item = body.output[0];
         expect(item.content[0].text.trim()).toBe('Thinking...');
@@ -320,7 +324,7 @@ describe('POST /responses/:id', () => {
         });
 
         const res = await handlePostResponsesById(req, config, new URL(req.url));
-        const body = await res.json() as any;
+        const body = (await res.json()) as any;
 
         expect(body.status).toBe('completed');
         expect(body.output_text).toBe('The final answer');
@@ -357,7 +361,7 @@ describe('POST /responses/:clientId (multi-client)', () => {
                 inflightTerminate('client-b', 'response.completed', {});
             }
         });
-        
+
         setClient('client-a', {send: mockSendA} as any);
         setClient('client-b', {send: mockSendB} as any);
 
@@ -373,14 +377,14 @@ describe('POST /responses/:clientId (multi-client)', () => {
 
         const [resA, resB] = await Promise.all([
             handlePostResponsesById(reqA, config, new URL(reqA.url)),
-            handlePostResponsesById(reqB, config, new URL(reqB.url))
+            handlePostResponsesById(reqB, config, new URL(reqB.url)),
         ]);
 
         // Both should succeed
         expect(resA.status).toBe(200);
         expect(resB.status).toBe(200);
-        const bodyA = await resA.json() as any;
-        const bodyB = await resB.json() as any;
+        const bodyA = (await resA.json()) as any;
+        const bodyB = (await resB.json()) as any;
         expect(bodyA.status).toBe('completed');
         expect(bodyB.status).toBe('completed');
     });
@@ -396,7 +400,7 @@ describe('POST /responses/:clientId (multi-client)', () => {
         const res = await handlePostResponsesById(req, config, new URL(req.url));
 
         expect(res.status).toBe(404);
-        const body = await res.json() as any;
+        const body = (await res.json()) as any;
         expect(body.error).toContain('not connected');
     });
 
@@ -423,7 +427,7 @@ describe('POST /responses/:clientId (multi-client)', () => {
         const res2 = await handlePostResponsesById(req2, config, new URL(req2.url));
 
         expect(res2.status).toBe(409);
-        const body2 = await res2.json() as any;
+        const body2 = (await res2.json()) as any;
         expect(body2.error).toContain('in-flight');
         expect(body2.error).toContain('client-x');
 

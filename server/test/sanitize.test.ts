@@ -18,7 +18,9 @@ describe('sanitizeAssistantText', () => {
     it('removes all occurrences of finished_successfully', () => {
         const raw =
             'search("How about Iphone 16 Pro Max?")finished_successfullyHere\'s the clean answer. finished_successfullyhttps://example.com';
-        expect(sanitizeAssistantText(raw)).toBe("search(\"How about Iphone 16 Pro Max?\")Here's the clean answer. https://example.com");
+        expect(sanitizeAssistantText(raw)).toBe(
+            'search("How about Iphone 16 Pro Max?")Here\'s the clean answer. https://example.com'
+        );
     });
 
     it('returns empty when only marker remains', () => {
@@ -31,8 +33,11 @@ describe('sanitizeAssistantText', () => {
     });
 
     it('handles text with both version and marker', () => {
-        const raw = 'v1Hello! 👋  \nLooks like your `curl` request got through successfully.finished_successfully';
-        expect(sanitizeAssistantText(raw)).toBe('Hello! 👋  \nLooks like your `curl` request got through successfully.');
+        const raw =
+            'v1Hello! 👋  \nLooks like your `curl` request got through successfully.finished_successfully';
+        expect(sanitizeAssistantText(raw)).toBe(
+            'Hello! 👋  \nLooks like your `curl` request got through successfully.'
+        );
     });
 
     it('removes multiple occurrences of finished_successfully', () => {

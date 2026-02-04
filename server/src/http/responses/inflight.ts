@@ -45,18 +45,20 @@ export function getInflight(clientId?: string): InflightResponses | null {
 }
 
 export function createInflight(
-    clientIdOrParams: string | {
-        id: string;
-        createdAt: number;
-        mode: InflightMode;
-        controller: ReadableStreamDefaultController<Uint8Array> | null;
-        encoder: TextEncoder | null;
-        timeoutHandle: any;
-        response: ResponseObject;
-        messageItemId: string;
-        jsonResolve?: ((resp: ResponseObject) => void) | null;
-        jsonReject?: ((err: Error) => void) | null;
-    },
+    clientIdOrParams:
+        | string
+        | {
+              id: string;
+              createdAt: number;
+              mode: InflightMode;
+              controller: ReadableStreamDefaultController<Uint8Array> | null;
+              encoder: TextEncoder | null;
+              timeoutHandle: any;
+              response: ResponseObject;
+              messageItemId: string;
+              jsonResolve?: ((resp: ResponseObject) => void) | null;
+              jsonReject?: ((err: Error) => void) | null;
+          },
     params?: {
         id: string;
         createdAt: number;
@@ -139,11 +141,15 @@ function safeEnqueue(frame: string, clientId?: string) {
     try {
         inflight.controller!.enqueue(inflight.encoder!.encode(frame));
     } catch {
-        inflightTerminate('response.error', {
-            type: 'response.error',
-            error: {message: 'Failed to enqueue SSE chunk'},
-            sequence_number: nextSeq(clientId),
-        }, clientId);
+        inflightTerminate(
+            'response.error',
+            {
+                type: 'response.error',
+                error: {message: 'Failed to enqueue SSE chunk'},
+                sequence_number: nextSeq(clientId),
+            },
+            clientId
+        );
     }
 }
 
@@ -232,8 +238,7 @@ export function inflightTerminate(
 
     try {
         resolve?.(resp);
-    } catch {
-    }
+    } catch {}
 }
 
 export function emitResponseCreated(clientId?: string) {
@@ -530,5 +535,3 @@ export function emitGenericEvent(clientIdOrObj?: string, rawObj?: any) {
         sequence_number: nextSeq(clientId),
     });
 }
-
-

@@ -1,16 +1,15 @@
 import {isAbsolute, resolve} from 'node:path';
 import {stat} from 'node:fs/promises';
 import {isPathInsideRoot} from '../fs/security';
-import {
-    concatFirstLevelFiles,
-    formatTree,
-    formatFileContent,
-    listPathsRecursive,
-} from '../fs/tree';
+import {concatFirstLevelFiles, formatTree, formatFileContent, listPathsRecursive} from '../fs/tree';
 
 const INCLUDE_RE = /^\s*(@@?)(\S+)\s*$/;
 
-async function processDirectory(absPath: string, rawPath: string, sigil: string): Promise<string[]> {
+async function processDirectory(
+    absPath: string,
+    rawPath: string,
+    sigil: string
+): Promise<string[]> {
     if (sigil === '@@') {
         return concatFirstLevelFiles(absPath, rawPath);
     }

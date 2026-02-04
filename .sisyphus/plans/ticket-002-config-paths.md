@@ -598,8 +598,8 @@ Scenario: Startup fails gracefully on error
 ### 7. Write Path Security Tests (test/paths.test.ts)
 
 **What to do**:
-- Create comprehensive test suite for path security helpers
-- Test cases (follow server's `server/test/fs.test.ts` pattern):
+- [x] Create comprehensive test suite for path security helpers
+- [x] Test cases (follow server's `server/test/fs.test.ts` pattern):
   - `isPathInsideRoot` returns true for path inside root
   - `isPathInsideRoot` returns true for root itself
   - `isPathInsideRoot` returns false for path outside root
@@ -609,7 +609,7 @@ Scenario: Startup fails gracefully on error
   - `resolveInsideRoot` returns correct absolute path for safe relative paths
   - `resolveInsideRoot` throws on traversal attempts (e.g., `../outside`)
   - `resolveInsideRoot` error message includes both paths
-- Use Bun's `describe`, `it`, `expect` test APIs
+- [x] Use Bun's `describe`, `it`, `expect` test APIs
 
 **Must NOT do**:
 - Don't create mock filesystem abstractions
@@ -656,8 +656,8 @@ Scenario: All path security tests pass
 ### 8. Write Config Tests (test/config.test.ts)
 
 **What to do**:
-- Create test suite for config loading and precedence
-- Test cases:
+- [x] Create test suite for config loading and precedence
+- [x] Test cases:
   - Loads defaults when no config file or env vars
   - Loads config file when present (use temp directory)
   - Env var overrides config file
@@ -668,7 +668,7 @@ Scenario: All path security tests pass
   - Config file from NEXUS_CONFIG_FILE env var
   - Relative stateDir converted to absolute
   - All paths are normalized
-- Use Bun's temp directory API for test fixtures
+- [x] Use Bun's temp directory API for test fixtures
 
 **Must NOT do**:
 - Don't test every possible env var combination (combinatorial explosion)
@@ -729,7 +729,7 @@ Scenario: Config tests clean up temp files
 ### 9. Update package.json Scripts
 
 **What to do**:
-- Update `package.json` scripts:
+- [x] Update `package.json` scripts:
   ```json
   "scripts": {
     "dev": "bun run src/index.ts",
@@ -737,7 +737,7 @@ Scenario: Config tests clean up temp files
     "test": "bun test"
   }
   ```
-- Verify scripts work correctly
+- [x] Verify scripts work correctly
 
 **Must NOT do**:
 - Don't add watch mode or hot reload (keep simple)
@@ -795,20 +795,20 @@ Scenario: Test script runs successfully
 ### 10. Create LESSONS_LEARNED.md
 
 **What to do**:
-- Create `LESSONS_LEARNED.md` at nexus root
-- Document key decisions made:
+- [x] Create `LESSONS_LEARNED.md` at nexus root
+- [x] Document key decisions made:
   - Config file discovery (CWD only + env override)
   - Auto-derived paths (locked under stateDir)
   - Eager directory creation
   - Fail-fast error handling
   - JSONC comment stripping approach
   - Why we followed server's isPathInsideRoot pattern
-- Document any problems encountered:
+- [x] Document any problems encountered:
   - Edge cases discovered
   - Test challenges
   - Bun-specific gotchas
   - Path resolution quirks
-- Format as markdown with sections for decisions, problems, solutions
+- [x] Format as markdown with sections for decisions, problems, solutions
 
 **Must NOT do**:
 - Don't create elaborate documentation (keep concise)
@@ -858,10 +858,10 @@ Scenario: LESSONS_LEARNED.md exists and has content
 ### 11. Verify All Tests Pass
 
 **What to do**:
-- Run `cd nexus && bun test`
-- Verify all tests pass (paths.test.ts, config.test.ts)
-- Check test coverage is comprehensive
-- Fix any failing tests
+- [x] Run `cd nexus && bun test`
+- [x] Verify all tests pass (paths.test.ts, config.test.ts)
+- [x] Check test coverage is comprehensive
+- [x] Fix any failing tests
 
 **Must NOT do**:
 - Don't skip failing tests
@@ -897,6 +897,70 @@ Scenario: All tests pass
     5. Assert: no "fail" or "error" in output
   Expected Result: Complete test suite passes
   Evidence: Test output captured
+```
+
+**Commit**: NO (verification only)
+
+---
+
+### 12. Verify Startup Message
+
+**What to do**:
+- [x] Run `cd nexus && bun run dev`
+- [x] Verify output contains:
+  - "Nexus — starting..."
+  - "State directory: /absolute/path"
+  - "Nexus — ready"
+- [x] Verify exit code is 0
+- [x] Test with env var override: `NEXUS_STATE_DIR=/tmp/test bun run dev`
+
+**Must NOT do**:
+- Don't add additional logging beyond requirements
+- Don't change output format without updating plan
+
+**Recommended Agent Profile**:
+- **Category**: `quick`
+- **Skills**: []
+- **Reason**: Verification task
+
+**Parallelization**:
+- **Can Run In Parallel**: YES (with task 11)
+- **Parallel Group**: Wave 3 (verification phase)
+- **Blocks**: Task 13 (commit only after verification)
+- **Blocked By**: Tasks 6, 9 (needs entrypoint and scripts)
+
+**References**:
+- Ticket 002 acceptance criteria: "Startup prints resolved stateDir"
+- User decision: "Simple" logging format
+
+**Acceptance Criteria**:
+
+Agent-Executed QA Scenarios:
+```
+Scenario: Startup prints correct messages
+  Tool: Bash
+  Preconditions: All code implemented
+  Steps:
+    1. cd nexus
+    2. bun run dev 2>&1
+    3. Assert: output contains "Nexus — starting..."
+    4. Assert: output contains "State directory:"
+    5. Assert: output contains "Nexus — ready"
+    6. Assert: exit code is 0
+  Expected Result: Startup sequence works as specified
+  Evidence: Terminal output captured
+
+Scenario: Env var override works
+  Tool: Bash
+  Preconditions: All code implemented
+  Steps:
+    1. cd nexus
+    2. NEXUS_STATE_DIR=/tmp/nexus-test bun run dev 2>&1
+    3. Assert: output contains "State directory: /tmp/nexus-test"
+    4. Assert: exit code is 0
+    5. rm -rf /tmp/nexus-test
+  Expected Result: Env var changes state directory
+  Evidence: Output with env-specific path
 ```
 
 **Commit**: NO (verification only)
@@ -970,10 +1034,10 @@ Scenario: Env var override works
 ### 13. Final Commit
 
 **What to do**:
-- Review all changes
-- Ensure no uncommitted files
-- Create final commit if needed
-- Verify git history is clean
+- [x] Review all changes
+- [x] Ensure no uncommitted files
+- [x] Create final commit if needed
+- [x] Verify git history is clean
 
 **Must NOT do**:
 - Don't commit incomplete work
@@ -1063,10 +1127,11 @@ cd nexus && ls -la /tmp/test/
 ```
 
 ### Final Checklist
-- [ ] All "Must Have" present (config, path security, dir init, tests)
-- [ ] All "Must NOT Have" absent (no YAML, no logging libs, no build tools)
-- [ ] All tests pass (`bun test` exits 0)
-- [ ] Startup works (`bun run dev` shows state directory)
-- [ ] Env vars override config file
-- [ ] LESSONS_LEARNED.md documents decisions
-- [ ] Git workflow followed (conventional commits)
+- [x] All "Must Have" present (config, path security, dir init, tests)
+- [x] All "Must NOT Have" absent (no YAML, no logging libs, no build tools)
+- [x] All tests pass (`bun test` exits 0)
+- [x] Startup works (`bun run dev` shows state directory)
+- [x] Env vars override config file
+- [x] LESSONS_LEARNED.md documents decisions
+- [x] Git workflow followed (conventional commits)
+

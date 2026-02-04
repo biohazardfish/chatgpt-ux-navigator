@@ -10,7 +10,7 @@ function parseBooleanEnv(value: string | undefined, defaultValue: boolean): bool
 function loadEnvFile(): void {
     const projectRoot = resolve(import.meta.dir, '../../..');
     const envPath = resolve(projectRoot, '.env');
-    
+
     if (!existsSync(envPath)) {
         return;
     }
@@ -20,7 +20,7 @@ function loadEnvFile(): void {
 
     for (const line of lines) {
         const trimmed = line.trim();
-        
+
         const isEmptyOrComment = !trimmed || trimmed.startsWith('#');
         if (isEmptyOrComment) {
             continue;
@@ -30,7 +30,7 @@ function loadEnvFile(): void {
         if (keyValueMatch) {
             const key = keyValueMatch[1].trim();
             const value = keyValueMatch[2].trim();
-            
+
             const notAlreadyDefined = process.env[key] === undefined;
             if (notAlreadyDefined) {
                 process.env[key] = value;

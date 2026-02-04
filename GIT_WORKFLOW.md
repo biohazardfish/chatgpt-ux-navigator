@@ -25,7 +25,7 @@ We follow a **lightweight Git Flow** model.
 ## 2. Branch Naming Rules
 
 ```
-<type>/<short-description>
+<type>/<optional-ticket-number>-<short-description>
 ```
 
 ### Rules:
@@ -37,7 +37,7 @@ We follow a **lightweight Git Flow** model.
 Examples:
 
 ```
-feature/add-dark-mode
+feature/012-add-dark-mode
 bugfix/fix-token-expiry
 hotfix/crash-on-startup
 release/v2.0.1

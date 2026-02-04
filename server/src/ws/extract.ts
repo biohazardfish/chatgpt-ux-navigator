@@ -22,7 +22,12 @@ function mergeFragments(values: Array<string | null>): string | null {
 
 function getTypeIdentifier(value: any): string | null {
     if (!value || typeof value !== 'object') return null;
-    const candidate = typeof value.type === 'string' ? value.type : typeof value.content_type === 'string' ? value.content_type : null;
+    const candidate =
+        typeof value.type === 'string'
+            ? value.type
+            : typeof value.content_type === 'string'
+              ? value.content_type
+              : null;
     return candidate ? candidate.toLowerCase() : null;
 }
 
