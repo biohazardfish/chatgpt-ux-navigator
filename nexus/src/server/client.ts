@@ -1,4 +1,3 @@
-/// <reference lib="dom" />
 import type {Config} from '../config/config.ts';
 import {ServerClientError} from './errors.ts';
 
