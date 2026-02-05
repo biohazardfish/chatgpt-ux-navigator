@@ -4,7 +4,7 @@ import type {Config} from '../../src/config/config.ts';
 import {createServerClient} from '../../src/server/client.ts';
 import {ServerClientError} from '../../src/server/errors.ts';
 
-type FetchFn = (input: RequestInfo, init?: RequestInit) => Promise<Response>;
+type FetchFn = typeof fetch;
 
 function createConfig(): Config {
     return {
@@ -18,7 +18,7 @@ function createConfig(): Config {
 }
 
 describe('ServerClient.postPrompt', () => {
-    let originalFetch: FetchFn | undefined;
+let originalFetch!: FetchFn;
 
     beforeEach(() => {
         originalFetch = globalThis.fetch;
