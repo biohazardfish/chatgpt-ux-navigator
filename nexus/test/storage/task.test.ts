@@ -1,8 +1,9 @@
 import { expect, describe, it, beforeEach, afterEach } from "bun:test";
 import { rm, mkdir, stat } from "node:fs/promises";
 import { join } from "node:path";
-import { createTask, updateTaskStatus } from "../../src/storage/task.ts";
+import { createTask, markBlocked, updateTaskStatus } from "../../src/storage/task.ts";
 import { TASK_FILE, TASKS_DIR, REPORTS_DIR } from "../../src/storage/layout.ts";
+import { parseTask } from "../../src/core/parsing/task.ts";
 import type { Config } from "../../src/config/config.ts";
 
 const TEST_STATE_DIR = join(import.meta.dir, "test_state");
@@ -38,9 +39,14 @@ describe("task storage", () => {
         expect(await taskFile1.exists()).toBe(true);
         
         const content1 = await taskFile1.text();
-        expect(content1).toContain("# Task: First Task");
-        expect(content1).toContain("- ID: T-001");
-        expect(content1).toContain("- Status: pending");
+        expect(content1).toContain("# Task T-001 — First Task");
+        expect(content1).toContain("# Status\n");
+        expect(content1).toContain("pending");
+
+        const parsed = parseTask(content1);
+        expect(parsed.id).toBe("T-001");
+        expect(parsed.title).toBe("First Task");
+        expect(parsed.status).toBe("pending");
 
         const reportsDir1 = join(taskPath1, REPORTS_DIR);
         const reportsStat = await stat(reportsDir1);
@@ -51,12 +57,22 @@ describe("task storage", () => {
         const projectId = "test-project";
         const taskId = await createTask(mockConfig, projectId, "Status Test");
         
-        await updateTaskStatus(mockConfig, projectId, taskId, "in_progress");
+        await updateTaskStatus(mockConfig, projectId, taskId, "running");
         
         const taskFile = Bun.file(join(mockConfig.projectsDir, projectId, TASKS_DIR, taskId, TASK_FILE));
         const content = await taskFile.text();
-        expect(content).toContain("- Status: in_progress");
-        expect(content).not.toContain("- Status: pending");
+        expect(content).toContain("# Status\n");
+        const parsed = parseTask(content);
+        expect(parsed.status).toBe("running");
+    });
+
+    it("should reject invalid status values", async () => {
+        const projectId = "test-project";
+        const taskId = await createTask(mockConfig, projectId, "Invalid Status Test");
+
+        expect(
+            updateTaskStatus(mockConfig, projectId, taskId, "in_progress"),
+        ).rejects.toThrow(/Invalid task status/i);
     });
 
     it("should preserve other metadata when updating status", async () => {
@@ -65,17 +81,38 @@ describe("task storage", () => {
         
         const taskFilePath = join(mockConfig.projectsDir, projectId, TASKS_DIR, taskId, TASK_FILE);
         const originalContent = await Bun.file(taskFilePath).text();
+        const originalParsed = parseTask(originalContent);
         
         await updateTaskStatus(mockConfig, projectId, taskId, "completed");
         
         const updatedContent = await Bun.file(taskFilePath).text();
-        expect(updatedContent).toContain("- Status: completed");
-        
-        const originalLines = originalContent.split("\n");
-        const updatedLines = updatedContent.split("\n");
-        
-        expect(originalLines.length).toBe(updatedLines.length);
-        expect(updatedLines.find(l => l.startsWith("- ID:"))).toBe(originalLines.find(l => l.startsWith("- ID:")));
-        expect(updatedLines.find(l => l.startsWith("- Created:"))).toBe(originalLines.find(l => l.startsWith("- Created:")));
+        const updatedParsed = parseTask(updatedContent);
+
+        expect(updatedParsed.status).toBe("completed");
+        expect(updatedParsed.id).toBe(originalParsed.id);
+        expect(updatedParsed.title).toBe(originalParsed.title);
+        expect(updatedParsed.objective).toBe(originalParsed.objective);
+        expect(updatedParsed.assignedRoles).toEqual(originalParsed.assignedRoles);
+        expect(updatedParsed.relatedGoals).toEqual(originalParsed.relatedGoals);
+        expect(updatedParsed.createdAt).toBe(originalParsed.createdAt);
+    });
+
+    it("marks a task blocked with deterministic reason", async () => {
+        const projectId = "test-project";
+        const taskId = await createTask(mockConfig, projectId, "Blocked Test");
+
+        await markBlocked(mockConfig, projectId, taskId, "Waiting on dependency");
+        await markBlocked(mockConfig, projectId, taskId, "Waiting on approval");
+
+        const taskFilePath = join(mockConfig.projectsDir, projectId, TASKS_DIR, taskId, TASK_FILE);
+        const content = await Bun.file(taskFilePath).text();
+
+        const parsed = parseTask(content);
+        expect(parsed.status).toBe("blocked");
+
+        const reasonMatches = content.match(/# Blocked Reason/g) ?? [];
+        expect(reasonMatches.length).toBe(1);
+        expect(content).toContain("Waiting on approval");
+        expect(content).not.toContain("Waiting on dependency");
     });
 });
