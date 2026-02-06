@@ -2,19 +2,21 @@
 
 This document describes how to interact with Nexus through its terminal user interface (TUI).
 
-The TUI is designed for **control, visibility, and efficiency**, not conversation. It allows the user to monitor progress, approve decisions, and intervene when necessary.
+The TUI is designed for **control, visibility, and efficiency**, not conversation. In the MVP, it provides a minimal fullscreen (blessed-style) shell with keyboard navigation and a single “run one task” trigger.
+
+**MVP scope note:** This doc follows the canonical MVP decisions in `nexus/docs/006-session-orchestration.md#mvp-decisions-resolved` and the MVP scope in ticket `nexus/docs/tickets/008-tui-shell-and-navigation.md`. Anything beyond the shell/navigation/“run one task” flow is listed under **Future work**.
 
 ---
 
 ## TUI Overview
 
-The Nexus TUI is the primary interface for the user.
+In the MVP, the Nexus TUI is a lightweight operator shell (not a full control surface).
 
 It provides:
-- A live view of project state
-- Visibility into active tasks and sessions
-- Clear prompts for approvals and decisions
-- Commands for intervention and control
+- A stable fullscreen layout (header, main pane, footer)
+- Keyboard navigation between high-level **placeholder** views
+- Basic status/notification framing (non-streaming)
+- A minimal “run one task” execution trigger
 
 The TUI favors clarity and predictability over visual complexity.
 
@@ -24,25 +26,21 @@ The TUI favors clarity and predictability over visual complexity.
 
 While the exact layout may evolve, the TUI typically presents:
 
-- **Project Summary**
-  - Current goals
-  - Active plan
-  - Overall status
+- **Dashboard** (placeholder)
+  - Title + placeholder text
 
-- **Task List**
-  - Pending tasks
-  - Running tasks
-  - Completed tasks
+- **Tasks** (placeholder)
+  - Title + placeholder text
 
-- **Session Status**
-  - Active sessions
-  - Assigned roles
-  - Execution state
+- **Sessions** (placeholder)
+  - Title + placeholder text
 
-- **Notifications**
-  - Approval requests
-  - Conflicts
-  - Errors
+- **Decisions** (placeholder)
+  - Title + placeholder text
+  - (Approval dialogs and decision checkpoints are **Future work**)
+
+- **Logs** (placeholder)
+  - Title + placeholder text
 
 ---
 
@@ -50,103 +48,76 @@ While the exact layout may evolve, the TUI typically presents:
 
 Navigation is keyboard-driven.
 
-Common navigation actions include:
-- Switching between views
-- Selecting tasks or sessions
-- Expanding details
-- Returning to the main summary
+In the MVP, navigation is limited to global keys and switching between **placeholder** views (for example using number keys).
+
+More granular interactions (selecting tasks, expanding details, inline actions, etc.) are **Future work**.
 
 The TUI is designed to be usable without a mouse.
 
 ---
 
-## Approvals and Decisions
+## Running one task (MVP)
 
-When Nexus reaches an approval checkpoint:
-- Execution pauses
-- The TUI highlights the decision request
-- Relevant context is displayed
+The MVP includes a single “run one task” trigger.
 
-The user can:
-- Approve the proposal
-- Request changes
-- Defer the decision
-- Abort the action
+The exact interaction details may vary, but the intent is:
+- The operator initiates one task run
+- The TUI reflects basic run state in the status area
 
-All approvals are explicit and intentional.
+Any richer workflows (multiple tasks, arbitrary commands, etc.) are **Future work**.
 
 ---
 
-## Commands and Actions
+## Monitoring progress (MVP)
 
-The TUI supports direct commands to control execution.
+In the MVP, the TUI provides basic visibility only:
+- Current active view
+- Simple status messages
+- Placeholder areas for notifications
 
-Typical actions include:
-- Pause or resume the project
-- Cancel a task
-- Spawn additional roles
-- Add notes or constraints
-- Force re-evaluation
-
-Commands are scoped to prevent accidental destructive actions.
+Real-time streaming output and rich live logs inside the TUI are **Future work**.
 
 ---
 
-## Monitoring Progress
+## Error and alert handling (MVP)
 
-The TUI provides continuous feedback:
-- Task status updates
-- Session lifecycle changes
-- Report summaries
-- Governance decisions
+In the MVP, errors should be surfaced as clearly as possible within the minimal shell (for example via the footer/status line).
 
-This allows the user to stay informed without micromanaging.
+Acknowledgment dialogs and richer alert workflows are **Future work**.
 
 ---
 
-## Error and Alert Handling
+## Non-Goals of the TUI (MVP)
 
-Errors and alerts are surfaced clearly in the TUI.
-
-Examples include:
-- Session failures
-- Conflicting reports
-- Blocked tasks
-
-Alerts require acknowledgment to ensure visibility.
-
----
-
-## Manual Overrides
-
-The user may override Nexus decisions through the TUI.
-
-Overrides:
-- Take effect immediately
-- Are recorded in project state
-- Influence future governance behavior
-
-Overrides do not require justification, but Nexus may ask for context.
-
----
-
-## Non-Goals of the TUI
-
-The TUI is not intended to:
+The MVP TUI is not intended to:
 - Be a chat interface
 - Replace the ChatGPT UI
-- Provide rich visualization
+- Provide approval dialogs or manual override controls
+- Provide real-time streaming output/UI
+- Provide a parallel control surface
 
-Its purpose is operational control.
+Its purpose in MVP is to supply a minimal, keyboard-driven operator shell that future features can build on.
+
+---
+
+## Future work
+
+The following capabilities are explicitly **out of scope for MVP** (see ticket 008 + canonical MVP decisions in doc 006), but may be added later:
+
+- Approval dialogs and decision checkpoints that pause execution
+- Rich commands/actions (pause/resume/cancel, etc.)
+- Manual overrides of Nexus decisions
+- Spawning/assigning additional roles from the TUI
+- Real-time streaming output and interactive log viewers
+- Parallel execution control surfaces
 
 ---
 
 ## Summary
 
-The Nexus TUI:
-- Keeps the user informed
-- Makes approvals explicit
-- Enables fast intervention
-- Preserves operator authority
+For MVP, the Nexus TUI:
+- Renders a minimal fullscreen shell (header/content/footer)
+- Supports keyboard navigation between placeholder views
+- Provides a single “run one task” execution trigger
 
-It is the control surface for all Nexus-driven work.
+Advanced control, approvals, overrides, streaming UI, and parallel control are **Future work**.

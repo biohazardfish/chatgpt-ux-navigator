@@ -6,7 +6,9 @@ Response Streaming and Capture (Session Run Transcripts)
 
 ## Goal
 
-Extend the server client so Nexus can **capture and persist raw session outputs** (“transcripts”) for each execution run, with **optional streaming support**, while keeping these transcripts clearly separated from interpreted reports and persistent project state.
+Extend the server client so Nexus can **capture and persist raw session outputs** (“transcripts”) for each execution run (MVP: **buffered JSON mode only**, no Nexus-side SSE parsing), while keeping these transcripts clearly separated from interpreted reports and persistent project state.
+
+For canonical terminology, see the glossary in `nexus/docs/006-session-orchestration.md#glossary`.
 
 This ticket introduces the concept of a **session run** as an execution artifact.
 
@@ -20,10 +22,10 @@ From earlier tickets:
 - **Session outputs** are ephemeral execution results.
 - However, for debugging, transparency, and governance confidence, Nexus should retain **raw outputs per run** for inspection.
 
-The local server:
-- Returns **plain text**
-- May stream output (chunked)
-- Does not provide structured metadata
+The local server (as used by Nexus in MVP):
+- Returns a **single buffered JSON response** containing the full response text
+- Does **not** require Nexus-side streaming/SSE parsing
+- Does not provide structured metadata beyond the buffered payload
 
 This ticket captures that text safely and predictably.
 
@@ -40,6 +42,9 @@ A run is identified by:
 - Timestamp
 - Prompt text
 - Raw response text
+
+MVP identifier mapping:
+- `responseId` (this doc) == server routing `clientId` == role name
 
 Runs are **not part of project intent** and are not used as memory.
 
@@ -104,13 +109,13 @@ Notes:
    - Prompt text (`prompt.txt`)
    - Full raw response text (`response.txt`)
    - Minimal metadata (`meta.json`)
-3. Support **buffered responses** (entire response returned at once).
-4. Optionally support **streaming responses** if the server uses `ReadableStream`.
+3. Support **buffered JSON responses** (entire response returned at once; MVP does not parse SSE/streaming).
+4. **Future work:** support **streaming responses** (SSE / `ReadableStream`) and streaming parsing on the Nexus side.
 5. Ensure runs are written **after completion** (no partial corruption).
 6. Never mix run data with project state or reports.
 
 ### Non-functional
-- Streaming support may be basic (append chunks to memory, then flush to disk).
+- (Future work) Streaming support may be basic (append chunks to memory, then flush to disk).
 - No real-time TUI streaming display yet (later ticket).
 - No retry logic yet.
 
@@ -158,11 +163,13 @@ This function:
 
 ## Streaming behavior
 
+> **Future work note:** This entire section describes non-MVP behavior. MVP capture is buffered JSON mode only.
+
 ### Detection
 - If `fetch` response has `body` as a `ReadableStream`, read chunks
 - Else, fall back to `await response.text()`
 
-### MVP handling
+### Future work handling
 - Accumulate chunks in memory
 - On completion:
   - Write `response.txt`

@@ -6,12 +6,12 @@ Server Client: POST Prompts to Local Server
 
 ## Goal
 
-Implement a **minimal, reliable HTTP client** inside Nexus for sending prompts to the local server and receiving **plain-text responses**, forming the foundation for all session execution.
+Implement a **minimal, reliable HTTP client** inside Nexus for sending prompts to the local server and receiving **buffered JSON responses** (no Nexus-side SSE parsing / streaming UI), forming the foundation for all session execution.
 
 This ticket enables Nexus to:
-- Send task prompts to the server via `POST /responses/:id`
+- Send task prompts to the server via `POST /responses/:clientId/new` (default: temporary chat per run)
 - Associate responses with a logical **session run**
-- Capture full text output (no streaming control logic yet)
+- Capture the full JSON response body (buffered; no streaming control logic yet)
 - Fail cleanly and visibly on server errors
 
 This is the **first execution-capable ticket**.
@@ -23,7 +23,7 @@ This is the **first execution-capable ticket**.
 The local server exposes the following API:
 
 ```bash
-POST http://localhost:8765/responses/<id>
+POST http://localhost:8765/responses/<clientId>/new
 Content-Type: application/json
 
 {
@@ -31,12 +31,10 @@ Content-Type: application/json
 }
 ```
 
-- `<id>` identifies a logical response channel (e.g. `planner`, `reviewer-1`)
-- Response format is **plain text**, similar to OpenAI, but:
-  - No system prompts
-  - No tool calls
-  - No structured JSON
-- Streaming *may* exist, but MVP assumes we can buffer the full response
+- `<clientId>` identifies a logical response channel (e.g. `planner`, `reviewer-1`)
+- **Default behavior (MVP):** use `/new` to start a temporary chat per run.
+- **Carryover (opt-in):** reuse an existing chat by posting to `POST /responses/<clientId>` (no `/new`).
+- Response format is **JSON** and must be handled as a **buffered JSON** response in Nexus (no Nexus-side SSE parsing / streaming UI in MVP).
 
 Nexus treats this server as an **execution backend**, not a source of authority.
 
@@ -47,9 +45,9 @@ Nexus treats this server as an **execution backend**, not a source of authority.
 ### Functional
 1. Provide a reusable function to POST prompt text to the server.
 2. Allow the caller to specify:
-   - `responseId` (string)
+   - `clientId` (string)
    - `promptText` (string)
-3. Return the full response text as a string.
+3. Return the buffered JSON response body.
 4. Surface HTTP and network errors clearly.
 5. Respect `serverBaseUrl` from config (ticket 002).
 
@@ -75,11 +73,19 @@ Introduce a small client module.
 
 ```ts
 interface ServerClient {
-  postPrompt(params: {
-    responseId: string
+  // Default (MVP): create a temporary chat per run.
+  postPromptNew(params: {
+    clientId: string
     input: string
     timeoutMs?: number
-  }): Promise<string>
+  }): Promise<unknown>
+
+  // Opt-in carryover: reuse an existing chat.
+  postPrompt(params: {
+    clientId: string
+    input: string
+    timeoutMs?: number
+  }): Promise<unknown>
 }
 ```
 
@@ -136,11 +142,12 @@ src/server/errors.ts
 
 ### URL construction
 ```ts
-const url = `${config.serverBaseUrl}/responses/${responseId}`
+const urlNew = `${config.serverBaseUrl}/responses/${clientId}/new`
+const urlCarryover = `${config.serverBaseUrl}/responses/${clientId}`
 ```
 
 - Ensure no double slashes
-- Do not URL-encode `responseId` silently; validate it instead
+- Do not URL-encode `clientId` silently; validate it instead
 
 ---
 
@@ -148,7 +155,7 @@ const url = `${config.serverBaseUrl}/responses/${responseId}`
 
 Before sending the request:
 
-- `responseId`
+- `clientId`
   - Non-empty
   - Matches `/^[a-zA-Z0-9._-]+$/`
 - `input`
@@ -161,8 +168,8 @@ Throw immediately on invalid input.
 ## Logging (minimal)
 
 For MVP:
-- `console.debug` on request start (id + length)
-- `console.debug` on success (id + response length)
+- `console.debug` on request start (`clientId` + input length)
+- `console.debug` on success (`clientId` + response size)
 - `console.error` on failure
 
 No structured logging required yet.
@@ -174,12 +181,12 @@ No structured logging required yet.
 Add tests under `test/server/`:
 
 ### Unit tests
-- Invalid `responseId` rejected
+- Invalid `clientId` rejected
 - Empty input rejected
 
 ### Integration-style test (mocked)
 - Mock `fetch` to:
-  - Return 200 + text → client returns text
+  - Return 200 + JSON → client returns parsed JSON
   - Return 500 → client throws with status
   - Simulate timeout → client throws
 
@@ -189,8 +196,9 @@ Add tests under `test/server/`:
 
 ## Acceptance criteria (Definition of Done)
 
-- [ ] `postPrompt` sends POST requests to `/responses/:id`
-- [ ] Response body is returned as plain text
+- [ ] `postPromptNew` sends POST requests to `/responses/:clientId/new`
+- [ ] (Opt-in) `postPrompt` sends POST requests to `/responses/:clientId`
+- [ ] Response body is returned as buffered JSON (no Nexus-side SSE parsing / streaming UI)
 - [ ] Errors are thrown with actionable information
 - [ ] Input validation prevents malformed requests
 - [ ] Tests cover success and failure cases

@@ -6,6 +6,8 @@ Session Runner (Basic Role-Based Execution)
 
 ## Goal
 
+**Note:** Canonical terminology is defined in `nexus/docs/006-session-orchestration.md#glossary`.
+
 Implement the **basic session runner** that takes an `ExecutableTask` and:
 
 - Executes one session **per assigned role**
@@ -60,6 +62,22 @@ For a given task:
    - Stops execution
    - Marks task as `blocked`
    - Surfaces error to caller
+
+### Client preflight (MVP)
+
+Before executing any roles, the runner must preflight client availability via `GET /clients`.
+
+- In MVP, `clientId == role name`.
+- If any required role client is missing, the runner must **fail fast** (no role runs started) and surface diagnostics including:
+  - Missing role name(s)
+  - Available clientId(s) returned by `GET /clients`
+
+### Temporary chat default (MVP)
+
+Each role execution defaults to a **temporary chat** per run:
+
+- Default endpoint: `POST /responses/:clientId/new`
+- Carryover (reusing an existing chat/session for the same `clientId`) is an explicit opt-in at the orchestration/caller level; it must not happen implicitly.
 
 ---
 

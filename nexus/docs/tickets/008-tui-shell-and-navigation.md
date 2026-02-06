@@ -6,6 +6,8 @@ TUI Shell and Navigation (Nexus Operator Interface MVP)
 
 ## Goal
 
+> Glossary: nexus/docs/006-session-orchestration.md#glossary
+
 Implement the **foundational Terminal User Interface (TUI) shell** for Nexus that allows an operator to:
 
 - Start Nexus and see a live UI instead of console logs
@@ -41,6 +43,8 @@ This ticket establishes **layout, navigation, and event loop**, nothing more.
 
 ## TUI scope (MVP)
 
+Canonical MVP decisions: see `nexus/docs/006-session-orchestration.md#mvp-decisions-resolved`.
+
 This ticket includes:
 
 - A fullscreen TUI
@@ -48,12 +52,14 @@ This ticket includes:
 - A main content pane
 - A footer / status bar
 - Keyboard navigation between placeholder views
+- Run one task (single-task execution trigger)
 
 This ticket explicitly excludes:
 - Editing state
-- Triggering tasks
+- Triggering arbitrary tasks/workflows beyond the minimal “run one task” flow
 - Approval dialogs
 - Real-time streaming output
+- Parallel control surface
 
 ---
 

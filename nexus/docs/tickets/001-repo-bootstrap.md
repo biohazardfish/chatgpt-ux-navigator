@@ -22,8 +22,8 @@ This ticket establishes:
 Nexus is a **local orchestration control plane** (TUI app) that:
 
 - Stores project state in local files (plain text + markdown)
-- Sends prompts to the local server via `POST http://localhost:8765/responses/:id` with JSON `{ input: string }`
-- Receives text output and persists it for governance
+- Sends prompts to the local server via `POST http://localhost:8765/responses/:clientId/new` with JSON `{ input: string }`
+- Receives buffered JSON output and persists it for governance
 
 This ticket does **not** implement features beyond the minimal shell to run.
 
