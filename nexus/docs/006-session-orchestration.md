@@ -2,6 +2,8 @@
 
 This document describes how Nexus creates, manages, and terminates ChatGPT sessions to execute tasks.
 
+> Reference note: all other docs discussing session policy must link back to `nexus/docs/006-session-orchestration.md#mvp-decisions-resolved` and `nexus/docs/006-session-orchestration.md#glossary` instead of duplicating this content.
+
 Session orchestration is a core responsibility of Nexus and is designed to enable **clean execution boundaries** and **predictable behavior** (MVP execution is sequential).
 
 ---
@@ -13,6 +15,7 @@ This section is the canonical MVP truth; older sections below may describe futur
 - Sessions are **ChatGPT Web UI threads**, controlled indirectly via **browser extension + local server**; Nexus does **not** call model APIs.
 - Implementation scope (for the next plan): include tickets **006 (run transcripts)** + **013 (sequential runner)** + **minimal blessed TUI “run one task”**.
 - Exclude (for MVP): parallel execution (ticket 018), SSE parsing in Nexus, streaming UI.
+- Execution order is **strictly sequential**; any mention of concurrency must be marked as Future work referencing this section.
 - Run capture: **buffered JSON mode** only.
 - Temporary chat: default **new temporary chat per run** (`POST /responses/:clientId/new`), opt-in carryover.
 - Client routing: `clientId == role name` (planner/implementer/reviewer/researcher/devils-advocate). Requires one connected extension WS client per role.
@@ -21,6 +24,8 @@ This section is the canonical MVP truth; older sections below may describe futur
 - Tests: yes, tests-after (`bun test`).
 
 ## Glossary
+
+> Use direct references to `nexus/docs/006-session-orchestration.md#glossary` when citing these canonical definitions.
 
 - **Session**: A single ChatGPT Web UI conversation thread (what ChatGPT calls a “chat”). In MVP, sessions are controlled indirectly via the browser extension + local server.
 - **Thread**: Synonym for **Session** in this MVP doc set (i.e., a ChatGPT Web UI conversation thread).
@@ -165,6 +170,8 @@ Sessions do **not**:
 - Override plans or goals
 
 All authority flows through Nexus.
+
+> Reminder: other docs discussing governance authority should cite `nexus/docs/006-session-orchestration.md#authority-boundaries` to preserve a single canonical statement.
 
 ---
 

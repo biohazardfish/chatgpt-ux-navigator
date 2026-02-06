@@ -29,6 +29,12 @@ The local server (as used by Nexus in MVP):
 
 This ticket captures that text safely and predictably.
 
+### MVP capture contract
+
+- Per `nexus/docs/006-session-orchestration.md#mvp-decisions-resolved`, capture is **buffered JSON only**; anything referencing streaming must carry a **Future work** label.
+- This ticket never adds a TUI streaming display in MVP; Nexus persists the buffered payload for later inspection instead.
+- Any other doc that references run capture should cite this section or the canonical decisions rather than restating the policy.
+
 ---
 
 ## Definitions
@@ -109,14 +115,14 @@ Notes:
    - Prompt text (`prompt.txt`)
    - Full raw response text (`response.txt`)
    - Minimal metadata (`meta.json`)
-3. Support **buffered JSON responses** (entire response returned at once; MVP does not parse SSE/streaming).
+3. Support **buffered JSON responses** (entire response returned at once; MVP does not parse SSE/streaming — see `nexus/docs/006-session-orchestration.md#mvp-decisions-resolved`).
 4. **Future work:** support **streaming responses** (SSE / `ReadableStream`) and streaming parsing on the Nexus side.
 5. Ensure runs are written **after completion** (no partial corruption).
 6. Never mix run data with project state or reports.
 
 ### Non-functional
 - (Future work) Streaming support may be basic (append chunks to memory, then flush to disk).
-- No real-time TUI streaming display yet (later ticket).
+- No real-time TUI streaming display yet (later ticket; keep labeled **Future work** per `nexus/docs/006-session-orchestration.md#mvp-decisions-resolved`).
 - No retry logic yet.
 
 ---
@@ -161,9 +167,9 @@ This function:
 
 ---
 
-## Streaming behavior
+## Streaming behavior (Future work)
 
-> **Future work note:** This entire section describes non-MVP behavior. MVP capture is buffered JSON mode only.
+> **Future work note:** This entire section describes non-MVP behavior. MVP capture is buffered JSON mode only (`nexus/docs/006-session-orchestration.md#mvp-decisions-resolved`).
 
 ### Detection
 - If `fetch` response has `body` as a `ReadableStream`, read chunks

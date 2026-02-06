@@ -4,7 +4,18 @@ This document describes how to interact with Nexus through its terminal user int
 
 The TUI is designed for **control, visibility, and efficiency**, not conversation. In the MVP, it provides a minimal fullscreen (blessed-style) shell with keyboard navigation and a single “run one task” trigger.
 
-**MVP scope note:** This doc follows the canonical MVP decisions in `nexus/docs/006-session-orchestration.md#mvp-decisions-resolved` and the MVP scope in ticket `nexus/docs/tickets/008-tui-shell-and-navigation.md`. Anything beyond the shell/navigation/“run one task” flow is listed under **Future work**.
+**MVP scope note:** This doc follows the canonical MVP decisions in `nexus/docs/006-session-orchestration.md#mvp-decisions-resolved` (and its glossary). Ticket `nexus/docs/tickets/008-tui-shell-and-navigation.md` defines the UI scope. Anything beyond the shell/navigation/“run one task” flow is listed under **Future work**.
+
+### MVP constraints (canonical)
+
+The TUI inherits the MVP guardrails locked in doc 006:
+
+- **Sequential only:** One task runs at a time. The session runner from ticket 013 executes roles sequentially; no parallel dashboards or multi-run batching exist yet.
+- **Buffered capture:** The TUI consumes buffered JSON responses written by the Nexus server. Real-time streaming output stays in the ChatGPT web UI + browser extension; the TUI never renders streaming chunks in MVP.
+- **No model API calls:** All model interaction happens via the browser extension driving the ChatGPT web UI. The TUI orchestrates that flow and never speaks to provider APIs directly.
+- **Single control surface:** There is no parallel command surface or split-brain control. The TUI supplies a single keyboard-driven shell for launching “run one task.”
+
+Whenever you need richer interaction (parallel, multi-task, or true streaming UI), treat it as **Future work** and cite `nexus/docs/006-session-orchestration.md#mvp-decisions-resolved`.
 
 ---
 
@@ -75,7 +86,7 @@ In the MVP, the TUI provides basic visibility only:
 - Simple status messages
 - Placeholder areas for notifications
 
-Real-time streaming output and rich live logs inside the TUI are **Future work**.
+Real-time streaming output and rich live logs inside the TUI are **Future work** and belong to the ChatGPT web UI + extension until the streaming UI ticket lands.
 
 ---
 
@@ -93,7 +104,7 @@ The MVP TUI is not intended to:
 - Be a chat interface
 - Replace the ChatGPT UI
 - Provide approval dialogs or manual override controls
-- Provide real-time streaming output/UI
+- Provide real-time streaming output/UI (the browser extension handles the live stream experience for now)
 - Provide a parallel control surface
 
 Its purpose in MVP is to supply a minimal, keyboard-driven operator shell that future features can build on.
@@ -108,7 +119,7 @@ The following capabilities are explicitly **out of scope for MVP** (see ticket 0
 - Rich commands/actions (pause/resume/cancel, etc.)
 - Manual overrides of Nexus decisions
 - Spawning/assigning additional roles from the TUI
-- Real-time streaming output and interactive log viewers
+- Real-time streaming output and interactive log viewers (see doc 006 Future work)
 - Parallel execution control surfaces
 
 ---

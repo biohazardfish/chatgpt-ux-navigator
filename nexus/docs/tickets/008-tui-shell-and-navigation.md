@@ -58,8 +58,13 @@ This ticket explicitly excludes:
 - Editing state
 - Triggering arbitrary tasks/workflows beyond the minimal “run one task” flow
 - Approval dialogs
-- Real-time streaming output
-- Parallel control surface
+- Real-time streaming output (Future work; TUI mirrors buffered JSON capture only)
+- Parallel control surface (Future work; execution stays sequential per `nexus/docs/006-session-orchestration.md#mvp-decisions-resolved`)
+
+### MVP alignment notes
+
+- **Run one task extension:** The TUI may expose a single entry point that kicks off the sequential runner defined in ticket 013 while respecting buffered-only capture from ticket 006. No other orchestration controls ship in MVP.
+- **Non-goals:** Any UI concept resembling streaming response playback or parallel operator dashboards must be labeled **Future work** and link back to the canonical session orchestration decisions so readers understand the constraint.
 
 ---
 

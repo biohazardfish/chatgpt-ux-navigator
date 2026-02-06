@@ -71,6 +71,7 @@ Before executing any roles, the runner must preflight client availability via `G
 - If any required role client is missing, the runner must **fail fast** (no role runs started) and surface diagnostics including:
   - Missing role name(s)
   - Available clientId(s) returned by `GET /clients`
+- Diagnostics should be logged + bubbled up in the same structured format everywhere, and other docs should reference `nexus/docs/006-session-orchestration.md#mvp-decisions-resolved` when restating this behavior.
 
 ### Temporary chat default (MVP)
 
@@ -78,6 +79,13 @@ Each role execution defaults to a **temporary chat** per run:
 
 - Default endpoint: `POST /responses/:clientId/new`
 - Carryover (reusing an existing chat/session for the same `clientId`) is an explicit opt-in at the orchestration/caller level; it must not happen implicitly.
+- Any mention of carryover must cite `nexus/docs/006-session-orchestration.md#mvp-decisions-resolved` to reinforce the policy that temporary chats are the default and carryover is opt-in only.
+
+### Failure behavior (MVP)
+
+- A failure in any role stops the session runner immediately, marks the task `blocked`, and returns the diagnostics to callers.
+- This applies to transport errors, capture errors, or prompt issues; no retries yet.
+- References to this failure contract should link to the canonical session orchestration summary instead of duplicating variations.
 
 ---
 
