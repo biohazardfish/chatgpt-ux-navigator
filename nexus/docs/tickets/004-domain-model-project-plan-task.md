@@ -289,8 +289,13 @@ src/core/parsing/
   project.ts
   plan.ts
   task.ts
-  report.ts
   decision.ts
+
+src/core/report/
+  convention.ts      // strict report contract + docs
+  parser.ts
+  errors.ts
+  index.ts
 ```
 
 ---
