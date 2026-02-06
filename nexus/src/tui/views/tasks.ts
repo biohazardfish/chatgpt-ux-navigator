@@ -1,6 +1,4 @@
-// @ts-ignore - blessed has no bundled TS types in this repo
-import blessed from 'blessed';
-
+import { BoxRenderable, SelectRenderable, SelectRenderableEvents, TextRenderable, type KeyEvent } from '@opentui/core';
 import { readdir } from 'node:fs/promises';
 import { join } from 'node:path';
 
@@ -25,10 +23,14 @@ export type RunOutcome = {
 };
 
 type TasksView = {
-    projectsList: any;
-    tasksList: any;
-    summaryBox: any;
-    runBox: any;
+    projectsPanel: BoxRenderable;
+    tasksPanel: BoxRenderable;
+    summaryPanel: BoxRenderable;
+    runPanel: BoxRenderable;
+    projectsList: SelectRenderable;
+    tasksList: SelectRenderable;
+    summaryBox: TextRenderable;
+    runBox: TextRenderable;
     projects: string[];
     tasks: string[];
     activeProjectId?: string;
@@ -41,6 +43,7 @@ type TasksView = {
 };
 
 const VIEW_KEY = Symbol.for('nexus.tui.view.tasks');
+const FALLBACK_KEY = Symbol.for('nexus.tui.view.tasks.fallback');
 
 type RunRoleState = {
     status: 'pending' | 'running' | 'success' | 'error';
@@ -62,14 +65,9 @@ type RunState = {
     errorMessage?: string;
 };
 
-function safeDestroy(node: any): void {
+function safeDestroy(node: { destroyRecursively?: () => void } | undefined): void {
     try {
-        node?.detach?.();
-    } catch {
-        // ignore
-    }
-    try {
-        node?.destroy?.();
+        node?.destroyRecursively?.();
     } catch {
         // ignore
     }
@@ -95,33 +93,26 @@ function formatSummary(value: {
     error?: string;
 }): string {
     if (!value.projectId) {
-        return ['{bold}Summary{/bold}', '', 'No project selected.'].join('\n');
+        return ['Summary', '', 'No project selected.'].join('\n');
     }
 
     if (!value.taskId) {
-        return ['{bold}Summary{/bold}', '', `Project: {bold}${value.projectId}{/bold}`, '', 'No task selected.'].join(
-            '\n'
-        );
+        return ['Summary', '', `Project: ${value.projectId}`, '', 'No task selected.'].join('\n');
     }
 
     if (value.error) {
-        return [
-            '{bold}Summary{/bold}',
-            '',
-            `Project: {bold}${value.projectId}{/bold}`,
-            `Task: {bold}${value.taskId}{/bold}`,
-            '',
-            `{red-fg}Parse error{/red-fg}: ${value.error}`
-        ].join('\n');
+        return ['Summary', '', `Project: ${value.projectId}`, `Task: ${value.taskId}`, '', `Parse error: ${value.error}`].join(
+            '\n'
+        );
     }
 
     const roles = value.assignedRoles && value.assignedRoles.length > 0 ? value.assignedRoles.join(', ') : '(none)';
 
     return [
-        '{bold}Summary{/bold}',
+        'Summary',
         '',
-        `Project: {bold}${value.projectId}{/bold}`,
-        `Task: {bold}${value.taskId}{/bold}`,
+        `Project: ${value.projectId}`,
+        `Task: ${value.taskId}`,
         value.title ? `Title: ${value.title}` : 'Title: (missing)',
         value.status ? `Status: ${value.status}` : 'Status: (missing)',
         `Assigned roles: ${roles}`
@@ -130,48 +121,42 @@ function formatSummary(value: {
 
 function formatRun(value?: RunState): string {
     if (!value) {
-        return ['{bold}Run{/bold}', '', 'Press {bold}r{/bold} to run the selected task.'].join('\n');
+        return ['Run', '', 'Press r to run the selected task.'].join('\n');
     }
 
-    const header = value.active
-        ? `{bold}Running{/bold} ${value.projectId} / ${value.taskId}`
-        : `{bold}Run finished{/bold} ${value.projectId} / ${value.taskId}`;
+    const header = value.active ? `Running ${value.projectId} / ${value.taskId}` : `Run finished ${value.projectId} / ${value.taskId}`;
 
     const roleLines = value.rolesInOrder.length > 0
         ? value.rolesInOrder.map((role) => {
               const state = value.roles[role] ?? { status: 'pending' as const };
               switch (state.status) {
                   case 'running':
-                      return `- {bold}${role}{/bold}  {yellow-fg}… running{/yellow-fg}`;
+                      return `- ${role}  ... running`;
                   case 'success': {
                       const len = typeof state.responseLength === 'number' ? `  len=${state.responseLength}` : '';
                       const runId = state.runId ? `  runId=${state.runId}` : '';
-                      return `- {bold}${role}{/bold}  {green-fg}✓ done{/green-fg}${runId}${len}`;
+                      return `- ${role}  done${runId}${len}`;
                   }
                   case 'error': {
                       const reason = state.error ? `  ${state.error}` : '';
-                      return `- {bold}${role}{/bold}  {red-fg}✗ failed{/red-fg}${reason}`;
+                      return `- ${role}  failed${reason}`;
                   }
                   default:
-                      return `- {bold}${role}{/bold}  (pending)`;
+                      return `- ${role}  (pending)`;
               }
           })
         : ['(no roles started yet)'];
 
-    const footer = !value.active && value.errorMessage
-        ? ['', `{red-fg}Failed{/red-fg}: ${value.errorMessage}`]
-        : [];
+    const footer = !value.active && value.errorMessage ? ['', `Failed: ${value.errorMessage}`] : [];
 
     return [header, '', ...roleLines, ...footer].join('\n');
 }
 
 function setFocus(view: TasksView, focus: TasksView['focus']): void {
     view.focus = focus;
-    const active = { fg: 'cyan' };
-    const inactive = { fg: 'gray' };
 
-    view.projectsList.style.border = focus === 'projects' ? active : inactive;
-    view.tasksList.style.border = focus === 'tasks' ? active : inactive;
+    view.projectsPanel.borderColor = focus === 'projects' ? '#00ffff' : '#808080';
+    view.tasksPanel.borderColor = focus === 'tasks' ? '#00ffff' : '#808080';
 
     if (focus === 'projects') view.projectsList.focus();
     if (focus === 'tasks') view.tasksList.focus();
@@ -180,11 +165,11 @@ function setFocus(view: TasksView, focus: TasksView['focus']): void {
 function updateRunBox(container: any, view: TasksView): void {
     if (view.disposed) return;
     try {
-        view.runBox?.setContent?.(formatRun(view.run));
+        view.runBox.content = formatRun(view.run);
     } catch {
         // ignore
     }
-    container.screen?.render?.();
+    container.requestRender?.();
 }
 
 async function executeTaskRun(options: {
@@ -208,7 +193,7 @@ async function executeTaskRun(options: {
 
         return { ok: true, resultsLength: results.length };
     } catch (error) {
-        const failingRole = (error as any)?.role as Role | undefined;
+        const failingRole = (error as { role?: Role })?.role;
         return { ok: false, errorMessage: safeMessage(error), failingRole };
     }
 }
@@ -243,7 +228,7 @@ async function runSelectedTask(container: any, view: TasksView, ctx: TasksViewCo
         roles: {}
     };
 
-    ctx.setState((prev) => ({ ...prev, statusMessage: `Running ${projectId} / ${taskId}…` }));
+    ctx.setState((prev) => ({ ...prev, statusMessage: `Running ${projectId} / ${taskId}...` }));
     updateRunBox(container, view);
 
     const ensureRole = (role: Role) => {
@@ -338,75 +323,101 @@ function getOrCreateView(container: any, ctx: TasksViewContext): TasksView {
     const existing = container[VIEW_KEY] as TasksView | undefined;
     if (existing && !existing.disposed) return existing;
 
-    const projectsList = blessed.list({
-        parent: container,
+    const projectsPanel = new BoxRenderable(container.ctx, {
+        id: 'tasks-projects-panel',
+        position: 'absolute',
         top: 0,
         left: 0,
         bottom: 8,
         width: '35%',
-        label: ' Projects ',
-        border: { type: 'line' },
-        tags: true,
-        keys: true,
-        mouse: false,
-        scrollbar: { ch: ' ', track: { bg: 'black' }, style: { bg: 'white' } },
-        style: {
-            selected: { bg: 'blue', fg: 'white' },
-            item: { fg: 'white' },
-            border: { fg: 'cyan' }
-        }
+        border: true,
+        title: 'Projects',
     });
 
-    const tasksList = blessed.list({
-        parent: container,
+    const tasksPanel = new BoxRenderable(container.ctx, {
+        id: 'tasks-tasks-panel',
+        position: 'absolute',
         top: 0,
         left: '35%',
         right: 0,
         bottom: 8,
-        label: ' Tasks ',
-        border: { type: 'line' },
-        tags: true,
-        keys: true,
-        mouse: false,
-        scrollbar: { ch: ' ', track: { bg: 'black' }, style: { bg: 'white' } },
-        style: {
-            selected: { bg: 'green', fg: 'black' },
-            item: { fg: 'white' },
-            border: { fg: 'gray' }
-        }
+        border: true,
+        title: 'Tasks',
     });
 
-    const summaryBox = blessed.box({
-        parent: container,
+    const summaryPanel = new BoxRenderable(container.ctx, {
+        id: 'tasks-summary-panel',
+        position: 'absolute',
         bottom: 0,
         left: 0,
         height: 8,
         width: '60%',
-        label: ' Summary ',
-        border: { type: 'line' },
-        tags: true,
-        padding: { left: 1, right: 1, top: 0, bottom: 0 },
-        content: formatSummary({}),
-        style: { border: { fg: 'gray' } }
+        border: true,
+        title: 'Summary',
+        paddingLeft: 1,
+        paddingRight: 1,
     });
 
-    const runBox = blessed.box({
-        parent: container,
+    const runPanel = new BoxRenderable(container.ctx, {
+        id: 'tasks-run-panel',
+        position: 'absolute',
         bottom: 0,
         left: '60%',
         right: 0,
         height: 8,
-        label: ' Run ',
-        border: { type: 'line' },
-        tags: true,
-        padding: { left: 1, right: 1, top: 0, bottom: 0 },
-        content: formatRun(undefined),
-        scrollable: true,
-        alwaysScroll: true,
-        style: { border: { fg: 'gray' } }
+        border: true,
+        title: 'Run',
+        paddingLeft: 1,
+        paddingRight: 1,
     });
 
+    const projectsList = new SelectRenderable(container.ctx, {
+        id: 'tasks-projects-list',
+        width: '100%',
+        height: '100%',
+        showDescription: false,
+        options: [{ name: '(loading projects...)', description: '' }],
+        onKeyDown: (key) => onListKeyDown(key, () => setFocus(view, 'tasks'), () => void runSelectedTask(container, view, ctx)),
+    });
+
+    const tasksList = new SelectRenderable(container.ctx, {
+        id: 'tasks-tasks-list',
+        width: '100%',
+        height: '100%',
+        showDescription: false,
+        options: [{ name: '(select a project)', description: '' }],
+        onKeyDown: (key) => onListKeyDown(key, () => setFocus(view, 'projects'), () => void runSelectedTask(container, view, ctx)),
+    });
+
+    const summaryBox = new TextRenderable(container.ctx, {
+        id: 'tasks-summary-text',
+        width: '100%',
+        height: '100%',
+        content: formatSummary({}),
+    });
+
+    const runBox = new TextRenderable(container.ctx, {
+        id: 'tasks-run-text',
+        width: '100%',
+        height: '100%',
+        content: formatRun(undefined),
+    });
+
+    projectsPanel.add(projectsList);
+    tasksPanel.add(tasksList);
+    summaryPanel.add(summaryBox);
+    runPanel.add(runBox);
+
+    container.add(projectsPanel);
+    container.add(tasksPanel);
+    container.add(summaryPanel);
+    container.add(runPanel);
+
     const view: TasksView = {
+        projectsPanel,
+        tasksPanel,
+        summaryPanel,
+        runPanel,
         projectsList,
         tasksList,
         summaryBox,
@@ -419,22 +430,13 @@ function getOrCreateView(container: any, ctx: TasksViewContext): TasksView {
         disposed: false
     };
 
-    projectsList.setItems(['(loading projects…)']);
-    tasksList.setItems(['(select a project)']);
-
-    projectsList.key(['tab'], () => setFocus(view, 'tasks'));
-    tasksList.key(['tab'], () => setFocus(view, 'projects'));
-
-    projectsList.key(['r'], () => void runSelectedTask(container, view, ctx));
-    tasksList.key(['r'], () => void runSelectedTask(container, view, ctx));
-
-    projectsList.on('select', (_item: any, index: number) => {
+    projectsList.on(SelectRenderableEvents.ITEM_SELECTED, (index: number) => {
         const projectId = view.projects[index];
         if (!projectId) return;
         void selectProject(container, view, ctx, projectId, { commit: true });
     });
 
-    tasksList.on('select', (_item: any, index: number) => {
+    tasksList.on(SelectRenderableEvents.ITEM_SELECTED, (index: number) => {
         const taskId = view.tasks[index];
         if (!taskId || !view.activeProjectId) return;
         void selectTask(container, view, ctx, view.activeProjectId, taskId, { commit: true });
@@ -442,19 +444,31 @@ function getOrCreateView(container: any, ctx: TasksViewContext): TasksView {
 
     container[VIEW_KEY] = view;
 
-    // Initial focus and initial load.
     setFocus(view, 'projects');
     void refreshProjects(container, view, ctx);
 
     return view;
 }
 
+function onListKeyDown(key: KeyEvent, onTab: () => void, onRun: () => void): void {
+    if (key.name === 'tab') {
+        key.preventDefault();
+        onTab();
+        return;
+    }
+
+    if (key.name === 'r' || key.sequence === 'r') {
+        key.preventDefault();
+        onRun();
+    }
+}
+
 async function refreshProjects(container: any, view: TasksView, ctx: TasksViewContext): Promise<void> {
     const seq = ++view.loadSeq;
-    view.projectsList.setItems(['(loading projects…)']);
-    view.tasksList.setItems(['(select a project)']);
-    view.summaryBox.setContent(formatSummary({}));
-    container.screen?.render?.();
+    setSelectItems(view.projectsList, ['(loading projects...)']);
+    setSelectItems(view.tasksList, ['(select a project)']);
+    view.summaryBox.content = formatSummary({});
+    container.requestRender?.();
 
     let projects: string[] = [];
     try {
@@ -462,16 +476,16 @@ async function refreshProjects(container: any, view: TasksView, ctx: TasksViewCo
         projects = projects.filter((id) => validateProjectId(id)).sort((a, b) => a.localeCompare(b));
     } catch (error) {
         view.projects = [];
-        view.projectsList.setItems(['(failed to read projects dir)']);
-        view.summaryBox.setContent(formatSummary({ error: String(error) }));
-        container.screen?.render?.();
+        setSelectItems(view.projectsList, ['(failed to read projects dir)']);
+        view.summaryBox.content = formatSummary({ error: String(error) });
+        container.requestRender?.();
         return;
     }
 
     if (view.disposed || seq !== view.loadSeq) return;
 
     view.projects = projects;
-    view.projectsList.setItems(projects.length > 0 ? projects : ['(no projects)']);
+    setSelectItems(view.projectsList, projects.length > 0 ? projects : ['(no projects)']);
 
     const state = ctx.getState();
     const desiredProjectId = state.lastProjectId && projects.includes(state.lastProjectId) ? state.lastProjectId : projects[0];
@@ -480,14 +494,14 @@ async function refreshProjects(container: any, view: TasksView, ctx: TasksViewCo
         view.activeProjectId = undefined;
         view.activeTaskId = undefined;
         view.tasks = [];
-        view.tasksList.setItems(['(no tasks)']);
-        view.summaryBox.setContent(formatSummary({}));
-        container.screen?.render?.();
+        setSelectItems(view.tasksList, ['(no tasks)']);
+        view.summaryBox.content = formatSummary({});
+        container.requestRender?.();
         return;
     }
 
     const projectIndex = projects.indexOf(desiredProjectId);
-    if (projectIndex >= 0) view.projectsList.select(projectIndex);
+    if (projectIndex >= 0) view.projectsList.setSelectedIndex(projectIndex);
 
     await selectProject(container, view, ctx, desiredProjectId, { commit: !state.lastProjectId || state.lastProjectId !== desiredProjectId });
 }
@@ -502,9 +516,9 @@ async function selectProject(
     view.activeProjectId = projectId;
     view.activeTaskId = undefined;
     view.tasks = [];
-    view.tasksList.setItems(['(loading tasks…)']);
-    view.summaryBox.setContent(formatSummary({ projectId }));
-    container.screen?.render?.();
+    setSelectItems(view.tasksList, ['(loading tasks...)']);
+    view.summaryBox.content = formatSummary({ projectId });
+    container.requestRender?.();
 
     const seq = ++view.loadSeq;
 
@@ -519,14 +533,14 @@ async function selectProject(
     if (view.disposed || seq !== view.loadSeq) return;
 
     view.tasks = tasks;
-    view.tasksList.setItems(tasks.length > 0 ? tasks : ['(no tasks)']);
+    setSelectItems(view.tasksList, tasks.length > 0 ? tasks : ['(no tasks)']);
 
     const state = ctx.getState();
     const desiredTaskId = state.lastTaskId && tasks.includes(state.lastTaskId) ? state.lastTaskId : tasks[0];
 
     if (desiredTaskId) {
         const taskIndex = tasks.indexOf(desiredTaskId);
-        if (taskIndex >= 0) view.tasksList.select(taskIndex);
+        if (taskIndex >= 0) view.tasksList.setSelectedIndex(taskIndex);
     }
 
     if (options.commit) {
@@ -551,8 +565,8 @@ async function selectProject(
     }
 
     view.activeTaskId = undefined;
-    view.summaryBox.setContent(formatSummary({ projectId }));
-    container.screen?.render?.();
+    view.summaryBox.content = formatSummary({ projectId });
+    container.requestRender?.();
 }
 
 async function selectTask(
@@ -565,27 +579,25 @@ async function selectTask(
 ): Promise<void> {
     view.activeProjectId = projectId;
     view.activeTaskId = taskId;
-    view.summaryBox.setContent(formatSummary({ projectId, taskId }));
-    container.screen?.render?.();
+    view.summaryBox.content = formatSummary({ projectId, taskId });
+    container.requestRender?.();
 
     const taskPath = join(ctx.config.projectsDir, projectId, TASKS_DIR, taskId, TASK_FILE);
     try {
         const markdown = await Bun.file(taskPath).text();
         const parsed = parseTask(markdown, { path: taskPath });
-        view.summaryBox.setContent(
-            formatSummary({
-                projectId,
-                taskId: parsed.id,
-                title: parsed.title,
-                status: parsed.status,
-                assignedRoles: parsed.assignedRoles
-            })
-        );
+        view.summaryBox.content = formatSummary({
+            projectId,
+            taskId: parsed.id,
+            title: parsed.title,
+            status: parsed.status,
+            assignedRoles: parsed.assignedRoles
+        });
     } catch (error) {
-        view.summaryBox.setContent(formatSummary({ projectId, taskId, error: (error as Error)?.message ?? String(error) }));
+        view.summaryBox.content = formatSummary({ projectId, taskId, error: (error as Error)?.message ?? String(error) });
     }
 
-    container.screen?.render?.();
+    container.requestRender?.();
 
     if (options.commit) {
         ctx.setState((prev) => {
@@ -600,15 +612,22 @@ async function selectTask(
     }
 }
 
+function setSelectItems(list: SelectRenderable, items: string[]): void {
+    list.options = items.map((name) => ({ name, description: '' }));
+    if (items.length > 0) {
+        list.setSelectedIndex(0);
+    }
+}
+
 export function cleanup(container: any): void {
     const view = container[VIEW_KEY] as TasksView | undefined;
     if (!view) return;
     view.disposed = true;
 
-    safeDestroy(view.projectsList);
-    safeDestroy(view.tasksList);
-    safeDestroy(view.summaryBox);
-    safeDestroy(view.runBox);
+    safeDestroy(view.projectsPanel);
+    safeDestroy(view.tasksPanel);
+    safeDestroy(view.summaryPanel);
+    safeDestroy(view.runPanel);
 
     try {
         delete container[VIEW_KEY];
@@ -619,21 +638,37 @@ export function cleanup(container: any): void {
 
 export function render(container: any, _state: TuiState, ctx?: TasksViewContext): void {
     if (!ctx) {
-        container.setContent(['{bold}Tasks{/bold}', '', '(missing view context)'].join('\n'));
+        renderFallback(container, ['Tasks', '', '(missing view context)'].join('\n'));
         return;
     }
 
     const view = getOrCreateView(container, ctx);
 
-    // Keep selections in sync with state (without forcing persistence writes).
     const state = ctx.getState();
     if (state.lastProjectId && view.projects.includes(state.lastProjectId)) {
         const idx = view.projects.indexOf(state.lastProjectId);
-        if (idx >= 0) view.projectsList.select(idx);
+        if (idx >= 0) view.projectsList.setSelectedIndex(idx);
     }
 
     if (view.activeProjectId && state.lastTaskId && view.tasks.includes(state.lastTaskId)) {
         const idx = view.tasks.indexOf(state.lastTaskId);
-        if (idx >= 0) view.tasksList.select(idx);
+        if (idx >= 0) view.tasksList.setSelectedIndex(idx);
     }
+}
+
+function renderFallback(container: any, content: string): void {
+    let text = container[FALLBACK_KEY] as TextRenderable | undefined;
+    if (!text) {
+        text = new TextRenderable(container.ctx, {
+            id: 'tasks-fallback-text',
+            width: '100%',
+            height: '100%',
+            content,
+        });
+        container.add(text);
+        container[FALLBACK_KEY] = text;
+    } else {
+        text.content = content;
+    }
+    container.requestRender?.();
 }

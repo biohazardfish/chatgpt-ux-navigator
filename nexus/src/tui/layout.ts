@@ -1,10 +1,9 @@
-// @ts-ignore - blessed has no bundled TS types in this repo
-import blessed from 'blessed';
+import { BoxRenderable, TextRenderable, createCliRenderer } from '@opentui/core';
 
 import type { TuiState, TuiViewId } from './state.ts';
 
 export type TuiLayout = {
-    screen: any;
+    renderer: any;
     header: any;
     headerLeft: any;
     headerRight: any;
@@ -13,6 +12,7 @@ export type TuiLayout = {
     footerLeft: any;
     footerRight: any;
     helpOverlay: any;
+    helpOverlayText: any;
 };
 
 function viewLabel(view: TuiViewId): string {
@@ -30,95 +30,118 @@ function viewLabel(view: TuiViewId): string {
     }
 }
 
-export function createLayout(options?: { projectId?: string }): TuiLayout {
-    const screen = blessed.screen({
-        smartCSR: true,
-        title: 'Nexus',
-        mouse: false
+export async function createLayout(options?: { projectId?: string }): Promise<TuiLayout> {
+    const renderer = await createCliRenderer({
+        useMouse: false,
+        exitOnCtrlC: true,
     });
 
-    const header = blessed.box({
-        parent: screen,
+    const header = new BoxRenderable(renderer, {
+        id: 'layout-header',
+        position: 'absolute',
         top: 0,
         left: 0,
+        width: '100%',
         height: 1,
-        width: '100%'
     });
 
-    const headerLeft = blessed.box({
-        parent: header,
+    const headerLeft = new TextRenderable(renderer, {
+        id: 'layout-header-left',
+        position: 'absolute',
         top: 0,
         left: 0,
-        height: 1,
         width: '70%',
-        tags: true
-    });
-
-    const headerRight = blessed.box({
-        parent: header,
-        top: 0,
-        right: 0,
         height: 1,
-        width: '30%',
-        align: 'right',
-        tags: true
+        content: '',
     });
 
-    const footer = blessed.box({
-        parent: screen,
+    const headerRight = new TextRenderable(renderer, {
+        id: 'layout-header-right',
+        position: 'absolute',
+        top: 0,
+        left: '70%',
+        width: '30%',
+        height: 1,
+        content: '',
+    });
+
+    header.add(headerLeft);
+    header.add(headerRight);
+    renderer.root.add(header);
+
+    const footer = new BoxRenderable(renderer, {
+        id: 'layout-footer',
+        position: 'absolute',
         bottom: 0,
         left: 0,
+        width: '100%',
         height: 1,
-        width: '100%'
     });
 
-    const footerLeft = blessed.box({
-        parent: footer,
+    const footerLeft = new TextRenderable(renderer, {
+        id: 'layout-footer-left',
+        position: 'absolute',
         top: 0,
         left: 0,
-        height: 1,
         width: '70%',
-        tags: true
-    });
-
-    const footerRight = blessed.box({
-        parent: footer,
-        top: 0,
-        right: 0,
         height: 1,
-        width: '30%',
-        align: 'right',
-        tags: true
+        content: '',
     });
 
-    const main = blessed.box({
-        parent: screen,
+    const footerRight = new TextRenderable(renderer, {
+        id: 'layout-footer-right',
+        position: 'absolute',
+        top: 0,
+        left: '70%',
+        width: '30%',
+        height: 1,
+        content: '',
+    });
+
+    footer.add(footerLeft);
+    footer.add(footerRight);
+    renderer.root.add(footer);
+
+    const main = new BoxRenderable(renderer, {
+        id: 'layout-main',
+        position: 'absolute',
         top: 1,
         left: 0,
         bottom: 1,
         width: '100%',
-        tags: true,
-        padding: { left: 1, right: 1, top: 1, bottom: 0 }
+        paddingTop: 1,
+        paddingLeft: 1,
+        paddingRight: 1,
     });
+    renderer.root.add(main);
 
-    const helpOverlay = blessed.box({
-        parent: screen,
-        top: 'center',
-        left: 'center',
+    const helpOverlay = new BoxRenderable(renderer, {
+        id: 'layout-help-overlay',
+        position: 'absolute',
+        top: '20%',
+        left: '10%',
         width: '80%',
         height: '60%',
-        border: { type: 'line' },
-        hidden: true,
-        tags: true,
-        label: ' Help ',
-        padding: { left: 1, right: 1, top: 1, bottom: 1 },
+        border: true,
+        title: 'Help',
+        paddingTop: 1,
+        paddingLeft: 1,
+        paddingRight: 1,
+        paddingBottom: 1,
+        visible: false,
+    });
+
+    const helpOverlayText = new TextRenderable(renderer, {
+        id: 'layout-help-overlay-text',
+        width: '100%',
+        height: '100%',
         content: [
-            '{bold}Global{/bold}',
+            'Global',
             '  q  Quit',
             '  ?  Help',
             '  Esc  Back / close overlay',
             '',
-            '{bold}Views{/bold}',
+            'Views',
             '  1  Dashboard',
             '  2  Tasks',
             '  3  Sessions',
@@ -126,14 +149,28 @@ export function createLayout(options?: { projectId?: string }): TuiLayout {
             '  5  Logs',
             '',
             '(placeholder)'
-        ].join('\n')
+        ].join('\n'),
     });
+    helpOverlay.add(helpOverlayText);
+    renderer.root.add(helpOverlay);
 
-    updateHeader({ headerLeft, headerRight } as any, options?.projectId);
-    updateFooter({ footerLeft, footerRight } as any, { activeView: 'dashboard', statusMessage: 'Ready' });
+    updateHeader(
+        {
+            headerLeft,
+            headerRight,
+        } as TuiLayout,
+        options?.projectId
+    );
+    updateFooter(
+        {
+            footerLeft,
+            footerRight,
+        } as TuiLayout,
+        { activeView: 'dashboard', statusMessage: 'Ready' } as TuiState
+    );
 
     return {
-        screen,
+        renderer,
         header,
         headerLeft,
         headerRight,
@@ -141,17 +178,22 @@ export function createLayout(options?: { projectId?: string }): TuiLayout {
         footer,
         footerLeft,
         footerRight,
-        helpOverlay
+        helpOverlay,
+        helpOverlayText,
     };
 }
 
 export function updateHeader(layout: Pick<TuiLayout, 'headerLeft' | 'headerRight'>, projectId?: string): void {
-    const projectLabel = projectId && projectId.trim().length > 0 ? projectId : undefined;
-    layout.headerLeft.setContent(projectLabel ? `{bold}Nexus{/bold} — ${projectLabel}` : `{bold}Nexus{/bold}`);
-    layout.headerRight.setContent('[q] Quit  [?] Help');
+    const projectLabel = projectId && projectId.trim().length > 0 ? projectLabelText(projectId) : undefined;
+    layout.headerLeft.content = projectLabel ? `Nexus - ${projectLabel}` : 'Nexus';
+    layout.headerRight.content = '[q] Quit  [?] Help';
 }
 
 export function updateFooter(layout: Pick<TuiLayout, 'footerLeft' | 'footerRight'>, state: TuiState): void {
-    layout.footerLeft.setContent(`Status: ${state.statusMessage}`);
-    layout.footerRight.setContent(`View: ${viewLabel(state.activeView)}   Mode: Normal`);
+    layout.footerLeft.content = `Status: ${state.statusMessage}`;
+    layout.footerRight.content = `View: ${viewLabel(state.activeView)}   Mode: Normal`;
+}
+
+function projectLabelText(projectId: string): string {
+    return projectId.replace(/\s+/g, ' ').trim();
 }

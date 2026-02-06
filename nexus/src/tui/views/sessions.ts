@@ -6,6 +6,7 @@ import { createServerClient } from '../../server/client.ts';
 import { TASKS_DIR, TASK_FILE } from '../../storage/layout.ts';
 
 import type { TuiState } from '../state.ts';
+import { renderTextView } from './textView.ts';
 
 type SessionsViewContext = {
     config: Config;
@@ -18,6 +19,7 @@ type SessionsView = {
 };
 
 const VIEW_KEY = Symbol.for('nexus.tui.view.sessions');
+const SESSIONS_TEXT_KEY = Symbol.for('nexus.tui.view.sessions.text');
 
 function safeMessage(error: unknown): string {
     if (!error) return 'Unknown error';
@@ -43,28 +45,28 @@ function formatSelection(state: TuiState): string[] {
     const taskId = state.lastTaskId?.trim();
 
     if (!projectId && !taskId) {
-        return ['Selection: (none)', 'Tip: select a project/task in {bold}Tasks{/bold} view'];
+        return ['Selection: (none)', 'Tip: select a project/task in Tasks view'];
     }
 
     if (projectId && !taskId) {
-        return [`Selection: {bold}${projectId}{/bold} / (no task)`];
+        return [`Selection: ${projectId} / (no task)`];
     }
 
     if (!projectId && taskId) {
-        return [`Selection: (no project) / {bold}${taskId}{/bold}`];
+        return [`Selection: (no project) / ${taskId}`];
     }
 
-    return [`Selection: {bold}${projectId}{/bold} / {bold}${taskId}{/bold}`];
+    return [`Selection: ${projectId} / ${taskId}`];
 }
 
 function formatClientsSection(clients: string[], error?: unknown): string[] {
     if (error) {
-        return ['{bold}Connected clients{/bold}', `{red-fg}Server error{/red-fg}: ${safeMessage(error)}`];
+        return ['Connected clients', `Server error: ${safeMessage(error)}`];
     }
 
     const sorted = [...clients].sort((a, b) => a.localeCompare(b));
     return [
-        `{bold}Connected clients{/bold} (${sorted.length})`,
+        `Connected clients (${sorted.length})`,
         ...(
             sorted.length > 0
                 ? sorted.map((id) => `- ${id}`)
@@ -84,25 +86,25 @@ function formatRequiredRolesSection(value: {
     const taskId = value.state.lastTaskId?.trim();
 
     if (!projectId || !taskId) {
-        return ['{bold}Required roles{/bold}', '(no task selected)'];
+        return ['Required roles', '(no task selected)'];
     }
 
     if (value.requiredRolesError) {
         return [
-            '{bold}Required roles{/bold}',
-            `{red-fg}Task parse error{/red-fg}: ${safeMessage(value.requiredRolesError)}`
+            'Required roles',
+            `Task parse error: ${safeMessage(value.requiredRolesError)}`
         ];
     }
 
     const required = value.requiredRoles ?? [];
     if (required.length === 0) {
-        return ['{bold}Required roles{/bold}', '(none)'];
+        return ['Required roles', '(none)'];
     }
 
     if (value.clientsError) {
         return [
-            `{bold}Required roles{/bold} (${required.length})`,
-            ...required.map((role) => `- {bold}${role}{/bold}  {yellow-fg}? unknown{/yellow-fg} (server error)`)
+            `Required roles (${required.length})`,
+            ...required.map((role) => `- ${role}  ? unknown (server error)`)
         ];
     }
 
@@ -112,14 +114,14 @@ function formatRequiredRolesSection(value: {
     const summary = `Connected: ${connected.length}  Missing: ${missing.length}`;
 
     return [
-        `{bold}Required roles{/bold} (${required.length})  ${summary}`,
+        `Required roles (${required.length})  ${summary}`,
         ...required.map((role) => {
             const isConnected = clientsSet.has(role);
             return isConnected
-                ? `- {bold}${role}{/bold}  {green-fg}● connected{/green-fg}`
-                : `- {bold}${role}{/bold}  {red-fg}● missing{/red-fg}`;
+                ? `- ${role}  connected`
+                : `- ${role}  missing`;
         }),
-        ...(missing.length > 0 ? ['', `{red-fg}Missing roles{/red-fg}: ${missing.join(', ')}`] : [])
+        ...(missing.length > 0 ? ['', `Missing roles: ${missing.join(', ')}`] : [])
     ];
 }
 
@@ -135,8 +137,7 @@ async function refresh(container: any, view: SessionsView, ctx: SessionsViewCont
     const seq = ++view.loadSeq;
     const state = ctx.getState();
 
-    container.setContent(['{bold}Sessions{/bold}', '', ...formatSelection(state), '', '(loading…)'].join('\n'));
-    container.screen?.render?.();
+    renderTextView(container, SESSIONS_TEXT_KEY, 'sessions-view-text', ['Sessions', '', ...formatSelection(state), '', '(loading...)'].join('\n'));
 
     const projectId = state.lastProjectId?.trim();
     const taskId = state.lastTaskId?.trim();
@@ -168,7 +169,7 @@ async function refresh(container: any, view: SessionsView, ctx: SessionsViewCont
     if (ctx.getState().activeView !== 'sessions') return;
 
     const lines = [
-        '{bold}Sessions{/bold}',
+        'Sessions',
         '',
         ...formatSelection(state),
         '',
@@ -183,8 +184,7 @@ async function refresh(container: any, view: SessionsView, ctx: SessionsViewCont
         ...formatClientsSection(clients, clientsError)
     ];
 
-    container.setContent(lines.join('\n'));
-    container.screen?.render?.();
+    renderTextView(container, SESSIONS_TEXT_KEY, 'sessions-view-text', lines.join('\n'));
 }
 
 export function cleanup(container: any): void {
@@ -200,7 +200,7 @@ export function cleanup(container: any): void {
 
 export function render(container: any, _state: TuiState, ctx?: SessionsViewContext): void {
     if (!ctx) {
-        container.setContent(['{bold}Sessions{/bold}', '', '(missing view context)'].join('\n'));
+        renderTextView(container, SESSIONS_TEXT_KEY, 'sessions-view-text', ['Sessions', '', '(missing view context)'].join('\n'));
         return;
     }
 

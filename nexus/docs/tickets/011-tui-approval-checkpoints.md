@@ -30,6 +30,12 @@ From earlier tickets:
 
 This ticket provides the **UI mechanism**, not the governance decisions themselves.
 
+### Rendering baseline (OpenTUI)
+
+- Implement modal/overlay rendering with `@opentui/core` primitives.
+- Keyboard interception for approval mode must use OpenTUI key events.
+- Do not rely on blessed-style modal lifecycle assumptions.
+
 ---
 
 ## Scope

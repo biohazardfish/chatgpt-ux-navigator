@@ -13,7 +13,7 @@ Session orchestration is a core responsibility of Nexus and is designed to enabl
 This section is the canonical MVP truth; older sections below may describe future work.
 
 - Sessions are **ChatGPT Web UI threads**, controlled indirectly via **browser extension + local server**; Nexus does **not** call model APIs.
-- Implementation scope (for the next plan): include tickets **006 (run transcripts)** + **013 (sequential runner)** + **minimal blessed TUI “run one task”**.
+- Implementation scope (for the next plan): include tickets **006 (run transcripts)** + **013 (sequential runner)** + **minimal OpenTUI-based TUI “run one task”**.
 - Exclude (for MVP): parallel execution (ticket 018), SSE parsing in Nexus, streaming UI.
 - Execution order is **strictly sequential**; any mention of concurrency must be marked as Future work referencing this section.
 - Run capture: **buffered JSON mode** only.

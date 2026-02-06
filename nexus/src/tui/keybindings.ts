@@ -1,3 +1,5 @@
+import type { KeyEvent } from '@opentui/core';
+
 import type { TuiLayout } from './layout.ts';
 import type { TuiState, TuiViewId } from './state.ts';
 import { setActiveView, setStatusMessage } from './state.ts';
@@ -20,49 +22,82 @@ export function registerKeybindings(
     setState: TuiSetState,
     options: { config: Config; getState: () => TuiState }
 ): void {
-    layout.screen.key(['q'], () => {
-        void (async () => {
-            try {
-                const current = options.getState();
-                await saveStateConfig(options.config, {
-                    ui: {
-                        lastProjectId: current.lastProjectId,
-                        lastTaskId: current.lastTaskId,
-                        activeView: current.activeView
-                    }
-                });
-            } catch (error) {
-                console.error('[tui] Failed to save state config:', error);
-                setState((prev) => setStatusMessage(prev, 'Failed to save UI state (see logs)'));
-            } finally {
-                layout.screen.destroy();
-                process.exit(0);
-            }
-        })();
-    });
-
-    layout.screen.key(['?'], () => {
-        if (layout.helpOverlay.hidden) {
-            layout.helpOverlay.show();
-            layout.helpOverlay.setFront();
-        } else {
-            layout.helpOverlay.hide();
-        }
-        layout.screen.render();
-    });
-
-    layout.screen.key(['escape'], () => {
-        if (!layout.helpOverlay.hidden) {
-            layout.helpOverlay.hide();
-            layout.screen.render();
+    layout.renderer.keyInput.on('keypress', (key: KeyEvent) => {
+        if (isKey(key, 'q')) {
+            void quit(layout, setState, options);
             return;
         }
-        setState((prev) => setStatusMessage(prev, 'Ready'));
-    });
 
-    layout.screen.key(['1'], () => applyViewSwitch(setState, 'dashboard'));
-    layout.screen.key(['2'], () => applyViewSwitch(setState, 'tasks'));
-    layout.screen.key(['3'], () => applyViewSwitch(setState, 'sessions'));
-    layout.screen.key(['4'], () => applyViewSwitch(setState, 'decisions'));
-    layout.screen.key(['5'], () => applyViewSwitch(setState, 'logs'));
+        if (isKey(key, '?')) {
+            if (layout.helpOverlay.visible) {
+                layout.helpOverlay.visible = false;
+            } else {
+                layout.helpOverlay.visible = true;
+                layout.helpOverlay.zIndex = 1000;
+            }
+            layout.renderer.requestRender();
+            return;
+        }
+
+        if (isNamedKey(key, 'escape')) {
+            if (layout.helpOverlay.visible) {
+                layout.helpOverlay.visible = false;
+                layout.renderer.requestRender();
+                return;
+            }
+            setState((prev) => setStatusMessage(prev, 'Ready'));
+            return;
+        }
+
+        if (isKey(key, '1')) {
+            applyViewSwitch(setState, 'dashboard');
+            return;
+        }
+        if (isKey(key, '2')) {
+            applyViewSwitch(setState, 'tasks');
+            return;
+        }
+        if (isKey(key, '3')) {
+            applyViewSwitch(setState, 'sessions');
+            return;
+        }
+        if (isKey(key, '4')) {
+            applyViewSwitch(setState, 'decisions');
+            return;
+        }
+        if (isKey(key, '5')) {
+            applyViewSwitch(setState, 'logs');
+        }
+    });
+}
+
+async function quit(
+    layout: TuiLayout,
+    setState: TuiSetState,
+    options: { config: Config; getState: () => TuiState }
+): Promise<void> {
+    try {
+        const current = options.getState();
+        await saveStateConfig(options.config, {
+            ui: {
+                lastProjectId: current.lastProjectId,
+                lastTaskId: current.lastTaskId,
+                activeView: current.activeView
+            }
+        });
+    } catch (error) {
+        console.error('[tui] Failed to save state config:', error);
+        setState((prev) => setStatusMessage(prev, 'Failed to save UI state (see logs)'));
+    } finally {
+        layout.renderer.destroy();
+        process.exit(0);
+    }
+}
+
+function isKey(key: KeyEvent, expected: string): boolean {
+    return key.sequence === expected || key.name === expected;
+}
+
+function isNamedKey(key: KeyEvent, expected: string): boolean {
+    return key.name === expected;
 }

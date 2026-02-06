@@ -18,12 +18,12 @@ Node.js compatibility is not a goal.
 
 ## Terminal UI
 
-- **blessed**
+- **OpenTUI** (`@opentui/core`)
     - Used for all TUI rendering and input handling
     - Keyboard-first interaction model
     - No separate GUI / web UI for Nexus
 
-All TUI tickets assume blessed primitives and lifecycle.
+All TUI tickets assume OpenTUI primitives and lifecycle.
 
 ---
 

@@ -26,6 +26,12 @@ From earlier tickets:
 
 This ticket **connects the TUI to real project data**, but remains **read-only** and **non-interactive**.
 
+### Rendering baseline (OpenTUI)
+
+- This ticket targets the OpenTUI stack defined in `nexus/docs/000-tech-tack.md`.
+- Use `@opentui/core` primitives (renderer + renderables) for layout and text output.
+- Avoid blessed-era widget assumptions; new view code should map to OpenTUI renderables directly.
+
 ---
 
 ## Scope

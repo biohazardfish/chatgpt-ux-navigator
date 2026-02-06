@@ -22,6 +22,12 @@ From earlier tickets:
 
 This ticket introduces **non-destructive, read-only views** over existing data.
 
+### Rendering baseline (OpenTUI)
+
+- Search/filter UI must be implemented with `@opentui/core` renderables.
+- Search input capture and filter toggles should use OpenTUI key/input events.
+- Do not introduce blessed compatibility layers for this feature.
+
 ---
 
 ## Scope

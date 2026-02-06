@@ -14,16 +14,15 @@ import * as decisionsView from './views/decisions.ts';
 import * as logsView from './views/logs.ts';
 
 function clearMain(layout: TuiLayout): void {
-    layout.main.setContent('');
-    const children = Array.isArray(layout.main.children) ? [...layout.main.children] : [];
+    const children = typeof layout.main.getChildren === 'function' ? [...layout.main.getChildren()] : [];
     for (const child of children) {
         try {
-            child?.detach?.();
+            layout.main.remove(child.id);
         } catch {
             // ignore
         }
         try {
-            child?.destroy?.();
+            child?.destroyRecursively?.();
         } catch {
             // ignore
         }
@@ -35,8 +34,6 @@ function renderActiveView(
     state: TuiState,
     ctx: { config: Config; setState: (updater: (prev: TuiState) => TuiState) => void; getState: () => TuiState }
 ): void {
-    layout.main.setContent('');
-
     switch (state.activeView) {
         case 'dashboard':
             dashboardView.render(layout.main, state);
@@ -95,7 +92,7 @@ export async function startTui(config: Config): Promise<void> {
     const selectedProjectId = state.lastProjectId?.trim();
     const selectedTaskId = state.lastTaskId?.trim();
 
-    // Non-interactive CI mode: run without blessed (no TTY required).
+    // Non-interactive CI mode: run without TUI renderer (no TTY required).
     if (autorun && (!process.stdout.isTTY || !process.stdin.isTTY)) {
         const noSelectionMessage =
             'No task selected. Set ui.lastProjectId + ui.lastTaskId in state config or run interactive TUI.';
@@ -147,7 +144,7 @@ export async function startTui(config: Config): Promise<void> {
         return;
     }
 
-    const layout = createLayout({ projectId: savedUi.lastProjectId });
+    const layout = await createLayout({ projectId: savedUi.lastProjectId });
 
     const render = () => {
         if (lastView !== state.activeView) {
@@ -161,7 +158,7 @@ export async function startTui(config: Config): Promise<void> {
         updateHeader(layout, state.lastProjectId);
         renderActiveView(layout, state, { config, setState, getState });
         updateFooter(layout, state);
-        layout.screen.render();
+        layout.renderer.requestRender();
     };
 
     let lastView: TuiViewId | undefined;
@@ -173,7 +170,7 @@ export async function startTui(config: Config): Promise<void> {
 
     const getState = () => state;
     registerKeybindings(layout, setState, { config, getState });
-    layout.screen.on('resize', render);
+    layout.renderer.on('resize', render);
 
     render();
 
@@ -197,7 +194,7 @@ export async function startTui(config: Config): Promise<void> {
                 console.error('[tui] Failed to save state config:', error);
             } finally {
                 try {
-                    layout.screen.destroy();
+                    layout.renderer.destroy();
                 } catch {
                     // ignore
                 }
