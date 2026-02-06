@@ -4,7 +4,7 @@ import type {Config} from '../../src/config/config.ts';
 import {createServerClient} from '../../src/server/client.ts';
 import {ServerClientError} from '../../src/server/errors.ts';
 
-type FetchFn = (input: RequestInfo, init?: RequestInit) => Promise<Response>;
+type FetchFn = typeof globalThis.fetch;
 
 function createConfig(): Config {
     return {
@@ -17,16 +17,17 @@ function createConfig(): Config {
     };
 }
 
-describe('ServerClient.postPrompt', () => {
-    let originalFetch: FetchFn | undefined;
+describe('server client', () => {
+    describe('ServerClient.postPrompt', () => {
+        let originalFetch: FetchFn;
 
-    beforeEach(() => {
-        originalFetch = globalThis.fetch;
-    });
+        beforeEach(() => {
+            originalFetch = globalThis.fetch;
+        });
 
-    afterEach(() => {
-        globalThis.fetch = originalFetch;
-    });
+        afterEach(() => {
+            globalThis.fetch = originalFetch;
+        });
 
     it('rejects empty clientId without calling fetch', async () => {
         const client = createServerClient(createConfig());
@@ -223,5 +224,100 @@ describe('ServerClient.postPrompt', () => {
         expect(serverError.kind).toBe('network');
         expect(serverError.cause).toBe(underlying);
         expect(serverError.message).toBe('network down');
+    });
+    });
+
+    describe('ServerClient.listClients', () => {
+        let originalFetch: FetchFn;
+
+        beforeEach(() => {
+            originalFetch = globalThis.fetch;
+        });
+
+        afterEach(() => {
+            globalThis.fetch = originalFetch;
+        });
+
+    it('returns clients array from successful response', async () => {
+        const client = createServerClient(createConfig());
+        globalThis.fetch = (async () => {
+            return new Response(JSON.stringify({clients: ['planner', 'reviewer']}), {
+                status: 200,
+                headers: {'Content-Type': 'application/json'},
+            });
+        }) as FetchFn;
+
+        const clients = await client.listClients();
+        expect(clients).toEqual(['planner', 'reviewer']);
+    });
+
+    it('throws ServerClientError on non-2xx response', async () => {
+        const client = createServerClient(createConfig());
+        globalThis.fetch = (async () => {
+            return new Response('oops', {status: 500});
+        }) as FetchFn;
+
+        try {
+            await client.listClients();
+            throw new Error('expected rejection');
+        } catch (error) {
+            expect(error).toBeInstanceOf(ServerClientError);
+            const serverError = error as ServerClientError;
+            expect(serverError.kind).toBe('http_error');
+            expect(serverError.status).toBe(500);
+            expect(serverError.url).toBe('http://localhost:8765/clients');
+            expect(serverError.bodySnippet).toContain('oops');
+        }
+    });
+    });
+
+    describe('ServerClient.postPromptNew', () => {
+        let originalFetch: FetchFn;
+
+        beforeEach(() => {
+            originalFetch = globalThis.fetch;
+        });
+
+        afterEach(() => {
+            globalThis.fetch = originalFetch;
+        });
+
+    it('posts to /responses/:clientId/new and returns output_text', async () => {
+        const client = createServerClient(createConfig());
+        let seenUrl = '';
+
+        globalThis.fetch = (async (input) => {
+            seenUrl = typeof input === 'string' ? input : input.toString();
+            return new Response(JSON.stringify({output_text: 'hello', status: 'ok'}), {
+                status: 200,
+                headers: {'Content-Type': 'application/json; charset=utf-8'},
+            });
+        }) as FetchFn;
+
+        const output = await client.postPromptNew({clientId: 'client123', input: 'prompt'});
+        expect(output).toBe('hello');
+        expect(seenUrl).toBe('http://localhost:8765/responses/client123/new');
+    });
+
+    it('throws ServerClientError when server returns status error payload', async () => {
+        const client = createServerClient(createConfig());
+        globalThis.fetch = (async () => {
+            return new Response(JSON.stringify({status: 'error', error: {message: 'boom'}}), {
+                status: 200,
+                headers: {'Content-Type': 'application/json; charset=utf-8'},
+            });
+        }) as FetchFn;
+
+        try {
+            await client.postPromptNew({clientId: 'client123', input: 'prompt'});
+            throw new Error('expected rejection');
+        } catch (error) {
+            expect(error).toBeInstanceOf(ServerClientError);
+            const serverError = error as ServerClientError;
+            expect(serverError.kind).toBe('server_error');
+            expect(serverError.bodySnippet).toContain('boom');
+            expect(serverError.message).toContain('boom');
+        }
+    });
     });
 });

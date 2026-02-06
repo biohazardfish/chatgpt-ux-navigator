@@ -59,6 +59,14 @@ function buildRequestUrl(base: URL, clientId: string): URL {
     return new URL(`/responses/${clientId}`, base);
 }
 
+function buildRequestUrlNew(base: URL, clientId: string): URL {
+    return new URL(`/responses/${clientId}/new`, base);
+}
+
+function buildClientsUrl(base: URL): URL {
+    return new URL('/clients', base);
+}
+
 function extractServerErrorMessage(parsed: Record<string, unknown> | undefined): string | undefined {
     if (!parsed) return undefined;
     const errorValue = parsed.error;
@@ -90,6 +98,8 @@ export type PostPromptParams = {
 
 export type ServerClient = {
     postPrompt(params: PostPromptParams): Promise<string>;
+    postPromptNew(params: PostPromptParams): Promise<string>;
+    listClients(): Promise<string[]>;
 };
 
 export function createServerClient(config: Config): ServerClient {
@@ -217,6 +227,251 @@ export function createServerClient(config: Config): ServerClient {
 
                 console.error('[ServerClient] postPrompt failed', {
                     clientId,
+                    error: wrappedError.message,
+                    status: wrappedError.status,
+                    url: wrappedError.url,
+                });
+                throw wrappedError;
+            } finally {
+                clearTimeout(timer);
+            }
+        },
+
+        async postPromptNew({clientId, input, timeoutMs}: PostPromptParams) {
+            validateClientId(clientId);
+            const trimmedInput = validateInput(input);
+
+            const requestUrl = buildRequestUrlNew(baseUrl, clientId);
+            const timeout = typeof timeoutMs === 'number' && timeoutMs > 0 ? timeoutMs : DEFAULT_TIMEOUT_MS;
+            const controller = new AbortController();
+            const timer = setTimeout(() => controller.abort(), timeout);
+
+            console.debug('[ServerClient] postPromptNew start', {
+                clientId,
+                inputLength: trimmedInput.length,
+            });
+
+            let response: Response | null = null;
+            let responseText = '';
+
+            try {
+                response = await fetch(requestUrl.toString(), {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({input: trimmedInput}),
+                    signal: controller.signal,
+                });
+
+                responseText = await response.text();
+                const contentType = response.headers.get('Content-Type');
+                const snippet = snippetFrom(responseText);
+
+                if (!response.ok) {
+                    throw new ServerClientError(`HTTP ${response.status} error`, {
+                        kind: 'http_error',
+                        status: response.status,
+                        url: requestUrl.toString(),
+                        bodySnippet: snippet,
+                    });
+                }
+
+                if (!isJsonContentType(contentType)) {
+                    const reportedType = contentType ?? 'missing Content-Type';
+                    throw new ServerClientError(`Expected JSON response but received ${reportedType}`, {
+                        kind: 'invalid_response',
+                        status: response.status,
+                        url: requestUrl.toString(),
+                        bodySnippet: snippet,
+                    });
+                }
+
+                let parsed: unknown;
+                try {
+                    parsed = responseText ? JSON.parse(responseText) : {};
+                } catch (parseError) {
+                    const parseMessage = parseError instanceof Error ? parseError.message : String(parseError);
+                    throw new ServerClientError(`Invalid JSON response: ${parseMessage}`, {
+                        kind: 'invalid_response',
+                        status: response.status,
+                        url: requestUrl.toString(),
+                        bodySnippet: snippet,
+                    });
+                }
+
+                const parsedValue = parsed as Record<string, unknown>;
+                const serverErrorMessage = extractServerErrorMessage(parsedValue);
+                if (parsedValue?.status === 'error' || parsedValue?.error) {
+                    const message = serverErrorMessage ?? 'Server reported an error';
+
+                    throw new ServerClientError(message, {
+                        kind: 'server_error',
+                        status: response.status,
+                        url: requestUrl.toString(),
+                        bodySnippet: snippet,
+                    });
+                }
+
+                const outputText = parsedValue?.output_text;
+                if (typeof outputText !== 'string') {
+                    throw new ServerClientError('Missing output_text in server response', {
+                        kind: 'server_error',
+                        status: response.status,
+                        url: requestUrl.toString(),
+                        bodySnippet: snippet,
+                    });
+                }
+
+                console.debug('[ServerClient] postPromptNew success', {
+                    clientId,
+                    inputLength: trimmedInput.length,
+                    outputLength: outputText.length,
+                });
+
+                return outputText;
+            } catch (error) {
+                const snippet = responseText ? snippetFrom(responseText) : '';
+
+                if (error instanceof ServerClientError) {
+                    console.error('[ServerClient] postPromptNew failed', {
+                        clientId,
+                        error: error.message,
+                        status: error.status,
+                        url: error.url,
+                    });
+                    throw error;
+                }
+
+                const isTimeout = isAbortError(error);
+                const message = isTimeout
+                    ? `Request to ${requestUrl.toString()} timed out after ${timeout}ms`
+                    : error instanceof Error
+                        ? error.message
+                        : 'Unknown error';
+
+                const wrappedError = new ServerClientError(message, {
+                    kind: isTimeout ? 'timeout' : 'network',
+                    status: response?.status,
+                    url: requestUrl.toString(),
+                    bodySnippet: snippet,
+                    cause: error,
+                });
+
+                console.error('[ServerClient] postPromptNew failed', {
+                    clientId,
+                    error: wrappedError.message,
+                    status: wrappedError.status,
+                    url: wrappedError.url,
+                });
+                throw wrappedError;
+            } finally {
+                clearTimeout(timer);
+            }
+        },
+
+        async listClients() {
+            const requestUrl = buildClientsUrl(baseUrl);
+            const controller = new AbortController();
+            const timer = setTimeout(() => controller.abort(), DEFAULT_TIMEOUT_MS);
+
+            console.debug('[ServerClient] listClients start');
+
+            let response: Response | null = null;
+            let responseText = '';
+
+            try {
+                response = await fetch(requestUrl.toString(), {
+                    method: 'GET',
+                    signal: controller.signal,
+                });
+
+                responseText = await response.text();
+                const contentType = response.headers.get('Content-Type');
+                const snippet = snippetFrom(responseText);
+
+                if (!response.ok) {
+                    throw new ServerClientError(`HTTP ${response.status} error`, {
+                        kind: 'http_error',
+                        status: response.status,
+                        url: requestUrl.toString(),
+                        bodySnippet: snippet,
+                    });
+                }
+
+                if (!isJsonContentType(contentType)) {
+                    const reportedType = contentType ?? 'missing Content-Type';
+                    throw new ServerClientError(`Expected JSON response but received ${reportedType}`, {
+                        kind: 'invalid_response',
+                        status: response.status,
+                        url: requestUrl.toString(),
+                        bodySnippet: snippet,
+                    });
+                }
+
+                let parsed: unknown;
+                try {
+                    parsed = responseText ? JSON.parse(responseText) : {};
+                } catch (parseError) {
+                    const parseMessage = parseError instanceof Error ? parseError.message : String(parseError);
+                    throw new ServerClientError(`Invalid JSON response: ${parseMessage}`, {
+                        kind: 'invalid_response',
+                        status: response.status,
+                        url: requestUrl.toString(),
+                        bodySnippet: snippet,
+                    });
+                }
+
+                const parsedValue = parsed as Record<string, unknown>;
+                const serverErrorMessage = extractServerErrorMessage(parsedValue);
+                if (parsedValue?.status === 'error' || parsedValue?.error) {
+                    const message = serverErrorMessage ?? 'Server reported an error';
+                    throw new ServerClientError(message, {
+                        kind: 'server_error',
+                        status: response.status,
+                        url: requestUrl.toString(),
+                        bodySnippet: snippet,
+                    });
+                }
+
+                const clientsValue = parsedValue?.clients;
+                if (!Array.isArray(clientsValue) || !clientsValue.every((value) => typeof value === 'string')) {
+                    throw new ServerClientError('Missing clients in server response', {
+                        kind: 'invalid_response',
+                        status: response.status,
+                        url: requestUrl.toString(),
+                        bodySnippet: snippet,
+                    });
+                }
+
+                console.debug('[ServerClient] listClients success', {count: clientsValue.length});
+                return clientsValue;
+            } catch (error) {
+                const snippet = responseText ? snippetFrom(responseText) : '';
+
+                if (error instanceof ServerClientError) {
+                    console.error('[ServerClient] listClients failed', {
+                        error: error.message,
+                        status: error.status,
+                        url: error.url,
+                    });
+                    throw error;
+                }
+
+                const isTimeout = isAbortError(error);
+                const message = isTimeout
+                    ? `Request to ${requestUrl.toString()} timed out after ${DEFAULT_TIMEOUT_MS}ms`
+                    : error instanceof Error
+                        ? error.message
+                        : 'Unknown error';
+
+                const wrappedError = new ServerClientError(message, {
+                    kind: isTimeout ? 'timeout' : 'network',
+                    status: response?.status,
+                    url: requestUrl.toString(),
+                    bodySnippet: snippet,
+                    cause: error,
+                });
+
+                console.error('[ServerClient] listClients failed', {
                     error: wrappedError.message,
                     status: wrappedError.status,
                     url: wrappedError.url,
