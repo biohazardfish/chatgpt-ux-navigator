@@ -70,9 +70,9 @@ This ticket explicitly excludes:
 
 ## Technology choice
 
-- **Library**: `blessed` or `blessed-contrib`
-  - Both work well with Bun
-  - Prefer `blessed` alone unless charts are required
+- **Library**: `@opentui/core` (OpenTUI)
+  - Works with Bun + TypeScript
+  - Use OpenTUI primitives for renderer, layout, and key handling
 - Avoid heavy abstractions or frameworks
 
 ---
@@ -194,15 +194,15 @@ src/tui/
 ## Implementation steps
 
 1. **Initialize screen**
-   - Create blessed screen
+   - Create OpenTUI renderer
    - Enable mouse = false
-   - Smart CSR on
+   - Register global key handlers for shell controls
 
 2. **Create layout**
    - Header box
    - Main content box
    - Footer box
-   - Handle resize events
+   - Handle renderer resize events
 
 3. **Define views**
    - Each view exports `render(container, state)`

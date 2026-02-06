@@ -2,7 +2,7 @@
 
 This document describes how to interact with Nexus through its terminal user interface (TUI).
 
-The TUI is designed for **control, visibility, and efficiency**, not conversation. In the MVP, it provides a minimal fullscreen (blessed-style) shell with keyboard navigation and a single “run one task” trigger.
+The TUI is designed for **control, visibility, and efficiency**, not conversation. In the MVP, it provides a minimal fullscreen OpenTUI shell with keyboard navigation and a single “run one task” trigger.
 
 **MVP scope note:** This doc follows the canonical MVP decisions in `nexus/docs/006-session-orchestration.md#mvp-decisions-resolved` (and its glossary). Ticket `nexus/docs/tickets/008-tui-shell-and-navigation.md` defines the UI scope. Anything beyond the shell/navigation/“run one task” flow is listed under **Future work**.
 

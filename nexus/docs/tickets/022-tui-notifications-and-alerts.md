@@ -27,6 +27,12 @@ From earlier tickets:
 
 What’s missing is a **non-modal, persistent signaling layer** that tells the operator *what needs attention and why*.
 
+### Rendering baseline (OpenTUI)
+
+- Implement indicators and alerts view using OpenTUI renderables from `@opentui/core`.
+- Use OpenTUI focus/input primitives for list selection and acknowledgment actions.
+- Keep implementation free of blessed-specific APIs or assumptions.
+
 ---
 
 ## Design principles

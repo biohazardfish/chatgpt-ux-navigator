@@ -1,5 +1,8 @@
 import type { TuiState } from '../state.ts';
+import { renderTextView } from './textView.ts';
+
+const DASHBOARD_TEXT_KEY = Symbol.for('nexus.tui.view.dashboard.text');
 
 export function render(container: any, _state: TuiState): void {
-    container.setContent(['{bold}Dashboard{/bold}', '', '(placeholder)'].join('\n'));
+    renderTextView(container, DASHBOARD_TEXT_KEY, 'dashboard-view-text', ['Dashboard', '', '(placeholder)'].join('\n'));
 }

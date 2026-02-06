@@ -30,6 +30,12 @@ From earlier tickets:
 
 This ticket **exposes task state to the operator**, without allowing edits or execution.
 
+### Rendering baseline (OpenTUI)
+
+- Build task list/detail views on `@opentui/core` components.
+- Prefer OpenTUI-native selection and focus behavior over compatibility shims.
+- Keep keyboard handling aligned with OpenTUI key events and focused renderables.
+
 ---
 
 ## Scope
