@@ -29,7 +29,10 @@ This ticket establishes the **contract between Nexus and AI sessions**.
 
 ## Report convention (MVP)
 
-Sessions must produce output following this exact structure.
+Sessions must produce output following this exact structure. The canonical
+constants and helpers mirror this documentation inside
+`src/core/report/convention.ts`, so any future edits must update both the doc and
+the convention file in tandem.
 
 ### Required header
 
@@ -137,6 +140,9 @@ NEXT:
   - `NEXT:`
 - Order must match the convention
 - Content continues until the next known section header or EOF
+- A `section-order` error is effectively a missing section for downstream
+  consumers—the parser raises it the moment a later section appears before the
+  expected one, signaling that the skipped section should be treated as absent.
 
 ---
 

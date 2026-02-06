@@ -29,6 +29,14 @@ bun dev
 bun test
 ```
 
+## Report parser module
+
+Ticket 007 introduced a dedicated `src/core/report/` module that documents the
+report convention inline. Import `parseReport` (plus `ReportParseError` and
+`ParseReportParams`) from `src/core/report/index.ts`, and treat
+`src/core/report/convention.ts` as the canonical source of constants shared with
+ChatGPT-facing instructions.
+
 ## Future work pointers
 
 - Streaming UI/log viewer inside Nexus → see `nexus/docs/tickets/006-response-streaming-and-capture.md`
