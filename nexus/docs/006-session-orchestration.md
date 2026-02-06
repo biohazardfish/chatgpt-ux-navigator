@@ -2,9 +2,32 @@
 
 This document describes how Nexus creates, manages, and terminates ChatGPT sessions to execute tasks.
 
-Session orchestration is a core responsibility of Nexus and is designed to enable **parallel work**, **clean execution boundaries**, and **predictable behavior**.
+Session orchestration is a core responsibility of Nexus and is designed to enable **clean execution boundaries** and **predictable behavior** (MVP execution is sequential).
 
 ---
+
+## MVP Decisions (Resolved)
+
+This section is the canonical MVP truth; older sections below may describe future work.
+
+- Sessions are **ChatGPT Web UI threads**, controlled indirectly via **browser extension + local server**; Nexus does **not** call model APIs.
+- Implementation scope (for the next plan): include tickets **006 (run transcripts)** + **013 (sequential runner)** + **minimal blessed TUI “run one task”**.
+- Exclude (for MVP): parallel execution (ticket 018), SSE parsing in Nexus, streaming UI.
+- Run capture: **buffered JSON mode** only.
+- Temporary chat: default **new temporary chat per run** (`POST /responses/:clientId/new`), opt-in carryover.
+- Client routing: `clientId == role name` (planner/implementer/reviewer/researcher/devils-advocate). Requires one connected extension WS client per role.
+- Missing client: **fail fast** with diagnostics (missing roles + available clients).
+- Runtime UI state: stored in `<stateDir>/config.jsonc` (JSONC). Precedence: `nexus.config.json` overrides state config.
+- Tests: yes, tests-after (`bun test`).
+
+## Glossary
+
+- **Session**: A single ChatGPT Web UI conversation thread (what ChatGPT calls a “chat”). In MVP, sessions are controlled indirectly via the browser extension + local server.
+- **Thread**: Synonym for **Session** in this MVP doc set (i.e., a ChatGPT Web UI conversation thread).
+- **Run**: One execution attempt/capture unit for a task. A run may create a new temporary chat by default, and produces a buffered JSON capture.
+- **Role**: The worker persona assigned to a run (e.g., planner/implementer/reviewer/researcher/devils-advocate).
+- **clientId**: The routing key used to target a connected extension client. In MVP, `clientId == role name`. NOTE: some docs may call this `responseId`; for MVP they are the same identifier.
+- **Temporary chat / Carryover**: **Temporary chat** is the MVP default: start a fresh ChatGPT thread per run. **Carryover** is opt-in: reuse an existing session/thread across runs instead of starting a new temporary chat.
 
 ## Sessions as Execution Units
 
@@ -52,16 +75,18 @@ Nexus controls context size and relevance to:
 
 ---
 
-## Parallel Execution
+## Parallel Execution (Future work)
 
-Nexus may run multiple sessions in parallel.
+**Future work:** Nexus may run multiple sessions in parallel (excluded from MVP; see ticket 018).
 
-Common reasons include:
+In MVP, Nexus runs sessions sequentially (one at a time).
+
+If/when implemented, common reasons include:
 - Speeding up work
 - Comparing perspectives
 - Reducing risk on critical tasks
 
-Parallel sessions:
+In that mode, parallel sessions:
 - Do not share context
 - Do not communicate directly
 - Are reconciled only through Nexus
@@ -74,13 +99,13 @@ This prevents cross-contamination and groupthink.
 
 While sessions are running, Nexus:
 - Tracks session status
-- Streams partial outputs if available
+- Captures final outputs in buffered JSON mode (no streaming UI / SSE parsing in MVP)
 - Detects stalls or failures
 
 Nexus may:
 - Cancel a session
 - Restart a session
-- Spawn additional sessions
+- Start a follow-up session (sequential in MVP)
 - Narrow or reframe the task
 
 Session control is dynamic and responsive.
@@ -149,7 +174,7 @@ In Nexus:
 
 - Sessions are short-lived workers
 - Context is injected intentionally
-- Parallelism is controlled
+- Execution is sequential in MVP (parallelism is future work)
 - Failures are isolated
 - No session persists across restarts
 

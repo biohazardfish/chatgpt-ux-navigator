@@ -1,6 +1,6 @@
 # Docs 001 - Nexus — Overview
 
-Nexus is a local orchestration system designed to help users **drive large, complex tasks to completion** using multiple ChatGPT sessions in parallel.
+Nexus is a local orchestration system designed to help users **drive large, complex tasks to completion** using multiple ChatGPT sessions (MVP: sequential orchestration; parallel execution is future work).
 
 It acts as a **governing control plane** that plans work, delegates tasks to AI sessions, evaluates results, resolves conflicts, and decides what to do next — while keeping the human user in the loop for major decisions.
 
@@ -24,7 +24,7 @@ Nexus addresses this by introducing **explicit orchestration**:
 
 - Clear goals and plans
 - Structured task delegation
-- Parallel execution
+- Sequential execution (MVP; parallel execution is future work)
 - Centralized decision-making
 - Persistent project state
 
@@ -47,7 +47,7 @@ At a high level, Nexus:
     - etc.
 - Collects structured reports from those sessions
 - Resolves conflicts and determines next steps
-- Pauses for **user approval at major decision points**
+- (Future work) Pauses for **user approval at major decision points**
 
 Nexus runs as a **local TUI (terminal UI)** application and communicates with the existing local server and browser extension to control ChatGPT sessions.
 
@@ -78,7 +78,7 @@ Nexus builds on the existing system:
     - Injects prompts
 - **Local Server**
     - Manages prompt files
-    - Streams responses
+    - Returns buffered JSON responses (MVP; no streaming UI)
     - Provides session-level control
 - **Nexus (new)**
     - Decides _what_ should happen next
@@ -95,13 +95,13 @@ All interaction goes through the server and extension.
 Nexus is built around the following principles:
 
 - **Governance over autonomy**  
-  AI executes; Nexus decides; the user approves.
+  AI executes; Nexus decides; user approval points are future work.
 
 - **Explicit state over implicit memory**  
   All important context lives in inspectable project state.
 
-- **Parallelism with control**  
-  Multiple sessions run at once, but outcomes are reconciled centrally.
+- **Sequential orchestration (MVP)**  
+  One session runs at a time; parallelism with centralized reconciliation is future work.
 
 - **Local-first and transparent**  
   No cloud dependency, no hidden processes.

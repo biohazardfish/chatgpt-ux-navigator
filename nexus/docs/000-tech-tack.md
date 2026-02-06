@@ -18,43 +18,28 @@ Node.js compatibility is not a goal.
 
 ## Terminal UI
 
-- **opentui**
+- **blessed**
     - Used for all TUI rendering and input handling
     - Keyboard-first interaction model
-    - No GUI / web UI fallback
+    - No separate GUI / web UI for Nexus
 
-All TUI tickets assume opentui primitives and lifecycle.
+All TUI tickets assume blessed primitives and lifecycle.
 
 ---
 
 ## Model Interaction Layer
 
-- **Vercel AI SDK**
-    - Used to interface with language models
-    - Provides a unified abstraction across providers
-    - Standardizes:
-        - request/response handling
-        - streaming
-        - function / tool calls (when supported)
-
-Nexus **does not** talk to models directly.
-All model interaction is mediated through the Vercel AI SDK.
-
----
-
-## Model Providers
-
-- Provider-agnostic by design
-- Provider choice is a runtime configuration concern
-- Nexus orchestration logic must not depend on provider-specific behavior
+- Nexus does **not** call model/provider APIs.
+- Sessions are **ChatGPT Web UI threads**, orchestrated via the browser extension + local server.
+- MVP uses **buffered JSON mode only** (no Nexus-side SSE parsing, and no streaming UI requirements in Nexus).
 
 ---
 
 ## Non-Goals
 
-- No browser-based UI
+- No standalone browser-based UI (beyond the existing ChatGPT Web UI + extension)
 - No cloud dependency for Nexus itself
-- No provider-specific branching in orchestration logic
+- No model/provider integrations in Nexus (no provider-specific logic)
 
 ---
 
