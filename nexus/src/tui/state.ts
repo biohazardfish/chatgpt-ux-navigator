@@ -8,6 +8,8 @@ export type TuiState = {
     activeView: TuiViewId;
     statusMessage: string;
     project?: Project;
+    selectedTaskIndex?: number;
+    activeTaskId?: string;
 };
 
 export function createInitialState(init?: Partial<TuiState>): TuiState {
