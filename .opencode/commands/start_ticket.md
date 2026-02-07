@@ -1,6 +1,6 @@
 ---
 description: Start Ticket
-agent: prometheus
+agent: plan
 ---
 
 I want you to start implementing the ticket below.
