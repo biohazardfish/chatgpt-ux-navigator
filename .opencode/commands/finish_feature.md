@@ -1,6 +1,6 @@
 ---
 description: Finish feature
-agent: sisyphus
+agent: build
 ---
 
 I have complete work on the new feature in this branch. Help me make PR.
