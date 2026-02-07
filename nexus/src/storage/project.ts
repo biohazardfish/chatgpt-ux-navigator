@@ -137,3 +137,45 @@ export async function loadProject(config: Config, projectId: string): Promise<Pr
     notesMd
   };
 }
+
+export type ProjectMetaUpdates = Partial<Pick<ProjectMeta, 'lastUpdatedAt' | 'status'>>;
+
+/**
+ * Update project metadata (meta.json).
+ * 
+ * @param config - Application configuration
+ * @param projectId - Project identifier
+ * @param updates - Fields to update (lastUpdatedAt, status)
+ */
+export async function updateProjectMeta(
+  config: Config,
+  projectId: string,
+  updates: ProjectMetaUpdates
+): Promise<void> {
+  if (!validateProjectId(projectId)) {
+    throw new Error(`Invalid project ID: ${projectId}`);
+  }
+
+  const projectDir = join(config.projectsDir, projectId);
+
+  if (!isPathInsideRoot(projectDir, config.projectsDir)) {
+    throw new Error(`Project directory is outside projects root: ${projectDir}`);
+  }
+
+  const metaFilePath = join(projectDir, META_FILE);
+  const metaFile = Bun.file(metaFilePath);
+
+  if (!(await metaFile.exists())) {
+    throw new Error(`Project does not exist: ${projectId}`);
+  }
+
+  const metaText = await metaFile.text();
+  const meta: ProjectMeta = JSON.parse(metaText);
+
+  const updatedMeta: ProjectMeta = {
+    ...meta,
+    ...updates,
+  };
+
+  await Bun.write(metaFilePath, JSON.stringify(updatedMeta, null, 2));
+}
