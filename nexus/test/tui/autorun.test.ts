@@ -109,9 +109,51 @@ async function writeStateDirFixture(params: {
 
     await Promise.all([
         Bun.write(join(projectDir, 'meta.json'), JSON.stringify(meta, null, 2)),
-        Bun.write(join(projectDir, 'project.md'), '# Project: Fixture\n'),
-        Bun.write(join(projectDir, 'plan.md'), '# Plan\n'),
-        Bun.write(join(projectDir, 'notes.md'), '# Notes\n'),
+        Bun.write(
+            join(projectDir, 'project.md'),
+            [
+                '# Project: Fixture',
+                '',
+                '# Goals',
+                '',
+                '- Deliver MVP',
+                '',
+                '# Constraints',
+                '',
+                '# Non-Goals',
+                '',
+            ].join('\n')
+        ),
+        Bun.write(
+            join(projectDir, 'plan.md'),
+            [
+                '# Current Plan',
+                '',
+                '# Status',
+                '',
+                'draft',
+                '',
+                '# Phases',
+                '',
+                '- Phase 1',
+                '',
+                '# Notes',
+                '',
+            ].join('\n')
+        ),
+        Bun.write(
+            join(projectDir, 'notes.md'),
+            [
+                '# Project Notes',
+                '',
+                '# Assumptions',
+                '',
+                '# Clarifications',
+                '',
+                '# Lessons Learned',
+                '',
+            ].join('\n')
+        ),
         Bun.write(join(taskDir, 'task.md'), taskMarkdown),
         Bun.write(join(stateDir, 'config.jsonc'), JSON.stringify({ui}, null, 2) + '\n'),
     ]);

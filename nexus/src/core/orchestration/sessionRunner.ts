@@ -1,7 +1,13 @@
 import {join} from 'node:path';
 
 import type {Config} from '../../config/config.ts';
+import type {Project} from '../domain/project.ts';
 import type {Role} from '../domain/role.ts';
+import type {Task} from '../domain/task.ts';
+import {buildPromptContext, renderPromptContext} from '../context/index.ts';
+import {parseProjectDoc} from '../parsing/project.ts';
+import {parsePlan} from '../parsing/plan.ts';
+import {parseNotes} from '../parsing/notes.ts';
 import {parseTask} from '../parsing/task.ts';
 import {createServerClient} from '../../server/client.ts';
 import {executeSessionRun} from '../../server/runExecutor.ts';
@@ -49,28 +55,18 @@ NEXT:
 
 function buildDeterministicPrompt(params: {
     role: Role;
-    objective: string;
-    projectMd: string;
-    planMd: string;
-    notesMd: string;
+    project: Project;
+    task: Task;
 }): string {
-    const {role, objective, projectMd, planMd, notesMd} = params;
+    const {role, project, task} = params;
+
+    const context = buildPromptContext({project, task});
+    const contextText = renderPromptContext(context);
 
     return [
         `ROLE: ${role}`,
         '',
-        'TASK OBJECTIVE:',
-        objective.trim(),
-        '',
-        'PROJECT CONTEXT:',
-        '## project.md',
-        projectMd.trimEnd(),
-        '',
-        '## plan.md',
-        planMd.trimEnd(),
-        '',
-        '## notes.md',
-        notesMd.trimEnd(),
+        contextText,
         '',
         'INSTRUCTIONS:',
         `You are acting as the ${role}.`,
@@ -121,12 +117,25 @@ export async function runTaskSessions(params: RunTaskSessionsParams): Promise<Ta
         throw new Error(`Task file not found: ${taskFilePath}`);
     }
 
-    const [taskMarkdown, project] = await Promise.all([
+    const [taskMarkdown, storageProject] = await Promise.all([
         taskFile.text(),
         loadProject(config, projectId),
     ]);
 
     const task = parseTask(taskMarkdown, {path: taskFilePath});
+
+    const projectDoc = parseProjectDoc(storageProject.projectMd);
+    const plan = parsePlan(storageProject.planMd);
+    const notes = parseNotes(storageProject.notesMd);
+
+    const project: Project = {
+        meta: storageProject.meta,
+        projectDoc,
+        plan,
+        notes,
+        tasks: [task],
+        decisions: [],
+    };
 
     const client = createServerClient(config);
     const connectedClients = await client.listClients();
@@ -155,10 +164,8 @@ export async function runTaskSessions(params: RunTaskSessionsParams): Promise<Ta
     for (const role of task.assignedRoles) {
         const prompt = buildDeterministicPrompt({
             role,
-            objective: task.objective,
-            projectMd: project.projectMd,
-            planMd: project.planMd,
-            notesMd: project.notesMd,
+            project,
+            task,
         });
 
         try {
