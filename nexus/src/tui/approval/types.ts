@@ -83,18 +83,18 @@ const MAX_OPTIONS = 9;
  */
 export function validateApprovalRequest(request: unknown): ValidationResult {
     if (request === null || request === undefined) {
-        return { valid: false, error: 'Approval request is null or undefined' };
+        return {valid: false, error: 'Approval request is null or undefined'};
     }
 
     if (typeof request !== 'object') {
-        return { valid: false, error: 'Approval request must be an object' };
+        return {valid: false, error: 'Approval request must be an object'};
     }
 
     const req = request as Record<string, unknown>;
 
     // Validate id
     if (typeof req.id !== 'string' || req.id.trim() === '') {
-        return { valid: false, error: 'Approval request id must be a non-empty string' };
+        return {valid: false, error: 'Approval request id must be a non-empty string'};
     }
 
     // Validate type
@@ -107,25 +107,28 @@ export function validateApprovalRequest(request: unknown): ValidationResult {
 
     // Validate title
     if (typeof req.title !== 'string' || req.title.trim() === '') {
-        return { valid: false, error: 'Approval request title must be a non-empty string' };
+        return {valid: false, error: 'Approval request title must be a non-empty string'};
     }
 
     // Validate context
     if (typeof req.context !== 'string') {
-        return { valid: false, error: 'Approval request context must be a string' };
+        return {valid: false, error: 'Approval request context must be a string'};
     }
 
     // Validate options array
     if (!Array.isArray(req.options)) {
-        return { valid: false, error: 'Approval request options must be an array' };
+        return {valid: false, error: 'Approval request options must be an array'};
     }
 
     if (req.options.length === 0) {
-        return { valid: false, error: 'Approval request options must not be empty' };
+        return {valid: false, error: 'Approval request options must not be empty'};
     }
 
     if (req.options.length > MAX_OPTIONS) {
-        return { valid: false, error: `Approval request options must not exceed ${MAX_OPTIONS} items` };
+        return {
+            valid: false,
+            error: `Approval request options must not exceed ${MAX_OPTIONS} items`,
+        };
     }
 
     // Validate each option and collect ids for uniqueness check
@@ -136,24 +139,27 @@ export function validateApprovalRequest(request: unknown): ValidationResult {
         const optionPrefix = `Option ${i + 1}`;
 
         if (option === null || option === undefined || typeof option !== 'object') {
-            return { valid: false, error: `${optionPrefix}: must be an object` };
+            return {valid: false, error: `${optionPrefix}: must be an object`};
         }
 
         if (typeof option.id !== 'string' || option.id.trim() === '') {
-            return { valid: false, error: `${optionPrefix}: id must be a non-empty string` };
+            return {valid: false, error: `${optionPrefix}: id must be a non-empty string`};
         }
 
         if (seenIds.has(option.id)) {
-            return { valid: false, error: `${optionPrefix}: duplicate option id '${option.id}'` };
+            return {valid: false, error: `${optionPrefix}: duplicate option id '${option.id}'`};
         }
         seenIds.add(option.id);
 
         if (typeof option.label !== 'string' || option.label.trim() === '') {
-            return { valid: false, error: `${optionPrefix}: label must be a non-empty string` };
+            return {valid: false, error: `${optionPrefix}: label must be a non-empty string`};
         }
 
         if (option.description !== undefined && typeof option.description !== 'string') {
-            return { valid: false, error: `${optionPrefix}: description must be a string if provided` };
+            return {
+                valid: false,
+                error: `${optionPrefix}: description must be a string if provided`,
+            };
         }
 
         if (!VALID_APPROVAL_ACTIONS.includes(option.action as ApprovalAction)) {
@@ -167,7 +173,7 @@ export function validateApprovalRequest(request: unknown): ValidationResult {
     // Validate recommendedOptionId if provided
     if (req.recommendedOptionId !== undefined) {
         if (typeof req.recommendedOptionId !== 'string') {
-            return { valid: false, error: 'recommendedOptionId must be a string if provided' };
+            return {valid: false, error: 'recommendedOptionId must be a string if provided'};
         }
 
         if (!seenIds.has(req.recommendedOptionId)) {
@@ -178,5 +184,5 @@ export function validateApprovalRequest(request: unknown): ValidationResult {
         }
     }
 
-    return { valid: true, request: req as unknown as ApprovalRequest };
+    return {valid: true, request: req as unknown as ApprovalRequest};
 }

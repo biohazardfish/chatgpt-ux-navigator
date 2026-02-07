@@ -1,4 +1,9 @@
-export type ServerClientErrorKind = 'http_error' | 'server_error' | 'timeout' | 'network' | 'invalid_response';
+export type ServerClientErrorKind =
+    | 'http_error'
+    | 'server_error'
+    | 'timeout'
+    | 'network'
+    | 'invalid_response';
 
 export interface ServerClientErrorOptions {
     kind: ServerClientErrorKind;

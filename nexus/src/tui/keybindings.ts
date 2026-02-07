@@ -1,17 +1,17 @@
-import type { KeyEvent } from '@opentui/core';
+import type {KeyEvent} from '@opentui/core';
 
-import type { TuiLayout } from './layout.ts';
-import type { TuiState, TuiViewId } from './state.ts';
-import { setActiveView, setStatusMessage, clearApprovalRequest } from './state.ts';
+import type {TuiLayout} from './layout.ts';
+import type {TuiState, TuiViewId} from './state.ts';
+import {setActiveView, setStatusMessage, clearApprovalRequest} from './state.ts';
 import * as approvalModal from './approval/modal.ts';
 
-import type { Config } from '../config/config.ts';
-import { saveStateConfig } from '../config/stateConfig.ts';
+import type {Config} from '../config/config.ts';
+import {saveStateConfig} from '../config/stateConfig.ts';
 
 export type TuiSetState = (updater: (prev: TuiState) => TuiState) => void;
 
 function applyViewSwitch(setState: TuiSetState, view: TuiViewId): void {
-    setState((prev) => {
+    setState(prev => {
         const next = setActiveView(prev, view);
         if (next === prev) return prev;
         return setStatusMessage(next, 'Ready');
@@ -21,7 +21,7 @@ function applyViewSwitch(setState: TuiSetState, view: TuiViewId): void {
 export function registerKeybindings(
     layout: TuiLayout,
     setState: TuiSetState,
-    options: { config: Config; getState: () => TuiState }
+    options: {config: Config; getState: () => TuiState}
 ): void {
     layout.renderer.keyInput.on('keypress', (key: KeyEvent) => {
         const state = options.getState();
@@ -42,7 +42,7 @@ export function registerKeybindings(
                 const approvalId = state.approvalRequest.id;
 
                 // Clear approval state
-                setState((prev) => clearApprovalRequest(prev));
+                setState(prev => clearApprovalRequest(prev));
 
                 // Hide modal
                 approvalModal.hide(layout);
@@ -85,7 +85,7 @@ export function registerKeybindings(
                 layout.renderer.requestRender();
                 return;
             }
-            setState((prev) => setStatusMessage(prev, 'Ready'));
+            setState(prev => setStatusMessage(prev, 'Ready'));
             return;
         }
 
@@ -114,7 +114,7 @@ export function registerKeybindings(
 async function quit(
     layout: TuiLayout,
     setState: TuiSetState,
-    options: { config: Config; getState: () => TuiState }
+    options: {config: Config; getState: () => TuiState}
 ): Promise<void> {
     try {
         const current = options.getState();
@@ -122,12 +122,12 @@ async function quit(
             ui: {
                 lastProjectId: current.lastProjectId,
                 lastTaskId: current.lastTaskId,
-                activeView: current.activeView
-            }
+                activeView: current.activeView,
+            },
         });
     } catch (error) {
         console.error('[tui] Failed to save state config:', error);
-        setState((prev) => setStatusMessage(prev, 'Failed to save UI state (see logs)'));
+        setState(prev => setStatusMessage(prev, 'Failed to save UI state (see logs)'));
     } finally {
         layout.renderer.destroy();
         process.exit(0);

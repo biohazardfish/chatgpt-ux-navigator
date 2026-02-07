@@ -9,6 +9,7 @@ TUI Approval Checkpoints (User-in-the-Loop Decisions)
 Implement **explicit approval checkpoints** in the Nexus TUI so that **no major action proceeds without deliberate user confirmation**.
 
 This ticket introduces:
+
 - A generic approval dialog system
 - A blocking execution model while approval is pending
 - Clear presentation of context, options, and recommended action
@@ -24,9 +25,9 @@ From earlier tickets:
 - TUI shell and navigation exist (008)
 - Tasks and project state can be inspected (009, 010)
 - Governance logic will soon need to:
-  - Approve plans
-  - Accept or reject task results
-  - Resolve conflicts
+    - Approve plans
+    - Accept or reject task results
+    - Resolve conflicts
 
 This ticket provides the **UI mechanism**, not the governance decisions themselves.
 
@@ -41,6 +42,7 @@ This ticket provides the **UI mechanism**, not the governance decisions themselv
 ## Scope
 
 ### Included
+
 - A modal-style approval dialog
 - Support for multiple approval types
 - Keyboard-driven accept / revise / defer / abort
@@ -48,6 +50,7 @@ This ticket provides the **UI mechanism**, not the governance decisions themselv
 - Recording the user’s choice in memory (persistence comes later)
 
 ### Excluded
+
 - Actual governance logic that triggers approvals
 - Persistence of approvals as Decisions (later ticket)
 - Multiple simultaneous approvals (MVP supports one at a time)
@@ -62,29 +65,21 @@ Define a generic structure:
 
 ```ts
 interface ApprovalRequest {
-  id: string
-  type:
-    | 'plan-approval'
-    | 'task-acceptance'
-    | 'conflict-resolution'
-    | 'project-completion'
-  title: string
-  context: string        // human-readable explanation
-  options: ApprovalOption[]
-  recommendedOptionId?: string
+    id: string;
+    type: 'plan-approval' | 'task-acceptance' | 'conflict-resolution' | 'project-completion';
+    title: string;
+    context: string; // human-readable explanation
+    options: ApprovalOption[];
+    recommendedOptionId?: string;
 }
 ```
 
 ```ts
 interface ApprovalOption {
-  id: string
-  label: string          // e.g. "Approve", "Request Changes"
-  description?: string
-  action:
-    | 'accept'
-    | 'revise'
-    | 'defer'
-    | 'abort'
+    id: string;
+    label: string; // e.g. "Approve", "Request Changes"
+    description?: string;
+    action: 'accept' | 'revise' | 'defer' | 'abort';
 }
 ```
 
@@ -108,9 +103,9 @@ Not all approvals need all options, but the UI must support them.
 ### Blocking semantics
 
 - When an approval request is active:
-  - Normal navigation is disabled
-  - Only approval-related keys are active
-  - Footer clearly indicates “Awaiting approval”
+    - Normal navigation is disabled
+    - Only approval-related keys are active
+    - Footer clearly indicates “Awaiting approval”
 
 ### Visual layout (conceptual)
 
@@ -143,6 +138,7 @@ Not all approvals need all options, but the UI must support them.
 - No mouse support
 
 Once a choice is made:
+
 - Approval dialog closes
 - Result is passed back to the app layer
 - TUI returns to previous view
@@ -155,15 +151,16 @@ Extend TUI state:
 
 ```ts
 interface TuiState {
-  activeView: ViewId
-  statusMessage: string
-  project?: Project
+    activeView: ViewId;
+    statusMessage: string;
+    project?: Project;
 
-  approvalRequest?: ApprovalRequest
+    approvalRequest?: ApprovalRequest;
 }
 ```
 
 When `approvalRequest` is defined:
+
 - Render approval modal
 - Suspend normal views
 
@@ -174,12 +171,12 @@ When `approvalRequest` is defined:
 ### Separation of responsibilities
 
 - **TUI**
-  - Renders approval request
-  - Captures user choice
+    - Renders approval request
+    - Captures user choice
 - **App / Governance layer**
-  - Creates approval requests
-  - Receives approval result
-  - Decides next steps
+    - Creates approval requests
+    - Receives approval result
+    - Decides next steps
 
 The TUI must **not** decide what an approval means.
 
@@ -188,6 +185,7 @@ The TUI must **not** decide what an approval means.
 ## Proposed file changes
 
 ### New files
+
 ```
 src/tui/approval/
   modal.ts
@@ -195,6 +193,7 @@ src/tui/approval/
 ```
 
 ### Updated files
+
 ```
 src/tui/index.ts
 src/tui/state.ts
@@ -206,46 +205,47 @@ src/tui/keybindings.ts
 ## Implementation steps
 
 1. **Approval types**
-   - Define types in `approval/types.ts`
-   - Export for app-layer use
+    - Define types in `approval/types.ts`
+    - Export for app-layer use
 
 2. **Modal rendering**
-   - Render centered overlay box
-   - Dim or ignore background content
-   - Highlight recommended option
+    - Render centered overlay box
+    - Dim or ignore background content
+    - Highlight recommended option
 
 3. **Key handling**
-   - Intercept keys when approval active
-   - Map number keys to options
-   - Ignore unrelated keys
+    - Intercept keys when approval active
+    - Map number keys to options
+    - Ignore unrelated keys
 
 4. **Result handling**
-   - Invoke callback or emit event with:
-     ```ts
-     {
-       approvalId: string
-       selectedOptionId: string
-       action: 'accept' | 'revise' | 'defer' | 'abort'
-     }
-     ```
-   - Clear `approvalRequest` from state
+    - Invoke callback or emit event with:
+        ```ts
+        {
+            approvalId: string;
+            selectedOptionId: string;
+            action: 'accept' | 'revise' | 'defer' | 'abort';
+        }
+        ```
+    - Clear `approvalRequest` from state
 
 ---
 
 ## Error handling
 
 - If approval request is malformed:
-  - Render error message
-  - Do not crash TUI
+    - Render error message
+    - Do not crash TUI
 - If no options provided:
-  - Log error
-  - Refuse to render modal
+    - Log error
+    - Refuse to render modal
 
 ---
 
 ## Testing
 
 ### Unit tests
+
 Add under `test/tui/approval/`:
 
 - Modal renders with correct options
@@ -256,6 +256,7 @@ Add under `test/tui/approval/`:
 Mock approval requests; no governance logic needed.
 
 Manual verification:
+
 - Visual clarity
 - No accidental dismissal
 

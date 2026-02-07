@@ -9,6 +9,7 @@ TUI Project Dashboard (Project Summary View)
 Implement the **Dashboard view** in the Nexus TUI that gives the operator an at-a-glance, read-only summary of the **current project state**.
 
 This view is the **home screen** of Nexus and answers:
+
 - What project am I in?
 - What are the goals?
 - What is the plan status?
@@ -37,12 +38,14 @@ This ticket **connects the TUI to real project data**, but remains **read-only**
 ## Scope
 
 ### Included
+
 - Render current project summary
 - Display goals, plan status, and task counts
 - Surface high-level status (idle / running / blocked)
 - Graceful handling of “no project loaded”
 
 ### Excluded
+
 - Editing goals or plans
 - Creating tasks
 - Starting or stopping execution
@@ -115,9 +118,9 @@ Extend TUI state:
 
 ```ts
 interface TuiState {
-  activeView: ViewId
-  statusMessage: string
-  project?: Project
+    activeView: ViewId;
+    statusMessage: string;
+    project?: Project;
 }
 ```
 
@@ -129,14 +132,16 @@ interface TuiState {
 ## Architecture & boundaries
 
 ### Where project loading happens
+
 - **Not in the dashboard view**
 - Project loading should occur in:
-  - `app/bootstrap.ts` (initial load)
-  - or a small `app/projectLoader.ts`
+    - `app/bootstrap.ts` (initial load)
+    - or a small `app/projectLoader.ts`
 
 Dashboard receives:
+
 ```ts
-renderDashboard(container, tuiState)
+renderDashboard(container, tuiState);
 ```
 
 ---
@@ -158,33 +163,33 @@ No changes to storage or domain layers.
 ## Implementation steps
 
 1. **Project loading**
-   - On startup, attempt to load:
-     - last-used project (if you track it)
-     - OR a single project if only one exists
-     - OR none (dashboard shows empty state)
-   - For MVP, a hardcoded project ID is acceptable.
+    - On startup, attempt to load:
+        - last-used project (if you track it)
+        - OR a single project if only one exists
+        - OR none (dashboard shows empty state)
+    - For MVP, a hardcoded project ID is acceptable.
 
 2. **Aggregate derived values**
-   - Count tasks by status
-   - Count decisions
-   - Count notes sections
+    - Count tasks by status
+    - Count decisions
+    - Count notes sections
 
 3. **Render dashboard**
-   - Clear container
-   - Render text blocks in order
-   - Use bold or color sparingly (project title, headings)
+    - Clear container
+    - Render text blocks in order
+    - Use bold or color sparingly (project title, headings)
 
 4. **Empty state handling**
-   - If `tuiState.project === undefined`
-   - Render “No project loaded” message
+    - If `tuiState.project === undefined`
+    - Render “No project loaded” message
 
 ---
 
 ## Error handling
 
 - If project loading fails:
-  - Show error message in dashboard
-  - Update footer status message
+    - Show error message in dashboard
+    - Update footer status message
 - Do not crash TUI on malformed project data
 
 ---
@@ -192,6 +197,7 @@ No changes to storage or domain layers.
 ## Testing
 
 ### Unit tests
+
 Add under `test/tui/dashboard.test.ts`:
 
 - Renders project summary with mock project
@@ -200,6 +206,7 @@ Add under `test/tui/dashboard.test.ts`:
 Mock `Project` object; do not hit filesystem.
 
 Manual verification:
+
 - Visual layout
 - Readability at typical terminal sizes
 

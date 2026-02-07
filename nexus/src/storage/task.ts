@@ -1,8 +1,8 @@
-import { join } from 'node:path';
-import { ensureDir } from '../fs/ensureDirs.ts';
-import { getNextSequenceId } from './ids.ts';
-import { TASKS_DIR, TASK_FILE, REPORTS_DIR, getIsoTimestamp } from './layout.ts';
-import type { Config } from '../config/config.ts';
+import {join} from 'node:path';
+import {ensureDir} from '../fs/ensureDirs.ts';
+import {getNextSequenceId} from './ids.ts';
+import {TASKS_DIR, TASK_FILE, REPORTS_DIR, getIsoTimestamp} from './layout.ts';
+import type {Config} from '../config/config.ts';
 
 const VALID_STATUSES = ['pending', 'running', 'blocked', 'completed', 'aborted'] as const;
 type ValidStatus = (typeof VALID_STATUSES)[number];
@@ -12,16 +12,20 @@ function normalizeStatus(status: string): ValidStatus {
     const candidate = status.trim().toLowerCase();
     if (!VALID_STATUS_SET.has(candidate)) {
         throw new Error(
-            `Invalid task status: ${status}. Expected one of: ${VALID_STATUSES.join('|')}`,
+            `Invalid task status: ${status}. Expected one of: ${VALID_STATUSES.join('|')}`
         );
     }
     return candidate as ValidStatus;
 }
 
-export async function createTask(config: Config, projectId: string, title: string): Promise<string> {
+export async function createTask(
+    config: Config,
+    projectId: string,
+    title: string
+): Promise<string> {
     const projectDir = join(config.projectsDir, projectId);
     const tasksDir = join(projectDir, TASKS_DIR);
-    
+
     const taskId = await getNextSequenceId(tasksDir, 'T');
     const taskPath = join(tasksDir, taskId);
     const reportsDir = join(taskPath, REPORTS_DIR);
@@ -53,17 +57,22 @@ export async function createTask(config: Config, projectId: string, title: strin
     return taskId;
 }
 
-export async function updateTaskStatus(config: Config, projectId: string, taskId: string, status: string): Promise<void> {
+export async function updateTaskStatus(
+    config: Config,
+    projectId: string,
+    taskId: string,
+    status: string
+): Promise<void> {
     const taskFilePath = join(config.projectsDir, projectId, TASKS_DIR, taskId, TASK_FILE);
     const file = Bun.file(taskFilePath);
-    
+
     if (!(await file.exists())) {
         throw new Error(`Task file not found: ${taskFilePath}`);
     }
 
     const nextStatus = normalizeStatus(status);
     const content = await file.text();
-    const { updated, changed } = setStatusInMarkdown(content, nextStatus);
+    const {updated, changed} = setStatusInMarkdown(content, nextStatus);
     if (!changed) {
         throw new Error(`Unable to update task status; missing Status section in: ${taskFilePath}`);
     }
@@ -71,7 +80,10 @@ export async function updateTaskStatus(config: Config, projectId: string, taskId
     await Bun.write(taskFilePath, updated);
 }
 
-function setStatusInMarkdown(markdown: string, status: string): { updated: string; changed: boolean } {
+function setStatusInMarkdown(
+    markdown: string,
+    status: string
+): {updated: string; changed: boolean} {
     // Preferred schema: level-1 heading.
     const h1Regex = /(^#\s*Status\s*$\n)([\s\S]*?)(?=^#\s|(?![\s\S]))/im;
     if (h1Regex.test(markdown)) {
@@ -98,14 +110,14 @@ function setStatusInMarkdown(markdown: string, status: string): { updated: strin
         };
     }
 
-    return { updated: markdown, changed: false };
+    return {updated: markdown, changed: false};
 }
 
 function upsertSection(markdown: string, heading: string, body: string): string {
     const escapedHeading = heading.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     const sectionRegex = new RegExp(
         `(^#\\s*${escapedHeading}\\s*$\\n)([\\s\\S]*?)(?=^#\\s|(?![\\s\\S]))`,
-        'im',
+        'im'
     );
     const normalizedBody = (body ?? '').trim() || '(no reason provided)';
 
@@ -121,7 +133,7 @@ export async function markBlocked(
     config: Config,
     projectId: string,
     taskId: string,
-    reason: string,
+    reason: string
 ): Promise<void> {
     const taskFilePath = join(config.projectsDir, projectId, TASKS_DIR, taskId, TASK_FILE);
     const file = Bun.file(taskFilePath);
@@ -131,7 +143,7 @@ export async function markBlocked(
     }
 
     const content = await file.text();
-    const { updated, changed } = setStatusInMarkdown(content, 'blocked');
+    const {updated, changed} = setStatusInMarkdown(content, 'blocked');
     if (!changed) {
         throw new Error(`Unable to mark blocked; missing Status section in: ${taskFilePath}`);
     }
@@ -144,7 +156,7 @@ export async function markTaskBlocked(
     config: Config,
     projectId: string,
     taskId: string,
-    reason: string,
+    reason: string
 ): Promise<void> {
     await markBlocked(config, projectId, taskId, reason);
 }

@@ -32,12 +32,14 @@ This ticket ensures prompts reflect **explicit state**, not implicit memory.
 ## Scope
 
 ### Included
+
 - A deterministic context selection algorithm
 - Minimal context schema for prompts
 - Centralized context builder
 - Context truncation rules
 
 ### Excluded
+
 - Dynamic context learning
 - Session-to-session memory
 - Heuristics based on prior runs
@@ -65,11 +67,11 @@ Define a normalized structure:
 
 ```ts
 interface PromptContext {
-  taskObjective: string
-  goals: string[]
-  planExcerpt: string[]
-  constraints: string[]
-  notes: string[]
+    taskObjective: string;
+    goals: string[];
+    planExcerpt: string[];
+    constraints: string[];
+    notes: string[];
 }
 ```
 
@@ -80,38 +82,43 @@ This object is **pure data**, no formatting.
 ## Context selection rules
 
 ### Task objective
+
 - Always include verbatim from task definition
 
 ---
 
 ### Goals
+
 - Include all project goals
 - Preserve order from `project.md`
 
 ---
 
 ### Plan excerpt
+
 - Include:
-  - Plan status
-  - Phase list (titles only)
+    - Plan status
+    - Phase list (titles only)
 - Do **not** include historical or superseded plans
 
 ---
 
 ### Constraints
+
 - Extract from:
-  - `project.md` constraints section
+    - `project.md` constraints section
 - If none exist, omit section entirely
 
 ---
 
 ### Notes
+
 - Include only:
-  - `Assumptions`
-  - `Clarifications`
+    - `Assumptions`
+    - `Clarifications`
 - Exclude:
-  - Lessons learned
-  - Raw transcripts
+    - Lessons learned
+    - Raw transcripts
 - Truncate to max **N lines** (e.g. 10) to avoid bloat
 
 ---
@@ -121,7 +128,7 @@ This object is **pure data**, no formatting.
 - Enforce max line count per section
 - Enforce max total context lines (e.g. 50)
 - If truncated:
-  - Append `[...] (truncated)` marker
+    - Append `[...] (truncated)` marker
 - Never silently drop required sections
 
 ---
@@ -150,6 +157,7 @@ NOTES:
 ```
 
 The exact rendering format should be:
+
 - Stable
 - Diff-friendly
 - Easy for humans to read
@@ -161,24 +169,20 @@ The exact rendering format should be:
 ### Context builder
 
 ```ts
-function buildPromptContext(
-  project: Project,
-  task: Task
-): PromptContext
+function buildPromptContext(project: Project, task: Task): PromptContext;
 ```
 
 ### Renderer
 
 ```ts
-function renderPromptContext(
-  context: PromptContext
-): string
+function renderPromptContext(context: PromptContext): string;
 ```
 
 Session runner calls:
+
 ```ts
-const context = buildPromptContext(project, task)
-const contextText = renderPromptContext(context)
+const context = buildPromptContext(project, task);
+const contextText = renderPromptContext(context);
 ```
 
 ---
@@ -186,6 +190,7 @@ const contextText = renderPromptContext(context)
 ## Proposed file structure
 
 ### New files
+
 ```
 src/core/context/
   builder.ts
@@ -205,10 +210,10 @@ src/core/context/
 ## Error handling
 
 - If required data is missing (e.g. no goals):
-  - Throw explicit error
+    - Throw explicit error
 - If truncation occurs:
-  - Do not error
-  - Make truncation visible in prompt text
+    - Do not error
+    - Make truncation visible in prompt text
 
 ---
 

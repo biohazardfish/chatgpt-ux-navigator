@@ -1,7 +1,7 @@
-import { describe, it, expect } from 'bun:test';
-import { 
-    validateProjectId, 
-    getIsoTimestamp, 
+import {describe, it, expect} from 'bun:test';
+import {
+    validateProjectId,
+    getIsoTimestamp,
     getDateString,
     PROJECTS_DIR,
     PROJECT_FILE,
@@ -11,7 +11,7 @@ import {
     TASKS_DIR,
     META_FILE,
     TASK_FILE,
-    REPORTS_DIR
+    REPORTS_DIR,
 } from '../../src/storage/layout';
 
 describe('Storage Layout Constants', () => {
@@ -69,7 +69,7 @@ describe('Date Utilities', () => {
     it('getDateString should return YYYY-MM-DD format', () => {
         const ds = getDateString();
         expect(ds).toMatch(/^\d{4}-\d{2}-\d{2}$/);
-        
+
         const now = new Date();
         const year = now.getUTCFullYear();
         const month = String(now.getUTCMonth() + 1).padStart(2, '0');

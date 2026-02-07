@@ -36,12 +36,14 @@ We need broader automated coverage beyond the E2E smoke test (017).
 ## Scope
 
 ### Included
+
 - Increase test coverage across modules
 - Establish fixture conventions and helpers
 - Add negative-path tests for safety and correctness
 - Add CI-friendly test command structure (still `bun test`)
 
 ### Excluded
+
 - Code coverage tooling integration (optional; only if lightweight)
 - Full terminal UI snapshot testing
 - Performance benchmarks (separate ticket)
@@ -75,6 +77,7 @@ test/
 ```
 
 Notes:
+
 - If existing tests are flat, reorganize them without changing semantics.
 
 ---
@@ -82,12 +85,14 @@ Notes:
 ## Required coverage areas (MVP targets)
 
 ### A. Config & paths
+
 - Env overrides
 - Config file precedence
 - Path traversal rejection
 - Directory creation
 
 ### B. Storage
+
 - Project create/load
 - Task create/update (status transitions)
 - Decision recorder immutability + numbering
@@ -96,27 +101,32 @@ Notes:
 - Run history index append-only (026)
 
 ### C. Domain parsing
+
 - Valid markdown parses correctly
 - Missing sections fail with actionable errors
 - Unknown sections tolerated (if supported)
 
 ### D. Report parsing
+
 - Strict convention enforcement
 - Helpful error types
 - Edge cases: whitespace, empty sections, multiline summary
 
 ### E. Orchestration
+
 - Task assignment readiness rules
 - Session runner prompt composition integration
 - Parallel runner concurrency limit enforcement (018)
 - Retry classification (019)
 
 ### F. Governance
+
 - Outcome rules (015)
 - Conflict heuristics (020)
 - Devil’s Advocate weighting (021)
 
 ### G. TUI state logic (headless)
+
 - Navigation state transitions
 - Alerts store behavior
 - Search/filter selectors
@@ -127,7 +137,9 @@ Notes:
 ## Fixtures
 
 ### Report fixtures
+
 Create canonical fixtures:
+
 - `planner-success.txt`
 - `reviewer-success.txt`
 - `reviewer-partial.txt`
@@ -136,6 +148,7 @@ Create canonical fixtures:
 - `invalid-missing-section.txt`
 
 ### Project fixtures
+
 Provide minimal persisted project directories in fixtures, e.g.:
 
 ```
@@ -155,17 +168,23 @@ These fixtures should be copied into temp dirs for tests (never mutate fixture o
 ## Helpers
 
 ### Temp filesystem helper
+
 `test/helpers/tempFs.ts`:
+
 - Create temp dir
 - Copy fixture dirs
 - Cleanup
 
 ### Project factory
+
 `test/helpers/projectFactory.ts`:
+
 - Build in-memory `Project` objects for unit tests without filesystem
 
 ### Mock server / run executor
+
 `test/helpers/mockServer.ts`:
+
 - Mock `ServerClient` or `executeSessionRun` with deterministic outputs and delays
 
 ---
@@ -192,11 +211,11 @@ These fixtures should be copied into temp dirs for tests (never mutate fixture o
 ## Test quality standards
 
 - Tests must not depend on:
-  - Running local server
-  - Terminal dimensions
-  - Network
+    - Running local server
+    - Terminal dimensions
+    - Network
 - Tests must be deterministic:
-  - Avoid real timers; use fake timers or controlled delays where possible
+    - Avoid real timers; use fake timers or controlled delays where possible
 - Prefer small unit tests; reserve E2E for integration flow (017)
 
 ---

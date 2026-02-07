@@ -35,6 +35,7 @@ This ticket wires those pieces together.
 ## Scope
 
 ### Included
+
 - Sequential execution of roles for a task
 - One server call per role
 - Role-aware prompt headers
@@ -42,6 +43,7 @@ This ticket wires those pieces together.
 - Aggregation of results per task execution
 
 ### Excluded
+
 - Parallel execution
 - Retry or backoff
 - Streaming UI
@@ -56,12 +58,12 @@ For a given task:
 
 1. Roles are executed **in order**
 2. Each role:
-   - Receives a role-specific prompt
-   - Produces exactly one session run
+    - Receives a role-specific prompt
+    - Produces exactly one session run
 3. Failure of any role:
-   - Stops execution
-   - Marks task as `blocked`
-   - Surfaces error to caller
+    - Stops execution
+    - Marks task as `blocked`
+    - Surfaces error to caller
 
 ### Client preflight (MVP)
 
@@ -69,8 +71,8 @@ Before executing any roles, the runner must preflight client availability via `G
 
 - In MVP, `clientId == role name`.
 - If any required role client is missing, the runner must **fail fast** (no role runs started) and surface diagnostics including:
-  - Missing role name(s)
-  - Available clientId(s) returned by `GET /clients`
+    - Missing role name(s)
+    - Available clientId(s) returned by `GET /clients`
 - Diagnostics should be logged + bubbled up in the same structured format everywhere, and other docs should reference `nexus/docs/006-session-orchestration.md#mvp-decisions-resolved` when restating this behavior.
 
 ### Temporary chat default (MVP)
@@ -116,6 +118,7 @@ Follow the required report format exactly.
 ```
 
 Notes:
+
 - The **exact report format text** (from ticket 007) should be appended verbatim.
 - Prompt composition logic stays minimal and deterministic.
 
@@ -127,17 +130,15 @@ Notes:
 
 ```ts
 interface SessionResult {
-  role: Role
-  runId: string
-  responseText: string
+    role: Role;
+    runId: string;
+    responseText: string;
 }
 
-async function runTaskSessions(
-  params: {
-    project: Project
-    executableTask: ExecutableTask
-  }
-): Promise<SessionResult[]>
+async function runTaskSessions(params: {
+    project: Project;
+    executableTask: ExecutableTask;
+}): Promise<SessionResult[]>;
 ```
 
 ---
@@ -145,29 +146,31 @@ async function runTaskSessions(
 ## Status updates
 
 - When execution starts:
-  - Task status is already `running` (from ticket 012)
+    - Task status is already `running` (from ticket 012)
 - On successful completion of all roles:
-  - Task status remains `running` (final status set later by governance)
+    - Task status remains `running` (final status set later by governance)
 - On failure:
-  - Update task status to `blocked`
-  - Persist reason in task notes or logs (simple string for MVP)
+    - Update task status to `blocked`
+    - Persist reason in task notes or logs (simple string for MVP)
 
 ---
 
 ## Error handling
 
 Errors may originate from:
+
 - Server client
 - Run capture
 - Prompt validation
 
 On error:
+
 1. Stop executing further roles
 2. Mark task as `blocked`
 3. Re-throw error with:
-   - taskId
-   - role
-   - runId (if available)
+    - taskId
+    - role
+    - runId (if available)
 
 No retries yet.
 
@@ -176,11 +179,13 @@ No retries yet.
 ## Proposed file structure
 
 ### New files
+
 ```
 src/core/orchestration/sessionRunner.ts
 ```
 
 ### Updated files
+
 ```
 src/storage/task.ts        // add helper: markBlocked(taskId, reason)
 src/core/orchestration/taskAssignment.ts (minor integration)
@@ -191,23 +196,23 @@ src/core/orchestration/taskAssignment.ts (minor integration)
 ## Implementation steps
 
 1. **Iterate roles**
-   - Use role order from `ExecutableTask.roles`
+    - Use role order from `ExecutableTask.roles`
 
 2. **Compose prompt**
-   - Inject objective + context
-   - Append report convention text
+    - Inject objective + context
+    - Append report convention text
 
 3. **Execute run**
-   - Call `executeSessionRun` (ticket 006)
-   - Capture `runId` and `responseText`
+    - Call `executeSessionRun` (ticket 006)
+    - Capture `runId` and `responseText`
 
 4. **Collect results**
-   - Push `{ role, runId, responseText }` to result list
+    - Push `{ role, runId, responseText }` to result list
 
 5. **Handle failure**
-   - Catch error
-   - Mark task `blocked`
-   - Abort loop
+    - Catch error
+    - Mark task `blocked`
+    - Abort loop
 
 ---
 
@@ -221,6 +226,7 @@ Add tests under `test/orchestration/sessionRunner.test.ts`:
 - Task marked blocked on failure
 
 Mock:
+
 - `executeSessionRun`
 - Storage updates
 

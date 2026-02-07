@@ -1,14 +1,14 @@
-import { loadInitialProject } from '../app/projectLoader.ts';
-import { createLayout, updateFooter, updateHeader } from './layout.ts';
-import { createInitialState } from './state.ts';
-import type { TuiLayout } from './layout.ts';
-import type { TuiState, TuiViewId } from './state.ts';
-import { registerKeybindings } from './keybindings.ts';
+import {loadInitialProject} from '../app/projectLoader.ts';
+import {createLayout, updateFooter, updateHeader} from './layout.ts';
+import {createInitialState} from './state.ts';
+import type {TuiLayout} from './layout.ts';
+import type {TuiState, TuiViewId} from './state.ts';
+import {registerKeybindings} from './keybindings.ts';
 import * as approvalModal from './approval/modal.ts';
-import { validateApprovalRequest } from './approval/types.ts';
+import {validateApprovalRequest} from './approval/types.ts';
 
-import type { Config } from '../config/config.ts';
-import { loadStateConfig, saveStateConfig } from '../config/stateConfig.ts';
+import type {Config} from '../config/config.ts';
+import {loadStateConfig, saveStateConfig} from '../config/stateConfig.ts';
 
 import * as dashboardView from './views/dashboard.ts';
 import * as tasksView from './views/tasks.ts';
@@ -17,7 +17,8 @@ import * as decisionsView from './views/decisions.ts';
 import * as logsView from './views/logs.ts';
 
 function clearMain(layout: TuiLayout): void {
-    const children = typeof layout.main.getChildren === 'function' ? [...layout.main.getChildren()] : [];
+    const children =
+        typeof layout.main.getChildren === 'function' ? [...layout.main.getChildren()] : [];
     for (const child of children) {
         try {
             layout.main.remove(child.id);
@@ -35,7 +36,11 @@ function clearMain(layout: TuiLayout): void {
 function renderActiveView(
     layout: TuiLayout,
     state: TuiState,
-    ctx: { config: Config; setState: (updater: (prev: TuiState) => TuiState) => void; getState: () => TuiState }
+    ctx: {
+        config: Config;
+        setState: (updater: (prev: TuiState) => TuiState) => void;
+        getState: () => TuiState;
+    }
 ): void {
     switch (state.activeView) {
         case 'dashboard':
@@ -74,7 +79,7 @@ export async function startTui(config: Config): Promise<void> {
     const autorun = process.env.NEXUS_TUI_AUTORUN === '1';
     const exitAfterRun = process.env.NEXUS_TUI_EXIT_AFTER_RUN === '1';
 
-    let savedUi: { lastProjectId?: string; lastTaskId?: string; activeView?: string } = {};
+    let savedUi: {lastProjectId?: string; lastTaskId?: string; activeView?: string} = {};
     let loadStateError: unknown;
 
     try {
@@ -87,7 +92,7 @@ export async function startTui(config: Config): Promise<void> {
 
     const initialProjectResult = await loadInitialProject({
         config,
-        preferredProjectId: savedUi.lastProjectId
+        preferredProjectId: savedUi.lastProjectId,
     });
 
     const activeProjectId = initialProjectResult.projectId;
@@ -110,7 +115,7 @@ export async function startTui(config: Config): Promise<void> {
         lastTaskId: savedUi.lastTaskId,
         activeView: autorun ? 'tasks' : (parseViewId(savedUi.activeView) ?? 'dashboard'),
         statusMessage: initialStatus,
-        project: activeProject
+        project: activeProject,
     });
 
     const selectedProjectId = state.lastProjectId?.trim();
@@ -129,8 +134,8 @@ export async function startTui(config: Config): Promise<void> {
                         ui: {
                             lastProjectId: state.lastProjectId,
                             lastTaskId: state.lastTaskId,
-                            activeView: state.activeView
-                        }
+                            activeView: state.activeView,
+                        },
                     });
                 } catch (error) {
                     console.error('[tui] Failed to save state config:', error);
@@ -145,7 +150,7 @@ export async function startTui(config: Config): Promise<void> {
         const result = await tasksView.runTaskNonInteractive({
             config,
             projectId: selectedProjectId,
-            taskId: selectedTaskId
+            taskId: selectedTaskId,
         });
 
         if (exitAfterRun) {
@@ -154,8 +159,8 @@ export async function startTui(config: Config): Promise<void> {
                     ui: {
                         lastProjectId: state.lastProjectId,
                         lastTaskId: state.lastTaskId,
-                        activeView: state.activeView
-                    }
+                        activeView: state.activeView,
+                    },
                 });
             } catch (error) {
                 console.error('[tui] Failed to save state config:', error);
@@ -168,7 +173,7 @@ export async function startTui(config: Config): Promise<void> {
         return;
     }
 
-    const layout = await createLayout({ projectId: savedUi.lastProjectId });
+    const layout = await createLayout({projectId: savedUi.lastProjectId});
 
     const render = () => {
         if (lastView !== state.activeView) {
@@ -180,7 +185,7 @@ export async function startTui(config: Config): Promise<void> {
         }
 
         updateHeader(layout, state.lastProjectId);
-        renderActiveView(layout, state, { config, setState, getState });
+        renderActiveView(layout, state, {config, setState, getState});
         updateFooter(layout, state);
 
         // Handle approval modal
@@ -189,7 +194,11 @@ export async function startTui(config: Config): Promise<void> {
             if (validation.valid) {
                 approvalModal.render(layout, validation.request);
             } else {
-                console.error('[tui] Invalid approval request:', validation.error, state.approvalRequest);
+                console.error(
+                    '[tui] Invalid approval request:',
+                    validation.error,
+                    state.approvalRequest
+                );
                 approvalModal.renderError(layout, validation.error);
             }
         } else {
@@ -207,7 +216,7 @@ export async function startTui(config: Config): Promise<void> {
     };
 
     const getState = () => state;
-    registerKeybindings(layout, setState, { config, getState });
+    registerKeybindings(layout, setState, {config, getState});
     layout.renderer.on('resize', render);
 
     render();
@@ -225,8 +234,8 @@ export async function startTui(config: Config): Promise<void> {
                     ui: {
                         lastProjectId: current.lastProjectId,
                         lastTaskId: current.lastTaskId,
-                        activeView: current.activeView
-                    }
+                        activeView: current.activeView,
+                    },
                 });
             } catch (error) {
                 console.error('[tui] Failed to save state config:', error);
@@ -252,23 +261,27 @@ export async function startTui(config: Config): Promise<void> {
             const taskId = current.lastTaskId?.trim();
 
             if (!projectId || !taskId) {
-                setState((prev) => ({ ...prev, statusMessage: noSelectionMessage }));
+                setState(prev => ({...prev, statusMessage: noSelectionMessage}));
                 if (exitAfterRun) await exitWithCode(1);
                 return;
             }
 
             // Ensure the tasks view is mounted before invoking its Run action.
             if (current.activeView !== 'tasks') {
-                setState((prev) => ({ ...prev, activeView: 'tasks' }));
+                setState(prev => ({...prev, activeView: 'tasks'}));
             }
 
             let ok = false;
             try {
-                const result = await tasksView.runSelectedTaskAction(layout.main, { config, setState, getState });
+                const result = await tasksView.runSelectedTaskAction(layout.main, {
+                    config,
+                    setState,
+                    getState,
+                });
                 ok = result.ok;
             } catch (error) {
                 ok = false;
-                setState((prev) => ({ ...prev, statusMessage: `Run failed: ${String(error)}` }));
+                setState(prev => ({...prev, statusMessage: `Run failed: ${String(error)}`}));
             }
 
             if (exitAfterRun) {

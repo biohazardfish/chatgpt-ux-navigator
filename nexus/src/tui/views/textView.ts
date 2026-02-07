@@ -1,4 +1,4 @@
-import { TextRenderable } from '@opentui/core';
+import {TextRenderable} from '@opentui/core';
 
 export function renderTextView(container: any, key: symbol, id: string, content: string): void {
     let text = container[key] as TextRenderable | undefined;

@@ -1,5 +1,5 @@
-import { loadConfig } from '../config/config.ts';
-import { startTui } from '../tui/index.ts';
+import {loadConfig} from '../config/config.ts';
+import {startTui} from '../tui/index.ts';
 
 export async function bootstrap(): Promise<void> {
     // Ensure config is valid and state directories exist.

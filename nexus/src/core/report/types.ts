@@ -1,7 +1,7 @@
-import type { Role } from '../domain/role.ts';
+import type {Role} from '../domain/role.ts';
 
 export interface ParseReportParams {
-  expectedRole: Role;
-  rawText: string;
-  runId?: string;
+    expectedRole: Role;
+    rawText: string;
+    runId?: string;
 }

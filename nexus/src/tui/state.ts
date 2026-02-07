@@ -1,5 +1,5 @@
-import type { Project } from '../core/domain/project.ts';
-import type { ApprovalRequest, ApprovalCallback } from './approval/types.ts';
+import type {Project} from '../core/domain/project.ts';
+import type {ApprovalRequest, ApprovalCallback} from './approval/types.ts';
 
 export type TuiViewId = 'dashboard' | 'tasks' | 'sessions' | 'decisions' | 'logs';
 
@@ -22,7 +22,7 @@ export function createInitialState(init?: Partial<TuiState>): TuiState {
         lastTaskId: init?.lastTaskId,
         activeView: init?.activeView ?? 'dashboard',
         statusMessage: init?.statusMessage ?? 'Ready',
-        project: init?.project
+        project: init?.project,
     };
 }
 
@@ -30,7 +30,7 @@ export function setActiveView(state: TuiState, nextView: TuiViewId): TuiState {
     if (state.activeView === nextView) return state;
     return {
         ...state,
-        activeView: nextView
+        activeView: nextView,
     };
 }
 
@@ -38,7 +38,7 @@ export function setStatusMessage(state: TuiState, statusMessage: string): TuiSta
     if (state.statusMessage === statusMessage) return state;
     return {
         ...state,
-        statusMessage
+        statusMessage,
     };
 }
 

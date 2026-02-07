@@ -1,11 +1,11 @@
 /// <reference types="bun" />
 
-import { describe, it, expect, beforeEach, afterEach } from 'bun:test';
-import { mkdir, rm, stat } from 'fs/promises';
-import { join } from 'path';
-import { tmpdir } from 'os';
+import {describe, it, expect, beforeEach, afterEach} from 'bun:test';
+import {mkdir, rm, stat} from 'fs/promises';
+import {join} from 'path';
+import {tmpdir} from 'os';
 
-import type { Config } from '../../src/config/config.ts';
+import type {Config} from '../../src/config/config.ts';
 import {
     createRunDir,
     generateRunId,
@@ -30,11 +30,11 @@ describe('run storage', () => {
             logLevel: 'info',
         };
 
-        await mkdir(config.runsDir, { recursive: true });
+        await mkdir(config.runsDir, {recursive: true});
     });
 
     afterEach(async () => {
-        await rm(testBaseDir, { recursive: true, force: true });
+        await rm(testBaseDir, {recursive: true, force: true});
     });
 
     it('generateRunId should match YYYYMMDDTHHMMSSZ-role format', () => {
@@ -101,7 +101,7 @@ describe('run storage', () => {
     it('should not create response.txt unless explicitly written', async () => {
         const runDir = await createRunDir(config, 'test-project', '20260201T131201Z-planner');
         await writeRunPrompt(runDir, 'PROMPT');
-        await writeRunMeta(runDir, { status: 'error', error: 'boom' });
+        await writeRunMeta(runDir, {status: 'error', error: 'boom'});
 
         expect(await Bun.file(join(runDir, 'prompt.txt')).exists()).toBe(true);
         expect(await Bun.file(join(runDir, 'meta.json')).exists()).toBe(true);
@@ -111,7 +111,7 @@ describe('run storage', () => {
     it('should enforce allowed meta.status set', async () => {
         const runDir = await createRunDir(config, 'test-project', '20260201T131202Z-planner');
         await expectAsyncThrow(
-            () => writeRunMeta(runDir, { status: 'nope' as any }),
+            () => writeRunMeta(runDir, {status: 'nope' as any}),
             /Invalid run meta status/
         );
         expect(await Bun.file(join(runDir, 'meta.json')).exists()).toBe(false);

@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'bun:test';
+import {describe, it, expect} from 'bun:test';
 import {
     validateApprovalRequest,
     type ApprovalRequest,
@@ -48,7 +48,7 @@ describe('validateApprovalRequest', () => {
         });
 
         it('accepts request without recommendedOptionId', () => {
-            const request = createValidRequest({ recommendedOptionId: undefined });
+            const request = createValidRequest({recommendedOptionId: undefined});
             const result = validateApprovalRequest(request);
 
             expect(result.valid).toBe(true);
@@ -56,9 +56,7 @@ describe('validateApprovalRequest', () => {
 
         it('accepts request with option descriptions', () => {
             const request = createValidRequest({
-                options: [
-                    createValidOption({ description: 'Proceed with the plan as proposed' }),
-                ],
+                options: [createValidOption({description: 'Proceed with the plan as proposed'})],
             });
             const result = validateApprovalRequest(request);
 
@@ -74,7 +72,7 @@ describe('validateApprovalRequest', () => {
             ];
 
             for (const type of types) {
-                const request = createValidRequest({ type });
+                const request = createValidRequest({type});
                 const result = validateApprovalRequest(request);
                 expect(result.valid).toBe(true);
             }
@@ -85,7 +83,7 @@ describe('validateApprovalRequest', () => {
 
             for (const action of actions) {
                 const request = createValidRequest({
-                    options: [createValidOption({ action })],
+                    options: [createValidOption({action})],
                 });
                 const result = validateApprovalRequest(request);
                 expect(result.valid).toBe(true);
@@ -104,10 +102,10 @@ describe('validateApprovalRequest', () => {
         it('accepts request with 9 options (maximum)', () => {
             const options: ApprovalOption[] = [];
             for (let i = 1; i <= 9; i++) {
-                options.push(createValidOption({ id: `opt-${i}`, label: `Option ${i}` }));
+                options.push(createValidOption({id: `opt-${i}`, label: `Option ${i}`}));
             }
 
-            const request = createValidRequest({ options });
+            const request = createValidRequest({options});
             const result = validateApprovalRequest(request);
 
             expect(result.valid).toBe(true);
@@ -116,8 +114,8 @@ describe('validateApprovalRequest', () => {
         it('accepts request with valid recommendedOptionId', () => {
             const request = createValidRequest({
                 options: [
-                    createValidOption({ id: 'opt-1' }),
-                    createValidOption({ id: 'opt-2', label: 'Reject' }),
+                    createValidOption({id: 'opt-1'}),
+                    createValidOption({id: 'opt-2', label: 'Reject'}),
                 ],
                 recommendedOptionId: 'opt-1',
             });
@@ -127,7 +125,7 @@ describe('validateApprovalRequest', () => {
         });
 
         it('accepts request with empty context', () => {
-            const request = createValidRequest({ context: '' });
+            const request = createValidRequest({context: ''});
             const result = validateApprovalRequest(request);
 
             expect(result.valid).toBe(true);
@@ -175,7 +173,7 @@ describe('validateApprovalRequest', () => {
         });
 
         it('rejects request with empty id', () => {
-            const request = createValidRequest({ id: '' });
+            const request = createValidRequest({id: ''});
             const result = validateApprovalRequest(request);
 
             expect(result.valid).toBe(false);
@@ -185,7 +183,7 @@ describe('validateApprovalRequest', () => {
         });
 
         it('rejects request with whitespace-only id', () => {
-            const request = createValidRequest({ id: '   ' });
+            const request = createValidRequest({id: '   '});
             const result = validateApprovalRequest(request);
 
             expect(result.valid).toBe(false);
@@ -195,7 +193,7 @@ describe('validateApprovalRequest', () => {
         });
 
         it('rejects request with invalid type', () => {
-            const request = createValidRequest({ type: 'invalid-type' as ApprovalType });
+            const request = createValidRequest({type: 'invalid-type' as ApprovalType});
             const result = validateApprovalRequest(request);
 
             expect(result.valid).toBe(false);
@@ -217,7 +215,7 @@ describe('validateApprovalRequest', () => {
         });
 
         it('rejects request with empty title', () => {
-            const request = createValidRequest({ title: '' });
+            const request = createValidRequest({title: ''});
             const result = validateApprovalRequest(request);
 
             expect(result.valid).toBe(false);
@@ -263,7 +261,7 @@ describe('validateApprovalRequest', () => {
         });
 
         it('rejects request with empty options array', () => {
-            const request = createValidRequest({ options: [] });
+            const request = createValidRequest({options: []});
             const result = validateApprovalRequest(request);
 
             expect(result.valid).toBe(false);
@@ -275,10 +273,10 @@ describe('validateApprovalRequest', () => {
         it('rejects request with more than 9 options', () => {
             const options: ApprovalOption[] = [];
             for (let i = 1; i <= 10; i++) {
-                options.push(createValidOption({ id: `opt-${i}`, label: `Option ${i}` }));
+                options.push(createValidOption({id: `opt-${i}`, label: `Option ${i}`}));
             }
 
-            const request = createValidRequest({ options });
+            const request = createValidRequest({options});
             const result = validateApprovalRequest(request);
 
             expect(result.valid).toBe(false);
@@ -290,8 +288,8 @@ describe('validateApprovalRequest', () => {
         it('rejects request with duplicate option ids', () => {
             const request = createValidRequest({
                 options: [
-                    createValidOption({ id: 'duplicate-id', label: 'First' }),
-                    createValidOption({ id: 'duplicate-id', label: 'Second' }),
+                    createValidOption({id: 'duplicate-id', label: 'First'}),
+                    createValidOption({id: 'duplicate-id', label: 'Second'}),
                 ],
             });
             const result = validateApprovalRequest(request);
@@ -306,7 +304,7 @@ describe('validateApprovalRequest', () => {
             const option = createValidOption();
             delete (option as unknown as Record<string, unknown>).id;
 
-            const request = createValidRequest({ options: [option] });
+            const request = createValidRequest({options: [option]});
             const result = validateApprovalRequest(request);
 
             expect(result.valid).toBe(false);
@@ -318,7 +316,7 @@ describe('validateApprovalRequest', () => {
 
         it('rejects option with empty id', () => {
             const request = createValidRequest({
-                options: [createValidOption({ id: '' })],
+                options: [createValidOption({id: ''})],
             });
             const result = validateApprovalRequest(request);
 
@@ -333,7 +331,7 @@ describe('validateApprovalRequest', () => {
             const option = createValidOption();
             delete (option as unknown as Record<string, unknown>).label;
 
-            const request = createValidRequest({ options: [option] });
+            const request = createValidRequest({options: [option]});
             const result = validateApprovalRequest(request);
 
             expect(result.valid).toBe(false);
@@ -345,7 +343,7 @@ describe('validateApprovalRequest', () => {
 
         it('rejects option with empty label', () => {
             const request = createValidRequest({
-                options: [createValidOption({ label: '' })],
+                options: [createValidOption({label: ''})],
             });
             const result = validateApprovalRequest(request);
 
@@ -358,7 +356,7 @@ describe('validateApprovalRequest', () => {
 
         it('rejects option with invalid action', () => {
             const request = createValidRequest({
-                options: [createValidOption({ action: 'invalid' as ApprovalAction })],
+                options: [createValidOption({action: 'invalid' as ApprovalAction})],
             });
             const result = validateApprovalRequest(request);
 
@@ -373,7 +371,7 @@ describe('validateApprovalRequest', () => {
             const option = createValidOption();
             (option as unknown as Record<string, unknown>).description = 123;
 
-            const request = createValidRequest({ options: [option] });
+            const request = createValidRequest({options: [option]});
             const result = validateApprovalRequest(request);
 
             expect(result.valid).toBe(false);
@@ -385,7 +383,7 @@ describe('validateApprovalRequest', () => {
 
         it('rejects recommendedOptionId that does not match any option', () => {
             const request = createValidRequest({
-                options: [createValidOption({ id: 'opt-1' })],
+                options: [createValidOption({id: 'opt-1'})],
                 recommendedOptionId: 'non-existent',
             });
             const result = validateApprovalRequest(request);
@@ -424,9 +422,9 @@ describe('validateApprovalRequest', () => {
         it('reports correct option index in error messages', () => {
             const request = createValidRequest({
                 options: [
-                    createValidOption({ id: 'opt-1' }),
-                    createValidOption({ id: 'opt-2' }),
-                    createValidOption({ id: 'opt-3', label: '' }), // Invalid - 3rd option
+                    createValidOption({id: 'opt-1'}),
+                    createValidOption({id: 'opt-2'}),
+                    createValidOption({id: 'opt-3', label: ''}), // Invalid - 3rd option
                 ],
             });
             const result = validateApprovalRequest(request);

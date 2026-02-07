@@ -24,6 +24,7 @@ Whenever you need richer interaction (parallel, multi-task, or true streaming UI
 In the MVP, the Nexus TUI is a lightweight operator shell (not a full control surface).
 
 It provides:
+
 - A stable fullscreen layout (header, main pane, footer)
 - Keyboard navigation between high-level **placeholder** views
 - Basic status/notification framing (non-streaming)
@@ -38,20 +39,20 @@ The TUI favors clarity and predictability over visual complexity.
 While the exact layout may evolve, the TUI typically presents:
 
 - **Dashboard** (placeholder)
-  - Title + placeholder text
+    - Title + placeholder text
 
 - **Tasks** (placeholder)
-  - Title + placeholder text
+    - Title + placeholder text
 
 - **Sessions** (placeholder)
-  - Title + placeholder text
+    - Title + placeholder text
 
 - **Decisions** (placeholder)
-  - Title + placeholder text
-  - (Approval dialogs and decision checkpoints are **Future work**)
+    - Title + placeholder text
+    - (Approval dialogs and decision checkpoints are **Future work**)
 
 - **Logs** (placeholder)
-  - Title + placeholder text
+    - Title + placeholder text
 
 ---
 
@@ -72,6 +73,7 @@ The TUI is designed to be usable without a mouse.
 The MVP includes a single “run one task” trigger.
 
 The exact interaction details may vary, but the intent is:
+
 - The operator initiates one task run
 - The TUI reflects basic run state in the status area
 
@@ -82,6 +84,7 @@ Any richer workflows (multiple tasks, arbitrary commands, etc.) are **Future wor
 ## Monitoring progress (MVP)
 
 In the MVP, the TUI provides basic visibility only:
+
 - Current active view
 - Simple status messages
 - Placeholder areas for notifications
@@ -101,6 +104,7 @@ Acknowledgment dialogs and richer alert workflows are **Future work**.
 ## Non-Goals of the TUI (MVP)
 
 The MVP TUI is not intended to:
+
 - Be a chat interface
 - Replace the ChatGPT UI
 - Provide approval dialogs or manual override controls
@@ -127,6 +131,7 @@ The following capabilities are explicitly **out of scope for MVP** (see ticket 0
 ## Summary
 
 For MVP, the Nexus TUI:
+
 - Renders a minimal fullscreen shell (header/content/footer)
 - Supports keyboard navigation between placeholder views
 - Provides a single “run one task” execution trigger

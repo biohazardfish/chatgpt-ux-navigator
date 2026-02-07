@@ -25,6 +25,7 @@ Nexus is explicitly **not a chat UI**.
 The TUI is an **operational control surface**.
 
 From earlier tickets:
+
 - Domain, storage, server execution, and report parsing exist or are in progress
 - The TUI must surface state and request approvals, but not embed logic
 
@@ -55,6 +56,7 @@ This ticket includes:
 - Run one task (single-task execution trigger)
 
 This ticket explicitly excludes:
+
 - Editing state
 - Triggering arbitrary tasks/workflows beyond the minimal “run one task” flow
 - Approval dialogs
@@ -71,8 +73,8 @@ This ticket explicitly excludes:
 ## Technology choice
 
 - **Library**: `@opentui/core` (OpenTUI)
-  - Works with Bun + TypeScript
-  - Use OpenTUI primitives for renderer, layout, and key handling
+    - Works with Bun + TypeScript
+    - Use OpenTUI primitives for renderer, layout, and key handling
 - Avoid heavy abstractions or frameworks
 
 ---
@@ -106,6 +108,7 @@ Define view identifiers (no real data yet):
 - `logs`
 
 Each view:
+
 - Renders a title and placeholder text
 - Can be switched via keybindings
 
@@ -114,11 +117,13 @@ Each view:
 ## Navigation & keybindings
 
 ### Global keys
+
 - `q` → quit Nexus (with confirmation later; for now immediate)
 - `?` → help overlay (placeholder text)
 - `Esc` → no-op or back (placeholder)
 
 ### View switching
+
 - `1` → Dashboard
 - `2` → Tasks
 - `3` → Sessions
@@ -135,13 +140,8 @@ Minimal UI state:
 
 ```ts
 interface TuiState {
-  activeView:
-    | 'dashboard'
-    | 'tasks'
-    | 'sessions'
-    | 'decisions'
-    | 'logs'
-  statusMessage: string
+    activeView: 'dashboard' | 'tasks' | 'sessions' | 'decisions' | 'logs';
+    statusMessage: string;
 }
 ```
 
@@ -154,14 +154,15 @@ No business state here — only UI state.
 ### Separation of concerns
 
 - `tui/`
-  - Layout
-  - Keybindings
-  - Rendering
+    - Layout
+    - Keybindings
+    - Rendering
 - `app/`
-  - Bootstrapping
-  - Wiring domain/state later
+    - Bootstrapping
+    - Wiring domain/state later
 
 TUI should not:
+
 - Read files directly
 - Call server client
 - Mutate project state
@@ -171,6 +172,7 @@ TUI should not:
 ## Proposed file structure
 
 ### New files
+
 ```
 src/tui/
   index.ts          # create + start TUI
@@ -186,44 +188,45 @@ src/tui/
 ```
 
 ### Updates
+
 - `src/app/bootstrap.ts`
-  - Start TUI instead of printing “ready”
+    - Start TUI instead of printing “ready”
 
 ---
 
 ## Implementation steps
 
 1. **Initialize screen**
-   - Create OpenTUI renderer
-   - Enable mouse = false
-   - Register global key handlers for shell controls
+    - Create OpenTUI renderer
+    - Enable mouse = false
+    - Register global key handlers for shell controls
 
 2. **Create layout**
-   - Header box
-   - Main content box
-   - Footer box
-   - Handle renderer resize events
+    - Header box
+    - Main content box
+    - Footer box
+    - Handle renderer resize events
 
 3. **Define views**
-   - Each view exports `render(container, state)`
-   - Render placeholder content
+    - Each view exports `render(container, state)`
+    - Render placeholder content
 
 4. **Keybindings**
-   - Bind number keys to switch views
-   - Bind `q` to exit
-   - Update `TuiState` and re-render
+    - Bind number keys to switch views
+    - Bind `q` to exit
+    - Update `TuiState` and re-render
 
 5. **Render loop**
-   - On state change, clear and redraw main view
-   - Update footer status line
+    - On state change, clear and redraw main view
+    - Update footer status line
 
 ---
 
 ## Error handling
 
 - If TUI fails to initialize:
-  - Log error
-  - Exit with non-zero code
+    - Log error
+    - Exit with non-zero code
 - Do not swallow exceptions inside key handlers
 
 ---
@@ -233,9 +236,10 @@ src/tui/
 Minimal tests only:
 
 - `test/tui/state.test.ts`
-  - State transitions (view switching)
+    - State transitions (view switching)
 
 Manual verification is acceptable for:
+
 - Layout correctness
 - Keyboard behavior
 

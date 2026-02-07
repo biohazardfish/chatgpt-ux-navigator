@@ -1,6 +1,1 @@
-export type Role =
-  | 'planner'
-  | 'implementer'
-  | 'reviewer'
-  | 'researcher'
-  | 'devils-advocate';
+export type Role = 'planner' | 'implementer' | 'reviewer' | 'researcher' | 'devils-advocate';

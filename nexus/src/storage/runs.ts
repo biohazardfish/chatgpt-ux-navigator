@@ -1,11 +1,11 @@
 /// <reference types="bun" />
 
-import { rename } from 'fs/promises';
-import { randomUUID } from 'crypto';
+import {rename} from 'fs/promises';
+import {randomUUID} from 'crypto';
 
-import type { Config } from '../config/config.ts';
-import { ensureDir } from '../fs/ensureDirs.ts';
-import { resolveInsideRoot } from '../fs/paths.ts';
+import type {Config} from '../config/config.ts';
+import {ensureDir} from '../fs/ensureDirs.ts';
+import {resolveInsideRoot} from '../fs/paths.ts';
 
 export type RunStatus = 'success' | 'error' | 'timeout';
 
@@ -23,8 +23,9 @@ function pad2(n: number): string {
  * Example: 20260201T131200Z-planner
  */
 export function generateRunId(role: string, startedAt: Date): string {
-    const ts = `${startedAt.getUTCFullYear()}${pad2(startedAt.getUTCMonth() + 1)}${pad2(startedAt.getUTCDate())}`
-        + `T${pad2(startedAt.getUTCHours())}${pad2(startedAt.getUTCMinutes())}${pad2(startedAt.getUTCSeconds())}Z`;
+    const ts =
+        `${startedAt.getUTCFullYear()}${pad2(startedAt.getUTCMonth() + 1)}${pad2(startedAt.getUTCDate())}` +
+        `T${pad2(startedAt.getUTCHours())}${pad2(startedAt.getUTCMinutes())}${pad2(startedAt.getUTCSeconds())}Z`;
 
     const safeRole = role
         .trim()
@@ -34,7 +35,11 @@ export function generateRunId(role: string, startedAt: Date): string {
     return `${ts}-${safeRole || 'role'}`;
 }
 
-export async function createRunDir(config: Config, projectId: string, runId: string): Promise<string> {
+export async function createRunDir(
+    config: Config,
+    projectId: string,
+    runId: string
+): Promise<string> {
     const projectRunsDir = resolveInsideRoot(config.runsDir, projectId);
     const runDir = resolveInsideRoot(projectRunsDir, runId);
     await ensureDir(runDir);

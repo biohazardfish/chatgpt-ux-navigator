@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'bun:test';
+import {describe, it, expect} from 'bun:test';
 import {
     createInitialState,
     setApprovalRequest,
@@ -6,7 +6,7 @@ import {
     hasActiveApproval,
     type TuiState,
 } from '../../../src/tui/state';
-import type { ApprovalRequest, ApprovalResult } from '../../../src/tui/approval/types';
+import type {ApprovalRequest, ApprovalResult} from '../../../src/tui/approval/types';
 
 // -----------------------------------------------------------------------------
 // Test Helpers
@@ -19,19 +19,22 @@ function createMockApprovalRequest(overrides?: Partial<ApprovalRequest>): Approv
         title: 'Plan Approval',
         context: 'The initial project plan has been generated.',
         options: [
-            { id: 'opt-1', label: 'Approve', action: 'accept' },
-            { id: 'opt-2', label: 'Reject', action: 'abort' },
+            {id: 'opt-1', label: 'Approve', action: 'accept'},
+            {id: 'opt-2', label: 'Reject', action: 'abort'},
         ],
         ...overrides,
     };
 }
 
-function createMockCallback(): { callback: (result: ApprovalResult) => void; calls: ApprovalResult[] } {
+function createMockCallback(): {
+    callback: (result: ApprovalResult) => void;
+    calls: ApprovalResult[];
+} {
     const calls: ApprovalResult[] = [];
     const callback = (result: ApprovalResult) => {
         calls.push(result);
     };
-    return { callback, calls };
+    return {callback, calls};
 }
 
 // -----------------------------------------------------------------------------
@@ -43,7 +46,7 @@ describe('Approval state helpers', () => {
         it('sets approval request and callback on state', () => {
             const state = createInitialState();
             const request = createMockApprovalRequest();
-            const { callback } = createMockCallback();
+            const {callback} = createMockCallback();
 
             const next = setApprovalRequest(state, request, callback);
 
@@ -54,7 +57,7 @@ describe('Approval state helpers', () => {
         it('returns a new state object', () => {
             const state = createInitialState();
             const request = createMockApprovalRequest();
-            const { callback } = createMockCallback();
+            const {callback} = createMockCallback();
 
             const next = setApprovalRequest(state, request, callback);
 
@@ -69,7 +72,7 @@ describe('Approval state helpers', () => {
                 statusMessage: 'Processing...',
             });
             const request = createMockApprovalRequest();
-            const { callback } = createMockCallback();
+            const {callback} = createMockCallback();
 
             const next = setApprovalRequest(state, request, callback);
 
@@ -81,15 +84,19 @@ describe('Approval state helpers', () => {
 
         it('overwrites existing approval request', () => {
             const state = createInitialState();
-            const firstRequest = createMockApprovalRequest({ id: 'first' });
+            const firstRequest = createMockApprovalRequest({id: 'first'});
             const firstCallback = createMockCallback();
 
             const stateWithFirst = setApprovalRequest(state, firstRequest, firstCallback.callback);
 
-            const secondRequest = createMockApprovalRequest({ id: 'second' });
+            const secondRequest = createMockApprovalRequest({id: 'second'});
             const secondCallback = createMockCallback();
 
-            const stateWithSecond = setApprovalRequest(stateWithFirst, secondRequest, secondCallback.callback);
+            const stateWithSecond = setApprovalRequest(
+                stateWithFirst,
+                secondRequest,
+                secondCallback.callback
+            );
 
             expect(stateWithSecond.approvalRequest?.id).toBe('second');
             expect(stateWithSecond.approvalCallback).toBe(secondCallback.callback);
@@ -101,7 +108,7 @@ describe('Approval state helpers', () => {
             const originalApprovalCallback = state.approvalCallback;
 
             const request = createMockApprovalRequest();
-            const { callback } = createMockCallback();
+            const {callback} = createMockCallback();
 
             setApprovalRequest(state, request, callback);
 
@@ -114,7 +121,7 @@ describe('Approval state helpers', () => {
         it('removes approval request and callback', () => {
             const state = createInitialState();
             const request = createMockApprovalRequest();
-            const { callback } = createMockCallback();
+            const {callback} = createMockCallback();
 
             const stateWithApproval = setApprovalRequest(state, request, callback);
             const clearedState = clearApprovalRequest(stateWithApproval);
@@ -134,7 +141,7 @@ describe('Approval state helpers', () => {
         it('returns new state object when approval was active', () => {
             const state = createInitialState();
             const request = createMockApprovalRequest();
-            const { callback } = createMockCallback();
+            const {callback} = createMockCallback();
 
             const stateWithApproval = setApprovalRequest(state, request, callback);
             const clearedState = clearApprovalRequest(stateWithApproval);
@@ -150,7 +157,7 @@ describe('Approval state helpers', () => {
                 statusMessage: 'Custom status',
             });
             const request = createMockApprovalRequest();
-            const { callback } = createMockCallback();
+            const {callback} = createMockCallback();
 
             const stateWithApproval = setApprovalRequest(state, request, callback);
             const clearedState = clearApprovalRequest(stateWithApproval);
@@ -164,7 +171,7 @@ describe('Approval state helpers', () => {
         it('ensures immutability when clearing', () => {
             const state = createInitialState();
             const request = createMockApprovalRequest();
-            const { callback } = createMockCallback();
+            const {callback} = createMockCallback();
 
             const stateWithApproval = setApprovalRequest(state, request, callback);
             const originalRequest = stateWithApproval.approvalRequest;
@@ -179,7 +186,7 @@ describe('Approval state helpers', () => {
         it('is idempotent when called multiple times on cleared state', () => {
             const state = createInitialState();
             const request = createMockApprovalRequest();
-            const { callback } = createMockCallback();
+            const {callback} = createMockCallback();
 
             const stateWithApproval = setApprovalRequest(state, request, callback);
             const clearedOnce = clearApprovalRequest(stateWithApproval);
@@ -193,7 +200,7 @@ describe('Approval state helpers', () => {
         it('returns true when approvalRequest exists', () => {
             const state = createInitialState();
             const request = createMockApprovalRequest();
-            const { callback } = createMockCallback();
+            const {callback} = createMockCallback();
 
             const stateWithApproval = setApprovalRequest(state, request, callback);
 
@@ -203,7 +210,7 @@ describe('Approval state helpers', () => {
         it('returns false when approvalRequest is undefined', () => {
             const state = createInitialState();
             const request = createMockApprovalRequest();
-            const { callback } = createMockCallback();
+            const {callback} = createMockCallback();
 
             const stateWithApproval = setApprovalRequest(state, request, callback);
             const clearedState = clearApprovalRequest(stateWithApproval);
@@ -220,7 +227,7 @@ describe('Approval state helpers', () => {
         it('returns false for state with only callback but no request', () => {
             // Edge case: state manually modified (shouldn't happen in practice)
             const state = createInitialState() as TuiState;
-            const { callback } = createMockCallback();
+            const {callback} = createMockCallback();
 
             // Manually set only callback without request (edge case)
             const manualState: TuiState = {
@@ -237,7 +244,7 @@ describe('Approval state helpers', () => {
         it('supports set → clear → set flow', () => {
             let state = createInitialState();
 
-            const request1 = createMockApprovalRequest({ id: 'first' });
+            const request1 = createMockApprovalRequest({id: 'first'});
             const callback1 = createMockCallback();
 
             state = setApprovalRequest(state, request1, callback1.callback);
@@ -247,7 +254,7 @@ describe('Approval state helpers', () => {
             state = clearApprovalRequest(state);
             expect(hasActiveApproval(state)).toBe(false);
 
-            const request2 = createMockApprovalRequest({ id: 'second' });
+            const request2 = createMockApprovalRequest({id: 'second'});
             const callback2 = createMockCallback();
 
             state = setApprovalRequest(state, request2, callback2.callback);
@@ -256,17 +263,17 @@ describe('Approval state helpers', () => {
         });
 
         it('does not interfere with other state changes', () => {
-            let state = createInitialState({ activeView: 'dashboard' });
+            let state = createInitialState({activeView: 'dashboard'});
 
             const request = createMockApprovalRequest();
-            const { callback } = createMockCallback();
+            const {callback} = createMockCallback();
 
             // Set approval
             state = setApprovalRequest(state, request, callback);
             expect(state.activeView).toBe('dashboard');
 
             // Change view (simulate normal state change)
-            state = { ...state, activeView: 'tasks' };
+            state = {...state, activeView: 'tasks'};
             expect(hasActiveApproval(state)).toBe(true);
             expect(state.activeView).toBe('tasks');
 

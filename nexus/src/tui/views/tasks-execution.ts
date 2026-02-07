@@ -1,15 +1,21 @@
-import { BoxRenderable, SelectRenderable, SelectRenderableEvents, TextRenderable, type KeyEvent } from '@opentui/core';
-import { readdir } from 'node:fs/promises';
-import { join } from 'node:path';
+import {
+    BoxRenderable,
+    SelectRenderable,
+    SelectRenderableEvents,
+    TextRenderable,
+    type KeyEvent,
+} from '@opentui/core';
+import {readdir} from 'node:fs/promises';
+import {join} from 'node:path';
 
-import type { Config } from '../../config/config.ts';
-import type { Role } from '../../core/domain/role.ts';
-import { runTaskSessions } from '../../core/orchestration/sessionRunner.ts';
-import { parseTask } from '../../core/parsing/task.ts';
-import { TASKS_DIR, TASK_FILE, validateProjectId } from '../../storage/layout.ts';
+import type {Config} from '../../config/config.ts';
+import type {Role} from '../../core/domain/role.ts';
+import {runTaskSessions} from '../../core/orchestration/sessionRunner.ts';
+import {parseTask} from '../../core/parsing/task.ts';
+import {TASKS_DIR, TASK_FILE, validateProjectId} from '../../storage/layout.ts';
 
-import type { TuiSetState } from '../keybindings.ts';
-import type { TuiState } from '../state.ts';
+import type {TuiSetState} from '../keybindings.ts';
+import type {TuiState} from '../state.ts';
 
 type TasksViewContext = {
     config: Config;
@@ -65,7 +71,7 @@ type RunState = {
     errorMessage?: string;
 };
 
-function safeDestroy(node: { destroyRecursively?: () => void } | undefined): void {
+function safeDestroy(node: {destroyRecursively?: () => void} | undefined): void {
     try {
         node?.destroyRecursively?.();
     } catch {
@@ -80,8 +86,8 @@ function safeMessage(error: unknown): string {
 }
 
 async function listDirectories(path: string): Promise<string[]> {
-    const entries = await readdir(path, { withFileTypes: true });
-    return entries.filter((entry) => entry.isDirectory()).map((entry) => entry.name);
+    const entries = await readdir(path, {withFileTypes: true});
+    return entries.filter(entry => entry.isDirectory()).map(entry => entry.name);
 }
 
 function formatSummary(value: {
@@ -101,12 +107,20 @@ function formatSummary(value: {
     }
 
     if (value.error) {
-        return ['Summary', '', `Project: ${value.projectId}`, `Task: ${value.taskId}`, '', `Parse error: ${value.error}`].join(
-            '\n'
-        );
+        return [
+            'Summary',
+            '',
+            `Project: ${value.projectId}`,
+            `Task: ${value.taskId}`,
+            '',
+            `Parse error: ${value.error}`,
+        ].join('\n');
     }
 
-    const roles = value.assignedRoles && value.assignedRoles.length > 0 ? value.assignedRoles.join(', ') : '(none)';
+    const roles =
+        value.assignedRoles && value.assignedRoles.length > 0
+            ? value.assignedRoles.join(', ')
+            : '(none)';
 
     return [
         'Summary',
@@ -115,7 +129,7 @@ function formatSummary(value: {
         `Task: ${value.taskId}`,
         value.title ? `Title: ${value.title}` : 'Title: (missing)',
         value.status ? `Status: ${value.status}` : 'Status: (missing)',
-        `Assigned roles: ${roles}`
+        `Assigned roles: ${roles}`,
     ].join('\n');
 }
 
@@ -124,28 +138,34 @@ function formatRun(value?: RunState): string {
         return ['Run', '', 'Press r to run the selected task.'].join('\n');
     }
 
-    const header = value.active ? `Running ${value.projectId} / ${value.taskId}` : `Run finished ${value.projectId} / ${value.taskId}`;
+    const header = value.active
+        ? `Running ${value.projectId} / ${value.taskId}`
+        : `Run finished ${value.projectId} / ${value.taskId}`;
 
-    const roleLines = value.rolesInOrder.length > 0
-        ? value.rolesInOrder.map((role) => {
-              const state = value.roles[role] ?? { status: 'pending' as const };
-              switch (state.status) {
-                  case 'running':
-                      return `- ${role}  ... running`;
-                  case 'success': {
-                      const len = typeof state.responseLength === 'number' ? `  len=${state.responseLength}` : '';
-                      const runId = state.runId ? `  runId=${state.runId}` : '';
-                      return `- ${role}  done${runId}${len}`;
+    const roleLines =
+        value.rolesInOrder.length > 0
+            ? value.rolesInOrder.map(role => {
+                  const state = value.roles[role] ?? {status: 'pending' as const};
+                  switch (state.status) {
+                      case 'running':
+                          return `- ${role}  ... running`;
+                      case 'success': {
+                          const len =
+                              typeof state.responseLength === 'number'
+                                  ? `  len=${state.responseLength}`
+                                  : '';
+                          const runId = state.runId ? `  runId=${state.runId}` : '';
+                          return `- ${role}  done${runId}${len}`;
+                      }
+                      case 'error': {
+                          const reason = state.error ? `  ${state.error}` : '';
+                          return `- ${role}  failed${reason}`;
+                      }
+                      default:
+                          return `- ${role}  (pending)`;
                   }
-                  case 'error': {
-                      const reason = state.error ? `  ${state.error}` : '';
-                      return `- ${role}  failed${reason}`;
-                  }
-                  default:
-                      return `- ${role}  (pending)`;
-              }
-          })
-        : ['(no roles started yet)'];
+              })
+            : ['(no roles started yet)'];
 
     const footer = !value.active && value.errorMessage ? ['', `Failed: ${value.errorMessage}`] : [];
 
@@ -177,9 +197,14 @@ async function executeTaskRun(options: {
     projectId: string;
     taskId: string;
     onRoleStart?: (role: Role) => Promise<void> | void;
-    onRoleSuccess?: (role: Role, run: { runId: string; responseText?: string }) => Promise<void> | void;
+    onRoleSuccess?: (
+        role: Role,
+        run: {runId: string; responseText?: string}
+    ) => Promise<void> | void;
     onRoleError?: (role: Role, error: unknown) => Promise<void> | void;
-}): Promise<{ ok: true; resultsLength: number } | { ok: false; errorMessage: string; failingRole?: Role }> {
+}): Promise<
+    {ok: true; resultsLength: number} | {ok: false; errorMessage: string; failingRole?: Role}
+> {
     try {
         const results = await runTaskSessions({
             config: options.config,
@@ -188,21 +213,28 @@ async function executeTaskRun(options: {
             allowCarryover: false,
             onRoleStart: options.onRoleStart,
             onRoleSuccess: options.onRoleSuccess,
-            onRoleError: options.onRoleError
+            onRoleError: options.onRoleError,
         });
 
-        return { ok: true, resultsLength: results.length };
+        return {ok: true, resultsLength: results.length};
     } catch (error) {
-        const failingRole = (error as { role?: Role })?.role;
-        return { ok: false, errorMessage: safeMessage(error), failingRole };
+        const failingRole = (error as {role?: Role})?.role;
+        return {ok: false, errorMessage: safeMessage(error), failingRole};
     }
 }
 
-async function runSelectedTask(container: any, view: TasksView, ctx: TasksViewContext): Promise<RunOutcome> {
-    if (view.disposed) return { ok: false, errorMessage: 'View disposed' };
+async function runSelectedTask(
+    container: any,
+    view: TasksView,
+    ctx: TasksViewContext
+): Promise<RunOutcome> {
+    if (view.disposed) return {ok: false, errorMessage: 'View disposed'};
     if (view.run?.active) {
-        ctx.setState((prev) => ({ ...prev, statusMessage: 'Run already active (wait for it to finish)' }));
-        return { ok: false, errorMessage: 'Run already active' };
+        ctx.setState(prev => ({
+            ...prev,
+            statusMessage: 'Run already active (wait for it to finish)',
+        }));
+        return {ok: false, errorMessage: 'Run already active'};
     }
 
     const state = ctx.getState();
@@ -210,11 +242,11 @@ async function runSelectedTask(container: any, view: TasksView, ctx: TasksViewCo
     const taskId = (view.activeTaskId ?? state.lastTaskId)?.trim();
 
     if (!projectId || !taskId) {
-        ctx.setState((prev) => ({
+        ctx.setState(prev => ({
             ...prev,
-            statusMessage: 'Select a project + task (Enter) then press r to run'
+            statusMessage: 'Select a project + task (Enter) then press r to run',
         }));
-        return { ok: false, errorMessage: 'No project/task selected' };
+        return {ok: false, errorMessage: 'No project/task selected'};
     }
 
     const seq = ++view.runSeq;
@@ -225,16 +257,16 @@ async function runSelectedTask(container: any, view: TasksView, ctx: TasksViewCo
         startedAt: Date.now(),
         active: true,
         rolesInOrder: [],
-        roles: {}
+        roles: {},
     };
 
-    ctx.setState((prev) => ({ ...prev, statusMessage: `Running ${projectId} / ${taskId}...` }));
+    ctx.setState(prev => ({...prev, statusMessage: `Running ${projectId} / ${taskId}...`}));
     updateRunBox(container, view);
 
     const ensureRole = (role: Role) => {
         const current = view.run;
         if (!current || current.seq !== seq) return;
-        if (!current.roles[role]) current.roles[role] = { status: 'pending' };
+        if (!current.roles[role]) current.roles[role] = {status: 'pending'};
         if (!current.rolesInOrder.includes(role)) current.rolesInOrder.push(role);
     };
 
@@ -242,11 +274,11 @@ async function runSelectedTask(container: any, view: TasksView, ctx: TasksViewCo
         config: ctx.config,
         projectId,
         taskId,
-        onRoleStart: async (role) => {
+        onRoleStart: async role => {
             if (view.disposed) return;
             if (!view.run || view.run.seq !== seq) return;
             ensureRole(role);
-            view.run.roles[role] = { ...view.run.roles[role], status: 'running' };
+            view.run.roles[role] = {...view.run.roles[role], status: 'running'};
             updateRunBox(container, view);
         },
         onRoleSuccess: async (role, run) => {
@@ -270,20 +302,20 @@ async function runSelectedTask(container: any, view: TasksView, ctx: TasksViewCo
             };
             view.run.failingRole = role;
             updateRunBox(container, view);
-        }
+        },
     });
 
-    if (!view.run || view.run.seq !== seq) return { ok: false, errorMessage: 'Run superseded' };
+    if (!view.run || view.run.seq !== seq) return {ok: false, errorMessage: 'Run superseded'};
     view.run.active = false;
     view.run.finishedAt = Date.now();
 
     if (result.ok) {
         updateRunBox(container, view);
-        ctx.setState((prev) => ({
+        ctx.setState(prev => ({
             ...prev,
-            statusMessage: `Run complete: ${result.resultsLength} role(s) finished`
+            statusMessage: `Run complete: ${result.resultsLength} role(s) finished`,
         }));
-        return { ok: true };
+        return {ok: true};
     }
 
     view.run.errorMessage = result.errorMessage;
@@ -291,14 +323,17 @@ async function runSelectedTask(container: any, view: TasksView, ctx: TasksViewCo
     updateRunBox(container, view);
 
     const failureMessage = `Run failed${view.run.failingRole ? ` at ${view.run.failingRole}` : ''}: ${view.run.errorMessage}`;
-    ctx.setState((prev) => ({
+    ctx.setState(prev => ({
         ...prev,
-        statusMessage: failureMessage
+        statusMessage: failureMessage,
     }));
-    return { ok: false, errorMessage: failureMessage };
+    return {ok: false, errorMessage: failureMessage};
 }
 
-export async function runSelectedTaskAction(container: any, ctx: TasksViewContext): Promise<RunOutcome> {
+export async function runSelectedTaskAction(
+    container: any,
+    ctx: TasksViewContext
+): Promise<RunOutcome> {
     const view = getOrCreateView(container, ctx);
     return runSelectedTask(container, view, ctx);
 }
@@ -311,12 +346,12 @@ export async function runTaskNonInteractive(options: {
     const result = await executeTaskRun({
         config: options.config,
         projectId: options.projectId,
-        taskId: options.taskId
+        taskId: options.taskId,
     });
 
-    if (result.ok) return { ok: true };
+    if (result.ok) return {ok: true};
     const failureMessage = `Run failed${result.failingRole ? ` at ${result.failingRole}` : ''}: ${result.errorMessage}`;
-    return { ok: false, errorMessage: failureMessage };
+    return {ok: false, errorMessage: failureMessage};
 }
 
 function getOrCreateView(container: any, ctx: TasksViewContext): TasksView {
@@ -376,8 +411,13 @@ function getOrCreateView(container: any, ctx: TasksViewContext): TasksView {
         width: '100%',
         height: '100%',
         showDescription: false,
-        options: [{ name: '(loading projects...)', description: '' }],
-        onKeyDown: (key) => onListKeyDown(key, () => setFocus(view, 'tasks'), () => void runSelectedTask(container, view, ctx)),
+        options: [{name: '(loading projects...)', description: ''}],
+        onKeyDown: key =>
+            onListKeyDown(
+                key,
+                () => setFocus(view, 'tasks'),
+                () => void runSelectedTask(container, view, ctx)
+            ),
     });
 
     const tasksList = new SelectRenderable(container.ctx, {
@@ -385,8 +425,13 @@ function getOrCreateView(container: any, ctx: TasksViewContext): TasksView {
         width: '100%',
         height: '100%',
         showDescription: false,
-        options: [{ name: '(select a project)', description: '' }],
-        onKeyDown: (key) => onListKeyDown(key, () => setFocus(view, 'projects'), () => void runSelectedTask(container, view, ctx)),
+        options: [{name: '(select a project)', description: ''}],
+        onKeyDown: key =>
+            onListKeyDown(
+                key,
+                () => setFocus(view, 'projects'),
+                () => void runSelectedTask(container, view, ctx)
+            ),
     });
 
     const summaryBox = new TextRenderable(container.ctx, {
@@ -427,19 +472,19 @@ function getOrCreateView(container: any, ctx: TasksViewContext): TasksView {
         focus: 'projects',
         loadSeq: 0,
         runSeq: 0,
-        disposed: false
+        disposed: false,
     };
 
     projectsList.on(SelectRenderableEvents.ITEM_SELECTED, (index: number) => {
         const projectId = view.projects[index];
         if (!projectId) return;
-        void selectProject(container, view, ctx, projectId, { commit: true });
+        void selectProject(container, view, ctx, projectId, {commit: true});
     });
 
     tasksList.on(SelectRenderableEvents.ITEM_SELECTED, (index: number) => {
         const taskId = view.tasks[index];
         if (!taskId || !view.activeProjectId) return;
-        void selectTask(container, view, ctx, view.activeProjectId, taskId, { commit: true });
+        void selectTask(container, view, ctx, view.activeProjectId, taskId, {commit: true});
     });
 
     container[VIEW_KEY] = view;
@@ -463,7 +508,11 @@ function onListKeyDown(key: KeyEvent, onTab: () => void, onRun: () => void): voi
     }
 }
 
-async function refreshProjects(container: any, view: TasksView, ctx: TasksViewContext): Promise<void> {
+async function refreshProjects(
+    container: any,
+    view: TasksView,
+    ctx: TasksViewContext
+): Promise<void> {
     const seq = ++view.loadSeq;
     setSelectItems(view.projectsList, ['(loading projects...)']);
     setSelectItems(view.tasksList, ['(select a project)']);
@@ -473,11 +522,11 @@ async function refreshProjects(container: any, view: TasksView, ctx: TasksViewCo
     let projects: string[] = [];
     try {
         projects = await listDirectories(ctx.config.projectsDir);
-        projects = projects.filter((id) => validateProjectId(id)).sort((a, b) => a.localeCompare(b));
+        projects = projects.filter(id => validateProjectId(id)).sort((a, b) => a.localeCompare(b));
     } catch (error) {
         view.projects = [];
         setSelectItems(view.projectsList, ['(failed to read projects dir)']);
-        view.summaryBox.content = formatSummary({ error: String(error) });
+        view.summaryBox.content = formatSummary({error: String(error)});
         container.requestRender?.();
         return;
     }
@@ -488,7 +537,10 @@ async function refreshProjects(container: any, view: TasksView, ctx: TasksViewCo
     setSelectItems(view.projectsList, projects.length > 0 ? projects : ['(no projects)']);
 
     const state = ctx.getState();
-    const desiredProjectId = state.lastProjectId && projects.includes(state.lastProjectId) ? state.lastProjectId : projects[0];
+    const desiredProjectId =
+        state.lastProjectId && projects.includes(state.lastProjectId)
+            ? state.lastProjectId
+            : projects[0];
 
     if (!desiredProjectId) {
         view.activeProjectId = undefined;
@@ -503,7 +555,9 @@ async function refreshProjects(container: any, view: TasksView, ctx: TasksViewCo
     const projectIndex = projects.indexOf(desiredProjectId);
     if (projectIndex >= 0) view.projectsList.setSelectedIndex(projectIndex);
 
-    await selectProject(container, view, ctx, desiredProjectId, { commit: !state.lastProjectId || state.lastProjectId !== desiredProjectId });
+    await selectProject(container, view, ctx, desiredProjectId, {
+        commit: !state.lastProjectId || state.lastProjectId !== desiredProjectId,
+    });
 }
 
 async function selectProject(
@@ -511,13 +565,13 @@ async function selectProject(
     view: TasksView,
     ctx: TasksViewContext,
     projectId: string,
-    options: { commit: boolean }
+    options: {commit: boolean}
 ): Promise<void> {
     view.activeProjectId = projectId;
     view.activeTaskId = undefined;
     view.tasks = [];
     setSelectItems(view.tasksList, ['(loading tasks...)']);
-    view.summaryBox.content = formatSummary({ projectId });
+    view.summaryBox.content = formatSummary({projectId});
     container.requestRender?.();
 
     const seq = ++view.loadSeq;
@@ -536,7 +590,8 @@ async function selectProject(
     setSelectItems(view.tasksList, tasks.length > 0 ? tasks : ['(no tasks)']);
 
     const state = ctx.getState();
-    const desiredTaskId = state.lastTaskId && tasks.includes(state.lastTaskId) ? state.lastTaskId : tasks[0];
+    const desiredTaskId =
+        state.lastTaskId && tasks.includes(state.lastTaskId) ? state.lastTaskId : tasks[0];
 
     if (desiredTaskId) {
         const taskIndex = tasks.indexOf(desiredTaskId);
@@ -544,7 +599,7 @@ async function selectProject(
     }
 
     if (options.commit) {
-        ctx.setState((prev) => {
+        ctx.setState(prev => {
             const nextProjectId = projectId;
             const nextTaskId = desiredTaskId;
 
@@ -553,19 +608,19 @@ async function selectProject(
                 ...prev,
                 lastProjectId: nextProjectId,
                 lastTaskId: nextTaskId,
-                statusMessage: `Selected ${nextProjectId}${nextTaskId ? ` / ${nextTaskId}` : ''}`
+                statusMessage: `Selected ${nextProjectId}${nextTaskId ? ` / ${nextTaskId}` : ''}`,
             };
         });
     }
 
     if (desiredTaskId) {
-        await selectTask(container, view, ctx, projectId, desiredTaskId, { commit: false });
+        await selectTask(container, view, ctx, projectId, desiredTaskId, {commit: false});
         setFocus(view, 'tasks');
         return;
     }
 
     view.activeTaskId = undefined;
-    view.summaryBox.content = formatSummary({ projectId });
+    view.summaryBox.content = formatSummary({projectId});
     container.requestRender?.();
 }
 
@@ -575,45 +630,49 @@ async function selectTask(
     ctx: TasksViewContext,
     projectId: string,
     taskId: string,
-    options: { commit: boolean }
+    options: {commit: boolean}
 ): Promise<void> {
     view.activeProjectId = projectId;
     view.activeTaskId = taskId;
-    view.summaryBox.content = formatSummary({ projectId, taskId });
+    view.summaryBox.content = formatSummary({projectId, taskId});
     container.requestRender?.();
 
     const taskPath = join(ctx.config.projectsDir, projectId, TASKS_DIR, taskId, TASK_FILE);
     try {
         const markdown = await Bun.file(taskPath).text();
-        const parsed = parseTask(markdown, { path: taskPath });
+        const parsed = parseTask(markdown, {path: taskPath});
         view.summaryBox.content = formatSummary({
             projectId,
             taskId: parsed.id,
             title: parsed.title,
             status: parsed.status,
-            assignedRoles: parsed.assignedRoles
+            assignedRoles: parsed.assignedRoles,
         });
     } catch (error) {
-        view.summaryBox.content = formatSummary({ projectId, taskId, error: (error as Error)?.message ?? String(error) });
+        view.summaryBox.content = formatSummary({
+            projectId,
+            taskId,
+            error: (error as Error)?.message ?? String(error),
+        });
     }
 
     container.requestRender?.();
 
     if (options.commit) {
-        ctx.setState((prev) => {
+        ctx.setState(prev => {
             if (prev.lastProjectId === projectId && prev.lastTaskId === taskId) return prev;
             return {
                 ...prev,
                 lastProjectId: projectId,
                 lastTaskId: taskId,
-                statusMessage: `Selected ${projectId} / ${taskId}`
+                statusMessage: `Selected ${projectId} / ${taskId}`,
             };
         });
     }
 }
 
 function setSelectItems(list: SelectRenderable, items: string[]): void {
-    list.options = items.map((name) => ({ name, description: '' }));
+    list.options = items.map(name => ({name, description: ''}));
     if (items.length > 0) {
         list.setSelectedIndex(0);
     }

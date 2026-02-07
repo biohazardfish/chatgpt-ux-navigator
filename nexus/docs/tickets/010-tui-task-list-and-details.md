@@ -11,9 +11,9 @@ Implement **task inspection views** in the Nexus TUI so the operator can:
 - See all tasks in the current project
 - Understand task status and scope at a glance
 - Drill into a single task to inspect:
-  - Task definition
-  - Assigned roles
-  - Associated reports (parsed + raw access later)
+    - Task definition
+    - Assigned roles
+    - Associated reports (parsed + raw access later)
 
 This is a **read-only inspection feature** and a prerequisite for governance and approvals.
 
@@ -41,12 +41,14 @@ This ticket **exposes task state to the operator**, without allowing edits or ex
 ## Scope
 
 ### Included
+
 - Task list view
 - Task detail view
 - Keyboard navigation between tasks
 - Read-only rendering of task data
 
 ### Excluded
+
 - Creating, editing, or deleting tasks
 - Starting or canceling task execution
 - Approving or rejecting task results
@@ -102,6 +104,7 @@ Reports:
 ```
 
 If no reports exist:
+
 ```
 Reports:
 (none yet)
@@ -112,11 +115,13 @@ Reports:
 ## Navigation & keybindings
 
 ### Task List
+
 - `↑ / ↓` — move selection
 - `Enter` — open task detail
 - `Esc` — return to dashboard
 
 ### Task Detail
+
 - `Esc` — return to task list
 
 (No scrolling required in MVP; truncate overflow if necessary.)
@@ -129,13 +134,13 @@ Extend TUI state:
 
 ```ts
 interface TuiState {
-  activeView: ViewId
-  statusMessage: string
-  project?: Project
+    activeView: ViewId;
+    statusMessage: string;
+    project?: Project;
 
-  // Task navigation
-  selectedTaskIndex?: number
-  activeTaskId?: string
+    // Task navigation
+    selectedTaskIndex?: number;
+    activeTaskId?: string;
 }
 ```
 
@@ -152,6 +157,7 @@ interface TuiState {
 ## Proposed file changes
 
 ### New files
+
 ```
 src/tui/views/tasks/
   list.ts
@@ -159,6 +165,7 @@ src/tui/views/tasks/
 ```
 
 ### Updated files
+
 ```
 src/tui/views/tasks.ts        (router between list/detail)
 src/tui/state.ts
@@ -170,40 +177,40 @@ src/tui/keybindings.ts
 ## Implementation steps
 
 1. **Task List rendering**
-   - Sort tasks by ID (or creation time)
-   - Highlight selected row
-   - Show status with simple color coding:
-     - Completed → green
-     - Running → yellow
-     - Blocked → red
-     - Pending → default
+    - Sort tasks by ID (or creation time)
+    - Highlight selected row
+    - Show status with simple color coding:
+        - Completed → green
+        - Running → yellow
+        - Blocked → red
+        - Pending → default
 
 2. **Selection handling**
-   - Initialize selection at index 0
-   - Clamp selection on bounds
-   - Update `selectedTaskIndex` on arrow keys
+    - Initialize selection at index 0
+    - Clamp selection on bounds
+    - Update `selectedTaskIndex` on arrow keys
 
 3. **Open task detail**
-   - On `Enter`, set `activeTaskId`
-   - Switch view to task detail
+    - On `Enter`, set `activeTaskId`
+    - Switch view to task detail
 
 4. **Task detail rendering**
-   - Lookup task by ID
-   - Render fields in a vertical layout
-   - List reports (from parsed domain data)
-   - Show report status only (no deep inspection yet)
+    - Lookup task by ID
+    - Render fields in a vertical layout
+    - List reports (from parsed domain data)
+    - Show report status only (no deep inspection yet)
 
 5. **Back navigation**
-   - `Esc` returns to task list
-   - Preserve selection index
+    - `Esc` returns to task list
+    - Preserve selection index
 
 ---
 
 ## Error handling
 
 - If a task referenced in state no longer exists:
-  - Show error message
-  - Return to task list
+    - Show error message
+    - Return to task list
 - Do not crash TUI due to malformed task data
 
 ---
@@ -211,6 +218,7 @@ src/tui/keybindings.ts
 ## Testing
 
 ### Unit tests
+
 Add under `test/tui/tasks/`:
 
 - Task list renders correct number of rows
@@ -220,6 +228,7 @@ Add under `test/tui/tasks/`:
 Mock `Project`, `Task`, and `Report` objects.
 
 Manual verification:
+
 - Keyboard navigation
 - Readability in small terminals
 
@@ -252,27 +261,27 @@ Manual verification:
 ### What Was Implemented
 
 1. **State Management** (`src/tui/state.ts`)
-   - Added `selectedTaskIndex?: number` for list position tracking
-   - Added `activeTaskId?: string` for detail view routing
+    - Added `selectedTaskIndex?: number` for list position tracking
+    - Added `activeTaskId?: string` for detail view routing
 
 2. **Task List View** (`src/tui/views/tasks/list.ts`, 245 lines)
-   - SelectRenderable with arrow key navigation
-   - Status indicators: ✓ (completed), ▶ (running), ✗ (blocked), ○ (pending)
-   - Enter opens detail, Esc returns to dashboard
+    - SelectRenderable with arrow key navigation
+    - Status indicators: ✓ (completed), ▶ (running), ✗ (blocked), ○ (pending)
+    - Enter opens detail, Esc returns to dashboard
 
 3. **Task Detail View** (`src/tui/views/tasks/detail.ts`, 172 lines)
-   - TextRenderable with full task information
-   - Shows ID, title, status, date, objective, roles, goals, reports
-   - Esc returns to task list
+    - TextRenderable with full task information
+    - Shows ID, title, status, date, objective, roles, goals, reports
+    - Esc returns to task list
 
 4. **Router** (`src/tui/views/tasks/index.ts`, 160 lines)
-   - State-driven switching between list and detail
-   - Error handling for missing tasks
-   - Selection preservation on navigation
+    - State-driven switching between list and detail
+    - Error handling for missing tasks
+    - Selection preservation on navigation
 
 5. **Main Tasks View** (`src/tui/views/tasks.ts`)
-   - Refactored as dispatcher between inspection and execution modes
-   - Original execution logic extracted to `tasks-execution.ts` (674 lines)
+    - Refactored as dispatcher between inspection and execution modes
+    - Original execution logic extracted to `tasks-execution.ts` (674 lines)
 
 ### Test Coverage
 
@@ -291,16 +300,16 @@ Manual verification:
 ### Known Limitations (MVP Scope)
 
 1. **Report loading not implemented**: `getReportsForTask()` returns empty array (TODO comment)
-   - Reports section displays structure but no actual data loaded from storage
-   - Acceptable for MVP, needs follow-up ticket
+    - Reports section displays structure but no actual data loaded from storage
+    - Acceptable for MVP, needs follow-up ticket
 
 2. **No scrolling support**: Long task lists/details will be truncated
-   - Acceptable for MVP as documented in ticket
-   - Needs follow-up ticket for scroll support
+    - Acceptable for MVP as documented in ticket
+    - Needs follow-up ticket for scroll support
 
 3. **No color styling**: Uses symbols instead of colors
-   - Better solution for terminal compatibility
-   - Could enhance with color detection for supported terminals
+    - Better solution for terminal compatibility
+    - Could enhance with color detection for supported terminals
 
 ### Follow-Up Items
 

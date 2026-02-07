@@ -19,6 +19,7 @@ This ticket adds **concurrency orchestration** on top of the sequential session 
 ## Context
 
 Currently:
+
 - Session execution is **sequential** per task (ticket 013)
 - Run capture persists raw outputs (ticket 006)
 - Governance expects a set of parsed reports (ticket 015)
@@ -30,6 +31,7 @@ Nexus design explicitly emphasizes controlled parallelism, but with governance a
 ## Scope
 
 ### Included
+
 - Parallel execution engine for session runs
 - Concurrency limits (global + per-task)
 - Cancellation support (best-effort)
@@ -37,6 +39,7 @@ Nexus design explicitly emphasizes controlled parallelism, but with governance a
 - Failure containment rules (do not corrupt project state)
 
 ### Excluded
+
 - Sophisticated scheduling (priority queues, fairness)
 - Rate-limit adaptation
 - Streaming UI display
@@ -47,10 +50,11 @@ Nexus design explicitly emphasizes controlled parallelism, but with governance a
 ## Concurrency model
 
 ### Two dimensions
+
 1. **Intra-task parallelism**
-   - Execute multiple roles for one task concurrently (optional per task)
+    - Execute multiple roles for one task concurrently (optional per task)
 2. **Inter-task parallelism**
-   - Execute multiple tasks concurrently (bounded)
+    - Execute multiple tasks concurrently (bounded)
 
 ---
 
@@ -68,25 +72,27 @@ Expose via `Config`.
 ## Execution policies (MVP)
 
 ### Role execution policy per task
+
 Add `executionMode` to `ExecutableTask` (derived, not persisted):
 
 ```ts
-type ExecutionMode = 'sequential' | 'parallel'
+type ExecutionMode = 'sequential' | 'parallel';
 
 interface ExecutableTask {
-  taskId: string
-  objective: string
-  roles: Role[]
-  context: TaskContext
-  executionMode: ExecutionMode
+    taskId: string;
+    objective: string;
+    roles: Role[];
+    context: TaskContext;
+    executionMode: ExecutionMode;
 }
 ```
 
 Rules:
+
 - Default: `sequential`
 - Allow tasks to opt-in to `parallel` via a simple heuristic:
-  - If roles include both `planner` and `reviewer` → allow parallel
-  - Otherwise sequential
+    - If roles include both `planner` and `reviewer` → allow parallel
+    - Otherwise sequential
 - (Later tickets can expose this to operator configuration)
 
 ---
@@ -96,12 +102,12 @@ Rules:
 When running roles in parallel:
 
 - If any role run fails at the transport level:
-  - Mark task `blocked`
-  - Do not attempt governance
-  - Surface error
+    - Mark task `blocked`
+    - Do not attempt governance
+    - Surface error
 - If some roles succeed and others fail:
-  - Persist successful run artifacts (already done by run capture)
-  - Still mark task blocked (no partial acceptance)
+    - Persist successful run artifacts (already done by run capture)
+    - Still mark task blocked (no partial acceptance)
 
 When running tasks in parallel:
 
@@ -121,8 +127,8 @@ Expose API:
 
 ```ts
 interface RunningHandle {
-  cancel(): void
-  promise: Promise<SessionResult[]>
+    cancel(): void;
+    promise: Promise<SessionResult[]>;
 }
 ```
 
@@ -133,25 +139,21 @@ interface RunningHandle {
 Introduce a parallel runner that replaces or wraps `runTaskSessions`.
 
 ```ts
-async function runTaskSessionsParallel(
-  params: {
-    project: Project
-    executableTask: ExecutableTask
-    config: Config
-  }
-): Promise<SessionResult[]>
+async function runTaskSessionsParallel(params: {
+    project: Project;
+    executableTask: ExecutableTask;
+    config: Config;
+}): Promise<SessionResult[]>;
 ```
 
 For inter-task parallelism:
 
 ```ts
-async function runTasksInParallel(
-  params: {
-    project: Project
-    executableTasks: ExecutableTask[]
-    config: Config
-  }
-): Promise<Record<string, SessionResult[]>> // taskId -> results
+async function runTasksInParallel(params: {
+    project: Project;
+    executableTasks: ExecutableTask[];
+    config: Config;
+}): Promise<Record<string, SessionResult[]>>; // taskId -> results
 ```
 
 ---
@@ -159,6 +161,7 @@ async function runTasksInParallel(
 ## Implementation approach
 
 ### Concurrency limiter
+
 Implement a simple semaphore:
 
 - `acquire()` / `release()`
@@ -169,6 +172,7 @@ Implement a simple semaphore:
 ## Proposed file structure
 
 ### New files
+
 ```
 src/core/orchestration/concurrency/
   semaphore.ts
@@ -177,6 +181,7 @@ src/core/orchestration/parallelRunner.ts
 ```
 
 ### Updated files
+
 ```
 src/server/runExecutor.ts          // accept AbortSignal
 src/core/orchestration/sessionRunner.ts  // delegate to parallel runner based on mode
@@ -191,11 +196,11 @@ src/config/config.ts               // add concurrency limits
 2. Implement semaphore limiter
 3. Update run executor to accept `AbortSignal`
 4. Implement parallel role execution:
-   - Map roles → promises
-   - Limit concurrency using semaphore
+    - Map roles → promises
+    - Limit concurrency using semaphore
 5. Implement inter-task execution helper (optional but recommended in this ticket)
 6. Ensure deterministic ordering in results:
-   - Sort `SessionResult[]` by original role order before returning
+    - Sort `SessionResult[]` by original role order before returning
 
 ---
 

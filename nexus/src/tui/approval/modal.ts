@@ -5,8 +5,8 @@
  * including word-wrapping for long text.
  */
 
-import type { TuiLayout } from '../layout.ts';
-import type { ApprovalRequest, ApprovalOption } from './types.ts';
+import type {TuiLayout} from '../layout.ts';
+import type {ApprovalRequest, ApprovalOption} from './types.ts';
 
 // -----------------------------------------------------------------------------
 // Constants
@@ -108,7 +108,11 @@ export function formatApprovalContent(request: ApprovalRequest, width: number): 
  * Formats a single option line with its index and optional recommended marker.
  * Index is 1-based for display (user presses 1 for first option).
  */
-export function formatOptionLine(option: ApprovalOption, index: number, isRecommended: boolean): string {
+export function formatOptionLine(
+    option: ApprovalOption,
+    index: number,
+    isRecommended: boolean
+): string {
     const num = index + 1; // 1-based for display
     const recommendedSuffix = isRecommended ? '  (recommended)' : '';
     return `[${num}] ${option.label}${recommendedSuffix}`;

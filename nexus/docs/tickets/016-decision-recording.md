@@ -9,6 +9,7 @@ Decision Recording (Persistent Governance Outcomes)
 Implement **persistent decision recording** so that all approved, high-impact governance outcomes are captured as **immutable decision records** in project state.
 
 This ticket ensures that:
+
 - Important choices are never lost
 - Rationale and trade-offs are preserved
 - Future work is guided by past decisions
@@ -32,12 +33,14 @@ This ticket bridges **user approvals → durable project memory**.
 ## Scope
 
 ### Included
+
 - Creating and persisting decision records
 - Mapping governance outcomes and user approvals to decisions
 - Sequential numbering and naming
 - Linking decisions to tasks and context
 
 ### Excluded
+
 - Editing or deleting decisions
 - Advanced decision querying or visualization
 - Automatic decision generation without user approval
@@ -49,9 +52,9 @@ This ticket bridges **user approvals → durable project memory**.
 A decision **must** be recorded when:
 
 1. A task outcome is **escalated** and the user selects:
-   - Accept
-   - Revise
-   - Abort
+    - Accept
+    - Revise
+    - Abort
 2. A task is explicitly **accepted** after governance evaluation
 3. A plan is approved or superseded (future use; scaffold now)
 
@@ -68,6 +71,7 @@ projects/<project-id>/decisions/
 ```
 
 ### File naming
+
 Sequential, zero-padded:
 
 ```
@@ -83,23 +87,29 @@ Sequential, zero-padded:
 # Decision 002 — Task T-006 Resolution
 
 ## Date
+
 2026-02-01
 
 ## Context
+
 Task T-006 produced conflicting reports between Planner and Reviewer.
 
 ## Options Considered
+
 - Accept as-is
 - Request revisions
 - Abort task
 
 ## Decision
+
 Request revisions.
 
 ## Rationale
+
 The reviewer identified unresolved risks that must be addressed.
 
 ## Consequences
+
 - Task remains blocked
 - Follow-up task required
 ```
@@ -112,14 +122,14 @@ The reviewer identified unresolved risks that must be addressed.
 
 ```ts
 interface DecisionInput {
-  projectId: string
-  taskId?: string
-  title: string
-  context: string
-  options: string[]
-  decision: string
-  rationale: string
-  consequences: string[]
+    projectId: string;
+    taskId?: string;
+    title: string;
+    context: string;
+    options: string[];
+    decision: string;
+    rationale: string;
+    consequences: string[];
 }
 ```
 
@@ -128,9 +138,7 @@ interface DecisionInput {
 ### Recording function
 
 ```ts
-function recordDecision(
-  input: DecisionInput
-): Decision
+function recordDecision(input: DecisionInput): Decision;
 ```
 
 - Assigns next sequential ID
@@ -145,7 +153,7 @@ function recordDecision(
 1. Governance evaluation escalates and produces `ApprovalRequest`
 2. User selects an option in TUI
 3. App layer maps:
-   - Approval option → `DecisionInput`
+    - Approval option → `DecisionInput`
 4. Call `recordDecision`
 5. Continue execution based on decision (out of scope)
 
@@ -156,7 +164,7 @@ function recordDecision(
 - Decision IDs are **monotonic per project**
 - Decision files are **immutable**
 - If a decision file already exists at a computed ID:
-  - Throw and fail loudly (never overwrite)
+    - Throw and fail loudly (never overwrite)
 
 ---
 
@@ -171,11 +179,13 @@ function recordDecision(
 ## Proposed file structure
 
 ### New files
+
 ```
 src/storage/decisionRecorder.ts
 ```
 
 ### Updated files
+
 ```
 src/storage/decision.ts     // reuse parsing logic
 src/app/approvalHandler.ts  // map approval → decision (light glue)
@@ -186,22 +196,22 @@ src/app/approvalHandler.ts  // map approval → decision (light glue)
 ## Implementation steps
 
 1. **Determine next ID**
-   - Scan `decisions/` directory
-   - Compute next sequential integer
+    - Scan `decisions/` directory
+    - Compute next sequential integer
 
 2. **Render decision markdown**
-   - Use fixed template
-   - Fill fields deterministically
+    - Use fixed template
+    - Fill fields deterministically
 
 3. **Atomic write**
-   - Write to temp file
-   - Rename to final filename
+    - Write to temp file
+    - Rename to final filename
 
 4. **Update metadata**
-   - Update `meta.json.lastUpdatedAt`
+    - Update `meta.json.lastUpdatedAt`
 
 5. **Return parsed Decision**
-   - Parse written file using domain parser
+    - Parse written file using domain parser
 
 ---
 

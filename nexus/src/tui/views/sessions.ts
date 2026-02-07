@@ -1,12 +1,12 @@
-import { join } from 'node:path';
+import {join} from 'node:path';
 
-import type { Config } from '../../config/config.ts';
-import { parseTask } from '../../core/parsing/task.ts';
-import { createServerClient } from '../../server/client.ts';
-import { TASKS_DIR, TASK_FILE } from '../../storage/layout.ts';
+import type {Config} from '../../config/config.ts';
+import {parseTask} from '../../core/parsing/task.ts';
+import {createServerClient} from '../../server/client.ts';
+import {TASKS_DIR, TASK_FILE} from '../../storage/layout.ts';
 
-import type { TuiState } from '../state.ts';
-import { renderTextView } from './textView.ts';
+import type {TuiState} from '../state.ts';
+import {renderTextView} from './textView.ts';
 
 type SessionsViewContext = {
     config: Config;
@@ -33,7 +33,7 @@ function getOrCreateView(container: any): SessionsView {
 
     const view: SessionsView = {
         loadSeq: 0,
-        disposed: false
+        disposed: false,
     };
 
     container[VIEW_KEY] = view;
@@ -67,11 +67,7 @@ function formatClientsSection(clients: string[], error?: unknown): string[] {
     const sorted = [...clients].sort((a, b) => a.localeCompare(b));
     return [
         `Connected clients (${sorted.length})`,
-        ...(
-            sorted.length > 0
-                ? sorted.map((id) => `- ${id}`)
-                : ['(none)']
-        )
+        ...(sorted.length > 0 ? sorted.map(id => `- ${id}`) : ['(none)']),
     ];
 }
 
@@ -90,10 +86,7 @@ function formatRequiredRolesSection(value: {
     }
 
     if (value.requiredRolesError) {
-        return [
-            'Required roles',
-            `Task parse error: ${safeMessage(value.requiredRolesError)}`
-        ];
+        return ['Required roles', `Task parse error: ${safeMessage(value.requiredRolesError)}`];
     }
 
     const required = value.requiredRoles ?? [];
@@ -104,46 +97,58 @@ function formatRequiredRolesSection(value: {
     if (value.clientsError) {
         return [
             `Required roles (${required.length})`,
-            ...required.map((role) => `- ${role}  ? unknown (server error)`)
+            ...required.map(role => `- ${role}  ? unknown (server error)`),
         ];
     }
 
     const clientsSet = new Set(value.clients ?? []);
-    const connected = required.filter((role) => clientsSet.has(role));
-    const missing = required.filter((role) => !clientsSet.has(role));
+    const connected = required.filter(role => clientsSet.has(role));
+    const missing = required.filter(role => !clientsSet.has(role));
     const summary = `Connected: ${connected.length}  Missing: ${missing.length}`;
 
     return [
         `Required roles (${required.length})  ${summary}`,
-        ...required.map((role) => {
+        ...required.map(role => {
             const isConnected = clientsSet.has(role);
-            return isConnected
-                ? `- ${role}  connected`
-                : `- ${role}  missing`;
+            return isConnected ? `- ${role}  connected` : `- ${role}  missing`;
         }),
-        ...(missing.length > 0 ? ['', `Missing roles: ${missing.join(', ')}`] : [])
+        ...(missing.length > 0 ? ['', `Missing roles: ${missing.join(', ')}`] : []),
     ];
 }
 
-async function readRequiredRoles(ctx: SessionsViewContext, projectId: string, taskId: string): Promise<string[]> {
+async function readRequiredRoles(
+    ctx: SessionsViewContext,
+    projectId: string,
+    taskId: string
+): Promise<string[]> {
     const taskPath = join(ctx.config.projectsDir, projectId, TASKS_DIR, taskId, TASK_FILE);
     const markdown = await Bun.file(taskPath).text();
-    const parsed = parseTask(markdown, { path: taskPath });
+    const parsed = parseTask(markdown, {path: taskPath});
     // MVP convention: required roles == assigned roles.
     return parsed.assignedRoles ?? [];
 }
 
-async function refresh(container: any, view: SessionsView, ctx: SessionsViewContext): Promise<void> {
+async function refresh(
+    container: any,
+    view: SessionsView,
+    ctx: SessionsViewContext
+): Promise<void> {
     const seq = ++view.loadSeq;
     const state = ctx.getState();
 
-    renderTextView(container, SESSIONS_TEXT_KEY, 'sessions-view-text', ['Sessions', '', ...formatSelection(state), '', '(loading...)'].join('\n'));
+    renderTextView(
+        container,
+        SESSIONS_TEXT_KEY,
+        'sessions-view-text',
+        ['Sessions', '', ...formatSelection(state), '', '(loading...)'].join('\n')
+    );
 
     const projectId = state.lastProjectId?.trim();
     const taskId = state.lastTaskId?.trim();
 
     const clientPromise = createServerClient(ctx.config).listClients();
-    const rolesPromise = projectId && taskId ? readRequiredRoles(ctx, projectId, taskId) : undefined;
+    const rolesPromise =
+        projectId && taskId ? readRequiredRoles(ctx, projectId, taskId) : undefined;
 
     let clients: string[] = [];
     let clientsError: unknown;
@@ -178,10 +183,10 @@ async function refresh(container: any, view: SessionsView, ctx: SessionsViewCont
             requiredRoles,
             requiredRolesError,
             clients,
-            clientsError
+            clientsError,
         }),
         '',
-        ...formatClientsSection(clients, clientsError)
+        ...formatClientsSection(clients, clientsError),
     ];
 
     renderTextView(container, SESSIONS_TEXT_KEY, 'sessions-view-text', lines.join('\n'));
@@ -200,7 +205,12 @@ export function cleanup(container: any): void {
 
 export function render(container: any, _state: TuiState, ctx?: SessionsViewContext): void {
     if (!ctx) {
-        renderTextView(container, SESSIONS_TEXT_KEY, 'sessions-view-text', ['Sessions', '', '(missing view context)'].join('\n'));
+        renderTextView(
+            container,
+            SESSIONS_TEXT_KEY,
+            'sessions-view-text',
+            ['Sessions', '', '(missing view context)'].join('\n')
+        );
         return;
     }
 

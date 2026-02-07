@@ -22,10 +22,10 @@ From earlier tickets:
 
 - Governance currently escalates primarily on status conflicts (ticket 015)
 - Reports contain structured fields:
-  - `SUMMARY`
-  - `ARTIFACTS`
-  - `RISKS`
-  - `NEXT`
+    - `SUMMARY`
+    - `ARTIFACTS`
+    - `RISKS`
+    - `NEXT`
 - Nexus must avoid blindly accepting superficially consistent outputs
 
 This ticket introduces **heuristics**, not full semantic reasoning.
@@ -35,13 +35,13 @@ This ticket introduces **heuristics**, not full semantic reasoning.
 ## Design principles
 
 1. **Heuristics, not truth**
-   - Signals of conflict, not proof
+    - Signals of conflict, not proof
 2. **Explainable**
-   - Every detected conflict must have a human-readable rationale
+    - Every detected conflict must have a human-readable rationale
 3. **Low false negatives preferred over low false positives**
-   - It’s better to escalate unnecessarily than miss a real conflict
+    - It’s better to escalate unnecessarily than miss a real conflict
 4. **Deterministic**
-   - No model calls, no probabilistic behavior
+    - No model calls, no probabilistic behavior
 
 ---
 
@@ -51,11 +51,11 @@ Define explicit conflict categories:
 
 ```ts
 type ConflictType =
-  | 'status-mismatch'
-  | 'contradictory-artifacts'
-  | 'risk-vs-success'
-  | 'divergent-next-steps'
-  | 'assumption-mismatch'
+    | 'status-mismatch'
+    | 'contradictory-artifacts'
+    | 'risk-vs-success'
+    | 'divergent-next-steps'
+    | 'assumption-mismatch';
 ```
 
 ---
@@ -63,7 +63,9 @@ type ConflictType =
 ## Heuristic rules
 
 ### 1. Status mismatch (existing)
+
 Already implemented:
+
 - `success` vs `partial`
 - `success` vs `blocked`
 
@@ -74,15 +76,18 @@ Keep as-is.
 ### 2. Contradictory artifacts
 
 Trigger when:
+
 - Two or more reports list **artifacts** that appear mutually exclusive
 
 MVP heuristic:
+
 - Artifact strings that share keywords but differ by negation:
-  - e.g. `"Use OAuth2"` vs `"Do not use OAuth2"`
+    - e.g. `"Use OAuth2"` vs `"Do not use OAuth2"`
 - Simple string checks:
-  - presence of `not`, `avoid`, `reject` vs affirmative phrasing
+    - presence of `not`, `avoid`, `reject` vs affirmative phrasing
 
 If detected:
+
 - `ConflictType = contradictory-artifacts`
 
 ---
@@ -90,15 +95,18 @@ If detected:
 ### 3. Risk vs success mismatch
 
 Trigger when:
+
 - A report has `STATUS: success`
 - Another report lists **high-severity risks**
 
 MVP heuristic:
+
 - Risk entry contains keywords:
-  - `blocker`, `critical`, `unsafe`, `data loss`, `security`
+    - `blocker`, `critical`, `unsafe`, `data loss`, `security`
 - Case-insensitive match
 
 If detected:
+
 - `ConflictType = risk-vs-success`
 
 ---
@@ -106,14 +114,17 @@ If detected:
 ### 4. Divergent next steps
 
 Trigger when:
+
 - Reports propose **incompatible NEXT steps**
 
 MVP heuristic:
+
 - NEXT entries with conflicting verbs:
-  - `proceed`, `implement`, `ship`
-  - vs `revisit`, `redesign`, `pause`, `validate`
+    - `proceed`, `implement`, `ship`
+    - vs `revisit`, `redesign`, `pause`, `validate`
 
 If detected:
+
 - `ConflictType = divergent-next-steps`
 
 ---
@@ -121,15 +132,18 @@ If detected:
 ### 5. Assumption mismatch (lightweight)
 
 Trigger when:
+
 - One report states an assumption explicitly
 - Another report contradicts it
 
 MVP heuristic:
+
 - Look for phrases:
-  - `assumes`, `assuming`, `based on the assumption`
+    - `assumes`, `assuming`, `based on the assumption`
 - Compare for negation or contradiction markers in another report
 
 If detected:
+
 - `ConflictType = assumption-mismatch`
 
 ---
@@ -140,10 +154,10 @@ Define a structured conflict object:
 
 ```ts
 interface Conflict {
-  type: ConflictType
-  rolesInvolved: Role[]
-  description: string
-  evidence: string[]
+    type: ConflictType;
+    rolesInvolved: Role[];
+    description: string;
+    evidence: string[];
 }
 ```
 
@@ -154,10 +168,10 @@ interface Conflict {
 Update governance evaluation (ticket 015):
 
 - After basic status aggregation:
-  - Run conflict heuristics
+    - Run conflict heuristics
 - If **any conflict detected**:
-  - Force `GovernanceOutcome = escalate`
-  - Include conflicts in escalation context
+    - Force `GovernanceOutcome = escalate`
+    - Include conflicts in escalation context
 
 ---
 
@@ -186,9 +200,7 @@ Detected conflicts:
 ### Conflict detector
 
 ```ts
-function detectConflicts(
-  reports: Report[]
-): Conflict[]
+function detectConflicts(reports: Report[]): Conflict[];
 ```
 
 ### Governance update
@@ -217,6 +229,7 @@ function evaluateReports(...) {
 ## Proposed file structure
 
 ### New files
+
 ```
 src/core/governance/conflicts/
   detector.ts
@@ -225,6 +238,7 @@ src/core/governance/conflicts/
 ```
 
 ### Updated files
+
 ```
 src/core/governance/evaluateReports.ts
 ```

@@ -33,17 +33,19 @@ This ticket evaluates results and determines **next steps**, but does not yet im
 ## Scope
 
 ### Included
+
 - Aggregating multiple reports for a task
 - Determining task outcome
 - Detecting conflicts between reports
 - Deciding whether to:
-  - Accept task
-  - Partially accept and request follow-up
-  - Block task
-  - Escalate to user approval
+    - Accept task
+    - Partially accept and request follow-up
+    - Block task
+    - Escalate to user approval
 - Updating task status accordingly
 
 ### Excluded
+
 - Creating new tasks
 - Revising plans
 - Persisting decisions (next ticket)
@@ -54,11 +56,13 @@ This ticket evaluates results and determines **next steps**, but does not yet im
 ## Inputs and outputs
 
 ### Inputs
+
 - `Project`
 - `Task`
 - `Report[]` (one per role, parsed and validated)
 
 ### Outputs
+
 - Updated task status
 - Optional `ApprovalRequest` (for TUI)
 - Governance result summary (in-memory, logged)
@@ -70,11 +74,7 @@ This ticket evaluates results and determines **next steps**, but does not yet im
 Define an explicit outcome enum:
 
 ```ts
-type GovernanceOutcome =
-  | 'accept'
-  | 'partial'
-  | 'blocked'
-  | 'escalate'
+type GovernanceOutcome = 'accept' | 'partial' | 'blocked' | 'escalate';
 ```
 
 ---
@@ -99,6 +99,7 @@ If a task has only one report:
 Evaluate across reports:
 
 #### Status aggregation
+
 - If **any** report is `blocked`
   → `blocked`
 - Else if reports disagree (`success` vs `partial`)
@@ -113,10 +114,12 @@ Evaluate across reports:
 ### 3. Conflict detection (MVP)
 
 A conflict is detected if:
+
 - Reports have different `status` values **and**
 - At least one report is not `success`
 
 Conflicts trigger:
+
 - `GovernanceOutcome = escalate`
 
 No semantic diffing yet (that comes later).
@@ -127,12 +130,12 @@ No semantic diffing yet (that comes later).
 
 Based on outcome:
 
-| Outcome    | Task Status Change |
-|-----------|--------------------|
-| accept    | `running → completed` |
-| partial   | `running → blocked`   |
-| blocked   | `running → blocked`   |
-| escalate  | `running → blocked`   |
+| Outcome  | Task Status Change    |
+| -------- | --------------------- |
+| accept   | `running → completed` |
+| partial  | `running → blocked`   |
+| blocked  | `running → blocked`   |
+| escalate | `running → blocked`   |
 
 > For MVP, escalation blocks execution until user decision.
 
@@ -167,14 +170,15 @@ Create a lightweight in-memory summary:
 
 ```ts
 interface GovernanceSummary {
-  taskId: string
-  outcome: GovernanceOutcome
-  rationale: string
-  reportStatuses: Record<Role, Report['status']>
+    taskId: string;
+    outcome: GovernanceOutcome;
+    rationale: string;
+    reportStatuses: Record<Role, Report['status']>;
 }
 ```
 
 Used for:
+
 - Logging
 - Debugging
 - Later decision persistence
@@ -185,22 +189,20 @@ Used for:
 
 ```ts
 interface EvaluateReportsParams {
-  project: Project
-  task: Task
-  reports: Report[]
+    project: Project;
+    task: Task;
+    reports: Report[];
 }
 
 interface EvaluateReportsResult {
-  outcome: GovernanceOutcome
-  summary: GovernanceSummary
-  approvalRequest?: ApprovalRequest
+    outcome: GovernanceOutcome;
+    summary: GovernanceSummary;
+    approvalRequest?: ApprovalRequest;
 }
 ```
 
 ```ts
-function evaluateReports(
-  params: EvaluateReportsParams
-): EvaluateReportsResult
+function evaluateReports(params: EvaluateReportsParams): EvaluateReportsResult;
 ```
 
 ---
@@ -216,6 +218,7 @@ function evaluateReports(
 ## Proposed file structure
 
 ### New files
+
 ```
 src/core/governance/
   evaluateReports.ts
@@ -223,6 +226,7 @@ src/core/governance/
 ```
 
 ### Updated files
+
 ```
 src/storage/task.ts      // allow completed/blocked updates
 src/tui/state.ts        // allow approval request injection
@@ -233,9 +237,9 @@ src/tui/state.ts        // allow approval request injection
 ## Error handling
 
 - If no reports provided:
-  - Throw explicit error
+    - Throw explicit error
 - If report roles do not match task roles:
-  - Throw explicit error
+    - Throw explicit error
 - Governance errors must not leave task in an inconsistent state
 
 ---

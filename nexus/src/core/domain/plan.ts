@@ -1,7 +1,7 @@
-import type { PlanStatus } from './status.ts';
+import type {PlanStatus} from './status.ts';
 
 export interface Plan {
-  status: PlanStatus;
-  phases: string[];
-  notes: string[];
+    status: PlanStatus;
+    phases: string[];
+    notes: string[];
 }

@@ -408,4 +408,3 @@ Use temp directories; do not touch real `stateDir`.
 - Implemented storage layout and helpers
 - Tests covering creation and reload
 - This format documented in code comments where appropriate
-

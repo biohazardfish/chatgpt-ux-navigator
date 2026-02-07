@@ -67,7 +67,9 @@ function buildClientsUrl(base: URL): URL {
     return new URL('/clients', base);
 }
 
-function extractServerErrorMessage(parsed: Record<string, unknown> | undefined): string | undefined {
+function extractServerErrorMessage(
+    parsed: Record<string, unknown> | undefined
+): string | undefined {
     if (!parsed) return undefined;
     const errorValue = parsed.error;
     if (typeof errorValue === 'string') {
@@ -111,7 +113,8 @@ export function createServerClient(config: Config): ServerClient {
             const trimmedInput = validateInput(input);
 
             const requestUrl = buildRequestUrl(baseUrl, clientId);
-            const timeout = typeof timeoutMs === 'number' && timeoutMs > 0 ? timeoutMs : DEFAULT_TIMEOUT_MS;
+            const timeout =
+                typeof timeoutMs === 'number' && timeoutMs > 0 ? timeoutMs : DEFAULT_TIMEOUT_MS;
             const controller = new AbortController();
             const timer = setTimeout(() => controller.abort(), timeout);
 
@@ -146,19 +149,23 @@ export function createServerClient(config: Config): ServerClient {
 
                 if (!isJsonContentType(contentType)) {
                     const reportedType = contentType ?? 'missing Content-Type';
-                    throw new ServerClientError(`Expected JSON response but received ${reportedType}`, {
-                        kind: 'invalid_response',
-                        status: response.status,
-                        url: requestUrl.toString(),
-                        bodySnippet: snippet,
-                    });
+                    throw new ServerClientError(
+                        `Expected JSON response but received ${reportedType}`,
+                        {
+                            kind: 'invalid_response',
+                            status: response.status,
+                            url: requestUrl.toString(),
+                            bodySnippet: snippet,
+                        }
+                    );
                 }
 
                 let parsed: unknown;
                 try {
                     parsed = responseText ? JSON.parse(responseText) : {};
                 } catch (parseError) {
-                    const parseMessage = parseError instanceof Error ? parseError.message : String(parseError);
+                    const parseMessage =
+                        parseError instanceof Error ? parseError.message : String(parseError);
                     throw new ServerClientError(`Invalid JSON response: ${parseMessage}`, {
                         kind: 'invalid_response',
                         status: response.status,
@@ -214,8 +221,8 @@ export function createServerClient(config: Config): ServerClient {
                 const message = isTimeout
                     ? `Request to ${requestUrl.toString()} timed out after ${timeout}ms`
                     : error instanceof Error
-                        ? error.message
-                        : 'Unknown error';
+                      ? error.message
+                      : 'Unknown error';
 
                 const wrappedError = new ServerClientError(message, {
                     kind: isTimeout ? 'timeout' : 'network',
@@ -242,7 +249,8 @@ export function createServerClient(config: Config): ServerClient {
             const trimmedInput = validateInput(input);
 
             const requestUrl = buildRequestUrlNew(baseUrl, clientId);
-            const timeout = typeof timeoutMs === 'number' && timeoutMs > 0 ? timeoutMs : DEFAULT_TIMEOUT_MS;
+            const timeout =
+                typeof timeoutMs === 'number' && timeoutMs > 0 ? timeoutMs : DEFAULT_TIMEOUT_MS;
             const controller = new AbortController();
             const timer = setTimeout(() => controller.abort(), timeout);
 
@@ -277,19 +285,23 @@ export function createServerClient(config: Config): ServerClient {
 
                 if (!isJsonContentType(contentType)) {
                     const reportedType = contentType ?? 'missing Content-Type';
-                    throw new ServerClientError(`Expected JSON response but received ${reportedType}`, {
-                        kind: 'invalid_response',
-                        status: response.status,
-                        url: requestUrl.toString(),
-                        bodySnippet: snippet,
-                    });
+                    throw new ServerClientError(
+                        `Expected JSON response but received ${reportedType}`,
+                        {
+                            kind: 'invalid_response',
+                            status: response.status,
+                            url: requestUrl.toString(),
+                            bodySnippet: snippet,
+                        }
+                    );
                 }
 
                 let parsed: unknown;
                 try {
                     parsed = responseText ? JSON.parse(responseText) : {};
                 } catch (parseError) {
-                    const parseMessage = parseError instanceof Error ? parseError.message : String(parseError);
+                    const parseMessage =
+                        parseError instanceof Error ? parseError.message : String(parseError);
                     throw new ServerClientError(`Invalid JSON response: ${parseMessage}`, {
                         kind: 'invalid_response',
                         status: response.status,
@@ -345,8 +357,8 @@ export function createServerClient(config: Config): ServerClient {
                 const message = isTimeout
                     ? `Request to ${requestUrl.toString()} timed out after ${timeout}ms`
                     : error instanceof Error
-                        ? error.message
-                        : 'Unknown error';
+                      ? error.message
+                      : 'Unknown error';
 
                 const wrappedError = new ServerClientError(message, {
                     kind: isTimeout ? 'timeout' : 'network',
@@ -399,19 +411,23 @@ export function createServerClient(config: Config): ServerClient {
 
                 if (!isJsonContentType(contentType)) {
                     const reportedType = contentType ?? 'missing Content-Type';
-                    throw new ServerClientError(`Expected JSON response but received ${reportedType}`, {
-                        kind: 'invalid_response',
-                        status: response.status,
-                        url: requestUrl.toString(),
-                        bodySnippet: snippet,
-                    });
+                    throw new ServerClientError(
+                        `Expected JSON response but received ${reportedType}`,
+                        {
+                            kind: 'invalid_response',
+                            status: response.status,
+                            url: requestUrl.toString(),
+                            bodySnippet: snippet,
+                        }
+                    );
                 }
 
                 let parsed: unknown;
                 try {
                     parsed = responseText ? JSON.parse(responseText) : {};
                 } catch (parseError) {
-                    const parseMessage = parseError instanceof Error ? parseError.message : String(parseError);
+                    const parseMessage =
+                        parseError instanceof Error ? parseError.message : String(parseError);
                     throw new ServerClientError(`Invalid JSON response: ${parseMessage}`, {
                         kind: 'invalid_response',
                         status: response.status,
@@ -433,7 +449,10 @@ export function createServerClient(config: Config): ServerClient {
                 }
 
                 const clientsValue = parsedValue?.clients;
-                if (!Array.isArray(clientsValue) || !clientsValue.every((value) => typeof value === 'string')) {
+                if (
+                    !Array.isArray(clientsValue) ||
+                    !clientsValue.every(value => typeof value === 'string')
+                ) {
                     throw new ServerClientError('Missing clients in server response', {
                         kind: 'invalid_response',
                         status: response.status,
@@ -460,8 +479,8 @@ export function createServerClient(config: Config): ServerClient {
                 const message = isTimeout
                     ? `Request to ${requestUrl.toString()} timed out after ${DEFAULT_TIMEOUT_MS}ms`
                     : error instanceof Error
-                        ? error.message
-                        : 'Unknown error';
+                      ? error.message
+                      : 'Unknown error';
 
                 const wrappedError = new ServerClientError(message, {
                     kind: isTimeout ? 'timeout' : 'network',

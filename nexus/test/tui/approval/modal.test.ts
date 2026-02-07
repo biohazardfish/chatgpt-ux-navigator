@@ -1,10 +1,6 @@
-import { describe, it, expect } from 'bun:test';
-import {
-    formatApprovalContent,
-    formatOptionLine,
-    wrapText,
-} from '../../../src/tui/approval/modal';
-import type { ApprovalRequest, ApprovalOption } from '../../../src/tui/approval/types';
+import {describe, it, expect} from 'bun:test';
+import {formatApprovalContent, formatOptionLine, wrapText} from '../../../src/tui/approval/modal';
+import type {ApprovalRequest, ApprovalOption} from '../../../src/tui/approval/types';
 
 // -----------------------------------------------------------------------------
 // Test Helpers
@@ -37,7 +33,7 @@ function createMockRequest(overrides?: Partial<ApprovalRequest>): ApprovalReques
 describe('Approval modal formatting', () => {
     describe('formatApprovalContent', () => {
         it('includes title at the top', () => {
-            const request = createMockRequest({ title: 'My Custom Title' });
+            const request = createMockRequest({title: 'My Custom Title'});
             const content = formatApprovalContent(request, 60);
 
             const lines = content.split('\n');
@@ -45,7 +41,7 @@ describe('Approval modal formatting', () => {
         });
 
         it('includes context section with label', () => {
-            const request = createMockRequest({ context: 'Some context text.' });
+            const request = createMockRequest({context: 'Some context text.'});
             const content = formatApprovalContent(request, 60);
 
             expect(content).toContain('Context:');
@@ -55,25 +51,25 @@ describe('Approval modal formatting', () => {
         it('word-wraps long context text', () => {
             const longContext =
                 'This is a very long context string that should be wrapped across multiple lines when the width is limited.';
-            const request = createMockRequest({ context: longContext });
+            const request = createMockRequest({context: longContext});
             const content = formatApprovalContent(request, 40);
 
             const lines = content.split('\n');
-            const contextStartIndex = lines.findIndex((l) => l === 'Context:');
+            const contextStartIndex = lines.findIndex(l => l === 'Context:');
             expect(contextStartIndex).toBeGreaterThan(-1);
 
             // Check that at least one wrapped line exists after Context:
             const contextLines = lines.slice(contextStartIndex + 1);
-            const wrappedLines = contextLines.filter((l) => l.length > 0 && l.length <= 40);
+            const wrappedLines = contextLines.filter(l => l.length > 0 && l.length <= 40);
             expect(wrappedLines.length).toBeGreaterThan(1);
         });
 
         it('formats options with number prefixes [1], [2], etc.', () => {
             const request = createMockRequest({
                 options: [
-                    createMockOption({ id: 'opt-1', label: 'First Option' }),
-                    createMockOption({ id: 'opt-2', label: 'Second Option' }),
-                    createMockOption({ id: 'opt-3', label: 'Third Option' }),
+                    createMockOption({id: 'opt-1', label: 'First Option'}),
+                    createMockOption({id: 'opt-2', label: 'Second Option'}),
+                    createMockOption({id: 'opt-3', label: 'Third Option'}),
                 ],
             });
             const content = formatApprovalContent(request, 60);
@@ -86,8 +82,8 @@ describe('Approval modal formatting', () => {
         it('marks recommended option with "(recommended)"', () => {
             const request = createMockRequest({
                 options: [
-                    createMockOption({ id: 'opt-1', label: 'First' }),
-                    createMockOption({ id: 'opt-2', label: 'Second' }),
+                    createMockOption({id: 'opt-1', label: 'First'}),
+                    createMockOption({id: 'opt-2', label: 'Second'}),
                 ],
                 recommendedOptionId: 'opt-1',
             });
@@ -125,7 +121,7 @@ describe('Approval modal formatting', () => {
             const content = formatApprovalContent(request, 60);
 
             const lines = content.split('\n');
-            const descLine = lines.find((l) => l.includes('Description text here.'));
+            const descLine = lines.find(l => l.includes('Description text here.'));
             expect(descLine).toBeDefined();
             expect(descLine!.startsWith('    ')).toBe(true); // 4-space indent
         });
@@ -146,7 +142,7 @@ describe('Approval modal formatting', () => {
 
             // Description should be split across multiple lines
             const lines = content.split('\n');
-            const indentedLines = lines.filter((l) => l.startsWith('    ') && l.trim().length > 0);
+            const indentedLines = lines.filter(l => l.startsWith('    ') && l.trim().length > 0);
             expect(indentedLines.length).toBeGreaterThan(1);
         });
 
@@ -155,12 +151,12 @@ describe('Approval modal formatting', () => {
             const content = formatApprovalContent(request, 60);
 
             const lines = content.split('\n');
-            const lastNonEmptyLine = lines.filter((l) => l.trim().length > 0).pop();
+            const lastNonEmptyLine = lines.filter(l => l.trim().length > 0).pop();
             expect(lastNonEmptyLine).toBe('Press number key to choose');
         });
 
         it('handles empty context gracefully', () => {
-            const request = createMockRequest({ context: '' });
+            const request = createMockRequest({context: ''});
             const content = formatApprovalContent(request, 60);
 
             expect(content).not.toContain('Context:');
@@ -168,7 +164,7 @@ describe('Approval modal formatting', () => {
         });
 
         it('handles whitespace-only context as empty', () => {
-            const request = createMockRequest({ context: '   ' });
+            const request = createMockRequest({context: '   '});
             const content = formatApprovalContent(request, 60);
 
             expect(content).not.toContain('Context:');
@@ -177,7 +173,7 @@ describe('Approval modal formatting', () => {
         it('handles options without descriptions', () => {
             const request = createMockRequest({
                 options: [
-                    createMockOption({ id: 'opt-1', label: 'Simple Option', description: undefined }),
+                    createMockOption({id: 'opt-1', label: 'Simple Option', description: undefined}),
                 ],
             });
             const content = formatApprovalContent(request, 60);
@@ -185,7 +181,7 @@ describe('Approval modal formatting', () => {
             expect(content).toContain('[1] Simple Option');
             // Should not have extra indented lines for description
             const lines = content.split('\n');
-            const optionIndex = lines.findIndex((l) => l.includes('[1] Simple Option'));
+            const optionIndex = lines.findIndex(l => l.includes('[1] Simple Option'));
             const nextLine = lines[optionIndex + 1] || '';
             // Next line should not be indented description
             expect(nextLine.startsWith('    ')).toBe(false);
@@ -200,7 +196,7 @@ describe('Approval modal formatting', () => {
             ];
 
             for (const type of types) {
-                const request = createMockRequest({ type });
+                const request = createMockRequest({type});
                 const content = formatApprovalContent(request, 60);
 
                 // All should have the same structure regardless of type
@@ -311,21 +307,21 @@ describe('Approval modal formatting', () => {
 
     describe('formatOptionLine', () => {
         it('formats option with 1-based index', () => {
-            const option = createMockOption({ label: 'My Option' });
+            const option = createMockOption({label: 'My Option'});
             const result = formatOptionLine(option, 0, false); // index 0 = display as [1]
 
             expect(result).toBe('[1] My Option');
         });
 
         it('adds "(recommended)" suffix when flagged', () => {
-            const option = createMockOption({ label: 'My Option' });
+            const option = createMockOption({label: 'My Option'});
             const result = formatOptionLine(option, 0, true);
 
             expect(result).toBe('[1] My Option  (recommended)');
         });
 
         it('handles various indices', () => {
-            const option = createMockOption({ label: 'Option' });
+            const option = createMockOption({label: 'Option'});
 
             expect(formatOptionLine(option, 0, false)).toBe('[1] Option');
             expect(formatOptionLine(option, 1, false)).toBe('[2] Option');
@@ -333,7 +329,9 @@ describe('Approval modal formatting', () => {
         });
 
         it('handles long labels', () => {
-            const option = createMockOption({ label: 'This is a very long option label that describes the action in detail' });
+            const option = createMockOption({
+                label: 'This is a very long option label that describes the action in detail',
+            });
             const result = formatOptionLine(option, 0, false);
 
             expect(result).toContain('[1]');
@@ -341,7 +339,7 @@ describe('Approval modal formatting', () => {
         });
 
         it('does not add recommended suffix when not recommended', () => {
-            const option = createMockOption({ label: 'My Option' });
+            const option = createMockOption({label: 'My Option'});
             const result = formatOptionLine(option, 0, false);
 
             expect(result).not.toContain('recommended');

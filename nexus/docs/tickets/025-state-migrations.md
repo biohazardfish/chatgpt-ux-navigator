@@ -41,13 +41,15 @@ As Nexus evolves, storage formats will change; migrations must be intentional.
 ## Versioning model
 
 ### Current version
+
 - Storage schema version: `1`
 - Stored in:
-  ```
-  projects/<project-id>/meta.json
-  ```
+    ```
+    projects/<project-id>/meta.json
+    ```
 
 ### Future versions
+
 - Each breaking storage change increments schema version by `+1`
 - Migrations always run from `n → n+1`
 
@@ -71,11 +73,11 @@ Define a migration contract:
 
 ```ts
 interface Migration {
-  fromVersion: number
-  toVersion: number
-  description: string
+    fromVersion: number;
+    toVersion: number;
+    description: string;
 
-  migrate(projectPath: string): Promise<void>
+    migrate(projectPath: string): Promise<void>;
 }
 ```
 
@@ -84,12 +86,11 @@ interface Migration {
 ## Migration runner API
 
 ```ts
-async function migrateProjectIfNeeded(
-  projectPath: string
-): Promise<void>
+async function migrateProjectIfNeeded(projectPath: string): Promise<void>;
 ```
 
 Responsibilities:
+
 - Load current version
 - Determine required migrations
 - Execute in order
@@ -101,18 +102,20 @@ Responsibilities:
 ## Safety guarantees
 
 ### Atomicity (MVP-level)
+
 - Migrations operate per project
 - If a migration fails:
-  - Stop immediately
-  - Leave project in a consistent, pre-migration state where possible
+    - Stop immediately
+    - Leave project in a consistent, pre-migration state where possible
 - No partial multi-step upgrades
 
 ### Backup (optional but recommended)
+
 - Before migration:
-  - Copy project directory to:
-    ```
-    projects/<project-id>.backup-v<oldVersion>
-    ```
+    - Copy project directory to:
+        ```
+        projects/<project-id>.backup-v<oldVersion>
+        ```
 - Backup strategy can be basic (recursive copy)
 
 ---
@@ -123,16 +126,16 @@ Implement a **no-op migration** as a template:
 
 ```ts
 const migration1to2: Migration = {
-  fromVersion: 1,
-  toVersion: 2,
-  description: 'Normalize task status casing',
+    fromVersion: 1,
+    toVersion: 2,
+    description: 'Normalize task status casing',
 
-  async migrate(projectPath) {
-    // Example logic:
-    // - scan task.md files
-    // - update "Completed" → "completed"
-  }
-}
+    async migrate(projectPath) {
+        // Example logic:
+        // - scan task.md files
+        // - update "Completed" → "completed"
+    },
+};
 ```
 
 > The actual transformation can be trivial or skipped; the goal is to prove the framework.
@@ -146,6 +149,7 @@ const migration1to2: Migration = {
 - Migration exception → abort and surface error
 
 Errors must clearly indicate:
+
 - Project ID
 - From/to version
 - Migration description
@@ -155,6 +159,7 @@ Errors must clearly indicate:
 ## Proposed file structure
 
 ### New files
+
 ```
 src/storage/migrations/
   index.ts
@@ -165,6 +170,7 @@ src/storage/migrations/
 ```
 
 ### Updated files
+
 ```
 src/storage/project.ts      // invoke migration on load
 src/config/constants.ts     // CURRENT_SCHEMA_VERSION
@@ -176,9 +182,9 @@ src/config/constants.ts     // CURRENT_SCHEMA_VERSION
 
 - Project loading must **always** go through migration check
 - TUI should show a status message during migration:
-  ```
-  Migrating project state (v1 → v2)...
-  ```
+    ```
+    Migrating project state (v1 → v2)...
+    ```
 
 ---
 

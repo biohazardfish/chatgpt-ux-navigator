@@ -12,6 +12,7 @@ The user is always the final authority.
 In Nexus, the user acts as the **operator and decision-maker**.
 
 The user:
+
 - Defines goals and constraints
 - Approves plans and major changes
 - Resolves high-impact conflicts
@@ -27,6 +28,7 @@ Nexus manages execution, but direction comes from the user.
 Nexus pauses execution at explicit **approval checkpoints**.
 
 Common checkpoints include:
+
 - Initial plan approval
 - Major plan revisions
 - Scope changes
@@ -34,6 +36,7 @@ Common checkpoints include:
 - Project completion
 
 At each checkpoint, Nexus:
+
 - Presents relevant context
 - Summarizes current state
 - Recommends a course of action
@@ -47,17 +50,21 @@ Execution resumes only after user approval.
 User decisions typically fall into a few categories:
 
 ### Accept
+
 - Proceed as proposed
 
 ### Revise
+
 - Modify the plan or task
 - Request additional analysis
 
 ### Defer
+
 - Pause execution
 - Gather more information later
 
 ### Abort
+
 - Stop the current task or project
 
 All decisions are recorded in project state.
@@ -69,6 +76,7 @@ All decisions are recorded in project state.
 The user may intervene outside of checkpoints.
 
 Interventions include:
+
 - Canceling a running task
 - Spawning additional roles or sessions
 - Adjusting priorities
@@ -82,11 +90,12 @@ Manual intervention is always allowed.
 ## Transparency and Trust
 
 To maintain trust, Nexus ensures:
+
 - Clear visibility into what is happening
 - No hidden background execution
 - No irreversible actions without confirmation
 
-Nexus explains *why* it is asking for input, not just *what* it needs.
+Nexus explains _why_ it is asking for input, not just _what_ it needs.
 
 ---
 
@@ -95,6 +104,7 @@ Nexus explains *why* it is asking for input, not just *what* it needs.
 Nexus aims to minimize unnecessary interruptions.
 
 It does so by:
+
 - Resolving minor issues autonomously
 - Aggregating decisions when possible
 - Escalating only when impact is high
@@ -106,6 +116,7 @@ The goal is to involve the user where their judgment matters most.
 ## Overrides and Authority
 
 If the user overrides Nexus:
+
 - The override is respected immediately
 - The override is recorded
 - Nexus adapts future behavior accordingly

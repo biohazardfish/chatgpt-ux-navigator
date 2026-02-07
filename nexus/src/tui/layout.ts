@@ -1,6 +1,6 @@
-import { BoxRenderable, TextRenderable, createCliRenderer } from '@opentui/core';
+import {BoxRenderable, TextRenderable, createCliRenderer} from '@opentui/core';
 
-import type { TuiState, TuiViewId } from './state.ts';
+import type {TuiState, TuiViewId} from './state.ts';
 
 export type TuiLayout = {
     renderer: any;
@@ -32,7 +32,7 @@ function viewLabel(view: TuiViewId): string {
     }
 }
 
-export async function createLayout(options?: { projectId?: string }): Promise<TuiLayout> {
+export async function createLayout(options?: {projectId?: string}): Promise<TuiLayout> {
     const renderer = await createCliRenderer({
         useMouse: false,
         exitOnCtrlC: true,
@@ -150,7 +150,7 @@ export async function createLayout(options?: { projectId?: string }): Promise<Tu
             '  4  Decisions',
             '  5  Logs',
             '',
-            '(placeholder)'
+            '(placeholder)',
         ].join('\n'),
     });
     helpOverlay.add(helpOverlayText);
@@ -194,7 +194,7 @@ export async function createLayout(options?: { projectId?: string }): Promise<Tu
             footerLeft,
             footerRight,
         } as TuiLayout,
-        { activeView: 'dashboard', statusMessage: 'Ready' } as TuiState
+        {activeView: 'dashboard', statusMessage: 'Ready'} as TuiState
     );
 
     return {
@@ -213,13 +213,20 @@ export async function createLayout(options?: { projectId?: string }): Promise<Tu
     };
 }
 
-export function updateHeader(layout: Pick<TuiLayout, 'headerLeft' | 'headerRight'>, projectId?: string): void {
-    const projectLabel = projectId && projectId.trim().length > 0 ? projectLabelText(projectId) : undefined;
+export function updateHeader(
+    layout: Pick<TuiLayout, 'headerLeft' | 'headerRight'>,
+    projectId?: string
+): void {
+    const projectLabel =
+        projectId && projectId.trim().length > 0 ? projectLabelText(projectId) : undefined;
     layout.headerLeft.content = projectLabel ? `Nexus - ${projectLabel}` : 'Nexus';
     layout.headerRight.content = '[q] Quit  [?] Help';
 }
 
-export function updateFooter(layout: Pick<TuiLayout, 'footerLeft' | 'footerRight'>, state: TuiState): void {
+export function updateFooter(
+    layout: Pick<TuiLayout, 'footerLeft' | 'footerRight'>,
+    state: TuiState
+): void {
     layout.footerLeft.content = `Status: ${state.statusMessage}`;
     const mode = state.approvalRequest ? 'Approval' : 'Normal';
     layout.footerRight.content = `View: ${viewLabel(state.activeView)}   Mode: ${mode}`;

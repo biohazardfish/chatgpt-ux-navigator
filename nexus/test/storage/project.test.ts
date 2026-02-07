@@ -1,9 +1,9 @@
-import { describe, it, expect, beforeEach, afterEach } from 'bun:test';
-import { rm, mkdir, stat } from 'node:fs/promises';
-import { join } from 'node:path';
-import { tmpdir } from 'node:os';
-import { createProject, loadProject, ProjectData } from '../../src/storage/project';
-import { Config } from '../../src/config/config';
+import {describe, it, expect, beforeEach, afterEach} from 'bun:test';
+import {rm, mkdir, stat} from 'node:fs/promises';
+import {join} from 'node:path';
+import {tmpdir} from 'node:os';
+import {createProject, loadProject, ProjectData} from '../../src/storage/project';
+import {Config} from '../../src/config/config';
 
 describe('Project Storage', () => {
     let testBaseDir: string;
@@ -12,20 +12,20 @@ describe('Project Storage', () => {
     beforeEach(async () => {
         testBaseDir = join(tmpdir(), `nexus-test-${Math.random().toString(36).slice(2)}`);
         const projectsDir = join(testBaseDir, 'projects');
-        await mkdir(projectsDir, { recursive: true });
-        
+        await mkdir(projectsDir, {recursive: true});
+
         config = {
             serverBaseUrl: 'http://localhost:8765',
             stateDir: testBaseDir,
             projectsDir: projectsDir,
             runsDir: join(testBaseDir, 'runs'),
             logsDir: join(testBaseDir, 'logs'),
-            logLevel: 'info'
+            logLevel: 'info',
         };
     });
 
     afterEach(async () => {
-        await rm(testBaseDir, { recursive: true, force: true });
+        await rm(testBaseDir, {recursive: true, force: true});
     });
 
     it('should create a project with correct structure', async () => {
@@ -34,7 +34,7 @@ describe('Project Storage', () => {
             title: 'Test Project',
             goals: ['Goal 1', 'Goal 2'],
             constraints: ['Constraint 1'],
-            nonGoals: ['Non-Goal 1']
+            nonGoals: ['Non-Goal 1'],
         };
 
         await createProject(config, projectId, data);
@@ -44,7 +44,7 @@ describe('Project Storage', () => {
         expect(await Bun.file(join(projectDir, 'project.md')).exists()).toBe(true);
         expect(await Bun.file(join(projectDir, 'plan.md')).exists()).toBe(true);
         expect(await Bun.file(join(projectDir, 'notes.md')).exists()).toBe(true);
-        
+
         expect((await stat(join(projectDir, 'decisions'))).isDirectory()).toBe(true);
         expect((await stat(join(projectDir, 'tasks'))).isDirectory()).toBe(true);
         expect((await stat(join(projectDir, 'reports'))).isDirectory()).toBe(true);
@@ -62,7 +62,7 @@ describe('Project Storage', () => {
             title: 'Load Test',
             goals: ['Goal 1'],
             constraints: [],
-            nonGoals: []
+            nonGoals: [],
         };
 
         await createProject(config, projectId, data);
@@ -82,7 +82,7 @@ describe('Project Storage', () => {
             title: 'Existing',
             goals: [],
             constraints: [],
-            nonGoals: []
+            nonGoals: [],
         };
 
         await createProject(config, projectId, data);
@@ -90,7 +90,7 @@ describe('Project Storage', () => {
     });
 
     it('should throw error if project ID is invalid', async () => {
-        const data: ProjectData = { title: 'Invalid', goals: [], constraints: [], nonGoals: [] };
+        const data: ProjectData = {title: 'Invalid', goals: [], constraints: [], nonGoals: []};
         expect(createProject(config, 'Invalid ID', data)).rejects.toThrow(/Invalid project ID/);
     });
 });

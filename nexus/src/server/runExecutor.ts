@@ -25,7 +25,9 @@ export type ExecuteSessionRunResult = {
     responseText: string;
 };
 
-export async function executeSessionRun(params: ExecuteSessionRunParams): Promise<ExecuteSessionRunResult> {
+export async function executeSessionRun(
+    params: ExecuteSessionRunParams
+): Promise<ExecuteSessionRunResult> {
     const {config, projectId, taskId, role, responseId, prompt, useTemporaryChat} = params;
 
     const startedAt = new Date();
@@ -58,7 +60,8 @@ export async function executeSessionRun(params: ExecuteSessionRunParams): Promis
         return {runId, runDir, responseText};
     } catch (error) {
         const completedAt = new Date();
-        const status = error instanceof ServerClientError && error.kind === 'timeout' ? 'timeout' : 'error';
+        const status =
+            error instanceof ServerClientError && error.kind === 'timeout' ? 'timeout' : 'error';
         const errorString = error instanceof Error ? error.message : String(error);
 
         // Failure policy: meta.json written last; response.txt must be absent.

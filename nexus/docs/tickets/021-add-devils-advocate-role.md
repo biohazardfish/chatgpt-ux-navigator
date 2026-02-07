@@ -9,6 +9,7 @@ Add Devil’s Advocate Role (Proactive Risk Surfacing)
 Introduce a **Devil’s Advocate** role into Nexus so the system can **proactively challenge assumptions and recommendations** before governance, reducing late-stage conflicts and improving decision quality.
 
 This ticket formalizes:
+
 - The Devil’s Advocate role definition
 - When and how it is assigned
 - How its outputs are interpreted during governance
@@ -30,28 +31,24 @@ The Devil’s Advocate role is intended to **surface risks early**, not to block
 ## Design principles
 
 1. **Adversarial but constructive**
-   - Challenge assumptions, not sabotage outcomes
+    - Challenge assumptions, not sabotage outcomes
 2. **Explicit scope**
-   - Focus on risks, blind spots, and counterexamples
+    - Focus on risks, blind spots, and counterexamples
 3. **Non-authoritative**
-   - Outputs are advisory and weighed by governance
+    - Outputs are advisory and weighed by governance
 4. **Opt-in by policy**
-   - Not every task requires a Devil’s Advocate
+    - Not every task requires a Devil’s Advocate
 
 ---
 
 ## Role definition
 
 ### Role identifier
+
 Extend the role union:
 
 ```ts
-type Role =
-  | 'planner'
-  | 'implementer'
-  | 'reviewer'
-  | 'researcher'
-  | 'devils-advocate'
+type Role = 'planner' | 'implementer' | 'reviewer' | 'researcher' | 'devils-advocate';
 ```
 
 (Already present in earlier domain tickets; this ticket operationalizes it.)
@@ -68,6 +65,7 @@ When assigned, the session must:
 - Propose alternative interpretations or risks
 
 It must **not**:
+
 - Produce implementation artifacts
 - Rewrite the plan
 - Declare final decisions
@@ -102,14 +100,16 @@ This applies **only** when role = `devils-advocate`.
 Introduce a simple policy for automatic assignment.
 
 ### Auto-assign Devil’s Advocate when:
+
 - Task has **high impact**, defined as:
-  - Affects architecture
-  - Introduces new system boundaries
-  - Has irreversible consequences
+    - Affects architecture
+    - Introduces new system boundaries
+    - Has irreversible consequences
 - OR task has **multiple primary roles** (e.g., Planner + Implementer)
 - OR task is explicitly marked as `highRisk` (optional flag)
 
 For MVP, implement **one deterministic rule**:
+
 - If task has more than one role → append `devils-advocate`
 
 (Keep policy simple and visible.)
@@ -122,19 +122,20 @@ Extend derived task structure:
 
 ```ts
 interface ExecutableTask {
-  taskId: string
-  objective: string
-  roles: Role[]
-  context: TaskContext
-  executionMode: ExecutionMode
+    taskId: string;
+    objective: string;
+    roles: Role[];
+    context: TaskContext;
+    executionMode: ExecutionMode;
 }
 ```
 
 Rules:
+
 - Devil’s Advocate is appended **last**
 - Execution order:
-  - Sequential mode: DA runs last
-  - Parallel mode: DA runs in parallel with others
+    - Sequential mode: DA runs last
+    - Parallel mode: DA runs in parallel with others
 
 ---
 
@@ -143,13 +144,13 @@ Rules:
 Update governance evaluation:
 
 - Devil’s Advocate reports are:
-  - Never ignored
-  - Never automatically blocking
+    - Never ignored
+    - Never automatically blocking
 - Heuristics:
-  - If DA reports `STATUS: blocked`
-    → strong signal to escalate
-  - If DA reports `partial` with serious risks
-    → increase likelihood of escalation
+    - If DA reports `STATUS: blocked`
+      → strong signal to escalate
+    - If DA reports `partial` with serious risks
+      → increase likelihood of escalation
 - DA alone cannot force `blocked` outcome without corroboration
 
 ---
@@ -179,6 +180,7 @@ This ensures the operator clearly sees adversarial input.
 ## Proposed file changes
 
 ### Updated files
+
 ```
 src/core/domain/role.ts
 src/core/orchestration/taskAssignment.ts
@@ -188,6 +190,7 @@ src/core/governance/evaluateReports.ts
 ```
 
 ### Optional (clarity)
+
 ```
 src/core/orchestration/policies/devilsAdvocate.ts
 ```
@@ -197,20 +200,20 @@ src/core/orchestration/policies/devilsAdvocate.ts
 ## Implementation steps
 
 1. **Confirm role support**
-   - Ensure `devils-advocate` is recognized everywhere roles are validated
+    - Ensure `devils-advocate` is recognized everywhere roles are validated
 
 2. **Assignment policy**
-   - Append DA role based on simple rule (multi-role tasks)
+    - Append DA role based on simple rule (multi-role tasks)
 
 3. **Prompt specialization**
-   - Inject DA-specific instructions
+    - Inject DA-specific instructions
 
 4. **Execution ordering**
-   - Ensure DA runs last (sequential) or concurrently (parallel)
+    - Ensure DA runs last (sequential) or concurrently (parallel)
 
 5. **Governance integration**
-   - Adjust escalation logic to weight DA reports appropriately
-   - Add DA section to escalation context
+    - Adjust escalation logic to weight DA reports appropriately
+    - Add DA section to escalation context
 
 ---
 

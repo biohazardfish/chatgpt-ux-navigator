@@ -54,16 +54,17 @@ Represents a loaded project in memory.
 
 ```ts
 interface Project {
-  meta: ProjectMeta
-  projectDoc: ProjectDoc
-  plan: Plan
-  notes: Notes
-  tasks: Task[]
-  decisions: Decision[]
+    meta: ProjectMeta;
+    projectDoc: ProjectDoc;
+    plan: Plan;
+    notes: Notes;
+    tasks: Task[];
+    decisions: Decision[];
 }
 ```
 
 #### Invariants
+
 - `projectId` is immutable
 - Exactly **one active plan**
 - Tasks are uniquely identified within a project
@@ -76,11 +77,11 @@ From `meta.json`.
 
 ```ts
 interface ProjectMeta {
-  version: number
-  projectId: string
-  createdAt: string   // ISO
-  lastUpdatedAt: string
-  status: 'active' | 'paused' | 'completed'
+    version: number;
+    projectId: string;
+    createdAt: string; // ISO
+    lastUpdatedAt: string;
+    status: 'active' | 'paused' | 'completed';
 }
 ```
 
@@ -90,14 +91,15 @@ interface ProjectMeta {
 
 ```ts
 interface ProjectDoc {
-  title: string
-  goals: string[]
-  constraints: string[]
-  nonGoals: string[]
+    title: string;
+    goals: string[];
+    constraints: string[];
+    nonGoals: string[];
 }
 ```
 
 Notes:
+
 - Parsed from Markdown sections
 - Order preserved where possible
 
@@ -109,13 +111,14 @@ From `plan.md`.
 
 ```ts
 interface Plan {
-  status: 'draft' | 'approved' | 'superseded'
-  phases: string[]
-  notes: string[]
+    status: 'draft' | 'approved' | 'superseded';
+    phases: string[];
+    notes: string[];
 }
 ```
 
 #### Invariants
+
 - Only `approved` plans may drive task execution
 - Transition to `superseded` requires a recorded Decision (enforced later)
 
@@ -127,13 +130,14 @@ From `notes.md`.
 
 ```ts
 interface Notes {
-  assumptions: string[]
-  clarifications: string[]
-  lessonsLearned: string[]
+    assumptions: string[];
+    clarifications: string[];
+    lessonsLearned: string[];
 }
 ```
 
 Notes are:
+
 - Mutable
 - Append-heavy
 - Never authoritative for decisions
@@ -146,26 +150,22 @@ From `tasks/<task-id>/task.md`.
 
 ```ts
 interface Task {
-  id: string            // e.g. T-003
-  title: string
-  status: TaskStatus
-  objective: string
-  assignedRoles: Role[]
-  relatedGoals: string[]
-  createdAt: string
+    id: string; // e.g. T-003
+    title: string;
+    status: TaskStatus;
+    objective: string;
+    assignedRoles: Role[];
+    relatedGoals: string[];
+    createdAt: string;
 }
 ```
 
 ```ts
-type TaskStatus =
-  | 'pending'
-  | 'running'
-  | 'blocked'
-  | 'completed'
-  | 'aborted'
+type TaskStatus = 'pending' | 'running' | 'blocked' | 'completed' | 'aborted';
 ```
 
 #### Invariants
+
 - Terminal states: `completed`, `aborted`
 - Only `pending` → `running` allowed automatically
 - Re-running a completed task requires explicit override (later governance)
@@ -175,15 +175,11 @@ type TaskStatus =
 ### 7. Role
 
 ```ts
-type Role =
-  | 'planner'
-  | 'implementer'
-  | 'reviewer'
-  | 'researcher'
-  | 'devils-advocate'
+type Role = 'planner' | 'implementer' | 'reviewer' | 'researcher' | 'devils-advocate';
 ```
 
 Notes:
+
 - String union for easy serialization
 - No behavior attached here
 
@@ -195,18 +191,19 @@ Derived from files in `tasks/<task-id>/reports/`.
 
 ```ts
 interface Report {
-  runId: string
-  role: Role
-  status: 'success' | 'partial' | 'blocked'
-  summary: string
-  artifacts: string[]
-  risks: string[]
-  next: string[]
-  rawText: string
+    runId: string;
+    role: Role;
+    status: 'success' | 'partial' | 'blocked';
+    summary: string;
+    artifacts: string[];
+    risks: string[];
+    next: string[];
+    rawText: string;
 }
 ```
 
 #### Notes
+
 - `rawText` is preserved for traceability
 - Parsed fields are best-effort but validated
 - Reports are **advisory**, never authoritative
@@ -219,18 +216,19 @@ From `decisions/*.md`.
 
 ```ts
 interface Decision {
-  id: number
-  title: string
-  date: string
-  context: string
-  options: string[]
-  decision: string
-  rationale: string
-  consequences: string[]
+    id: number;
+    title: string;
+    date: string;
+    context: string;
+    options: string[];
+    decision: string;
+    rationale: string;
+    consequences: string[];
 }
 ```
 
 #### Invariants
+
 - Decisions are immutable once loaded
 - Ordering is defined by ID, not filesystem order
 
@@ -245,6 +243,7 @@ This ticket should define **parsers** that:
 - Preserve unknown sections as raw text where appropriate (future-proofing)
 
 Parsing helpers should be **pure functions**:
+
 ```ts
 parseProjectDoc(markdown: string): ProjectDoc
 parsePlan(markdown: string): Plan
@@ -271,6 +270,7 @@ No deep semantic validation yet (that’s governance later).
 ## Proposed file structure
 
 ### New files
+
 ```
 src/core/domain/
   project.ts
@@ -283,6 +283,7 @@ src/core/domain/
 ```
 
 ### Parsing helpers
+
 ```
 src/core/parsing/
   markdown.ts        // shared helpers
@@ -303,11 +304,11 @@ src/core/report/
 ## Integration with storage layer
 
 - Storage layer (ticket 003) is responsible for:
-  - Reading raw files
-  - Writing updates
+    - Reading raw files
+    - Writing updates
 - Domain layer (this ticket) is responsible for:
-  - Interpreting raw content
-  - Enforcing invariants in memory
+    - Interpreting raw content
+    - Enforcing invariants in memory
 
 **No file I/O inside domain code.**
 

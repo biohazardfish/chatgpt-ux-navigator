@@ -2,7 +2,7 @@
 
 This document explains how work is structured and delegated in Nexus using **tasks** and **roles**.
 
-Together, tasks and roles define *what* work is done and *how* AI sessions are expected to approach that work.
+Together, tasks and roles define _what_ work is done and _how_ AI sessions are expected to approach that work.
 
 ---
 
@@ -15,6 +15,7 @@ Tasks are intentionally **large and meaningful**, comparable to work a human mig
 ### Characteristics of a Task
 
 A task:
+
 - Has a clear objective
 - Contributes directly to a project goal
 - Is non-trivial and often iterative
@@ -53,11 +54,13 @@ A typical task progresses through the following stages:
 ### Task Scope
 
 Examples of appropriate task scope:
+
 - “Design authentication and authorization architecture”
 - “Generate backlog tickets for billing system”
 - “Review proposed database schema for risks”
 
 Examples of inappropriate task scope:
+
 - “Write a single function”
 - “Fix a typo”
 - “Rename a variable”
@@ -68,7 +71,7 @@ Keeping tasks large helps preserve context and reduce coordination overhead.
 
 ## Roles
 
-A **Role** defines the *perspective and behavior* an AI session should adopt when executing a task.
+A **Role** defines the _perspective and behavior_ an AI session should adopt when executing a task.
 
 Roles are explicit and intentional.
 
@@ -77,6 +80,7 @@ Roles are explicit and intentional.
 ### Purpose of Roles
 
 Roles exist to:
+
 - Separate concerns
 - Reduce blind spots
 - Encourage critical thinking
@@ -112,12 +116,14 @@ Roles can be reused across tasks and combined as needed.
 ### Role Expectations
 
 Each role implies expectations around:
+
 - Tone
 - Depth
 - Risk tolerance
 - Output structure
 
 For example:
+
 - Implementers are expected to be constructive and concrete
 - Reviewers are expected to be skeptical and thorough
 
@@ -130,11 +136,13 @@ Nexus may reject or downgrade reports that do not match the assigned role.
 A single task may involve multiple roles.
 
 Common patterns include:
+
 - Planner → Implementer → Reviewer
 - Multiple reviewers in parallel
 - Implementer + Devil’s Advocate
 
 Nexus compares reports across roles to:
+
 - Detect conflicts
 - Measure confidence
 - Decide next steps
@@ -144,11 +152,13 @@ Nexus compares reports across roles to:
 ## Role Assignment Strategy
 
 Role assignment is influenced by:
+
 - Task criticality
 - Uncertainty level
 - Impact of failure
 
 High-impact tasks are more likely to:
+
 - Use multiple roles
 - Require user approval before acceptance
 
@@ -159,6 +169,7 @@ Low-risk tasks may use a single role.
 ## User Involvement
 
 The user may:
+
 - Suggest roles
 - Override role assignments
 - Request additional perspectives
@@ -171,8 +182,8 @@ However, Nexus remains responsible for governance and final task resolution.
 
 In Nexus:
 
-- Tasks define *what* needs to be done
-- Roles define *how* it should be done
+- Tasks define _what_ needs to be done
+- Roles define _how_ it should be done
 - Sessions execute tasks according to roles
 - Reports feed results back into governance
 

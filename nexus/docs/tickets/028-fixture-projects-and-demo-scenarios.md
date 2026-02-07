@@ -33,11 +33,13 @@ We now need “living examples” that represent real workflows.
 ## Scope
 
 ### Included
+
 - Multiple fixture project directories checked into the repo
 - A small set of scripted demo flows (CLI scripts or markdown walkthroughs)
 - Documentation for how to load and explore fixture projects in the TUI
 
 ### Excluded
+
 - Automated E2E against a real server
 - Complex data generators
 - Performance test fixtures
@@ -65,14 +67,16 @@ Each fixture project is a **complete `projects/<project-id>/` directory** consis
 **Purpose:** “Hello world” for Nexus.
 
 Includes:
+
 - Approved plan
 - 3 tasks:
-  - 1 completed with a decision
-  - 1 pending
-  - 1 running
+    - 1 completed with a decision
+    - 1 pending
+    - 1 running
 - Small notes file
 
 Expected UI behaviors:
+
 - Dashboard shows healthy status
 - Task list is small and navigable
 - Summaries show recent activity
@@ -84,12 +88,14 @@ Expected UI behaviors:
 **Purpose:** Demonstrate governance escalation and blocked task.
 
 Includes:
+
 - One task with two reports (planner success, reviewer partial)
 - Task status blocked
 - Approval-required alert (if alerts are persisted; if not, include in demo instructions)
 - Decision record: “Request revisions”
 
 Expected UI behaviors:
+
 - Blockers & risks summary populated
 - Alerts view shows conflict/approval
 - Task detail shows mixed report statuses
@@ -101,11 +107,13 @@ Expected UI behaviors:
 **Purpose:** Demonstrate adversarial input and its weighting.
 
 Includes:
+
 - Task with roles: implementer + reviewer + devils-advocate
 - Devil’s Advocate report contains significant risks
 - Governance escalation recorded, decision chosen
 
 Expected UI behaviors:
+
 - Escalation context mentions DA findings
 - Decision log shows resolution
 
@@ -116,12 +124,14 @@ Expected UI behaviors:
 **Purpose:** Stress test UI search/filter and summaries.
 
 Includes:
+
 - 30–60 tasks across all statuses
 - 10+ decisions
 - Notes with multiple assumptions/clarifications
 - Audit log and run history with many entries (can be synthetic)
 
 Expected UI behaviors:
+
 - Search and filter are genuinely useful
 - Summaries remain readable
 - Task list performance acceptable
@@ -158,11 +168,13 @@ scripts/install-fixtures.ts
 ```
 
 Usage:
+
 ```bash
 bun run scripts/install-fixtures.ts --stateDir ./nexus_state --fixture 002-conflict-escalation
 ```
 
 Behavior:
+
 - Copies fixture project directory into `<stateDir>/projects/`
 - Does not overwrite existing projects unless `--force`
 
@@ -171,6 +183,7 @@ Behavior:
 ## Proposed file changes
 
 ### New files
+
 ```
 fixtures/projects/001-minimal-approved/...
 fixtures/projects/002-conflict-escalation/...
@@ -182,6 +195,7 @@ scripts/install-fixtures.ts
 ```
 
 ### Updated files
+
 ```
 README.md
 ```
@@ -193,9 +207,9 @@ Add “Try demo fixtures” section.
 ## Data correctness requirements
 
 - All fixture projects must:
-  - Match current schema version
-  - Parse cleanly via domain parsers
-  - Load without migrations (unless explicitly intended as a migration demo)
+    - Match current schema version
+    - Parse cleanly via domain parsers
+    - Load without migrations (unless explicitly intended as a migration demo)
 - Task IDs, decision numbering, and meta timestamps should be consistent
 
 ---

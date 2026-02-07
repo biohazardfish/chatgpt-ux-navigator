@@ -45,12 +45,12 @@ Introduce explicit failure classes:
 
 ```ts
 type RunFailureType =
-  | 'network-error'
-  | 'timeout'
-  | 'server-error'     // HTTP 5xx
-  | 'client-error'     // HTTP 4xx (never retry)
-  | 'cancelled'
-  | 'unknown'
+    | 'network-error'
+    | 'timeout'
+    | 'server-error' // HTTP 5xx
+    | 'client-error' // HTTP 4xx (never retry)
+    | 'cancelled'
+    | 'unknown';
 ```
 
 Only the following are **retryable**:
@@ -60,6 +60,7 @@ Only the following are **retryable**:
 - `server-error`
 
 Never retry:
+
 - `client-error`
 - `cancelled`
 - Report parse failures (handled later by governance)
@@ -73,7 +74,7 @@ Default policy (configurable):
 - **Max retries**: `2`
 - **Initial delay**: `500ms`
 - **Backoff strategy**: exponential
-  - delay = `initialDelay * 2^attempt`
+    - delay = `initialDelay * 2^attempt`
 - **Max delay cap**: `5000ms`
 - **Jitter**: optional small random (+/- 20%)
 
@@ -98,12 +99,12 @@ For a single role run:
 1. Attempt run
 2. If success → stop
 3. If retryable failure:
-   - Record attempt failure in run metadata
-   - Wait backoff delay
-   - Retry (increment attempt counter)
+    - Record attempt failure in run metadata
+    - Wait backoff delay
+    - Retry (increment attempt counter)
 4. If max retries exceeded:
-   - Mark run as failed
-   - Propagate error upward
+    - Mark run as failed
+    - Propagate error upward
 
 ---
 
@@ -113,26 +114,27 @@ Extend `runs/<run-id>/meta.json`:
 
 ```json
 {
-  "attempts": [
-    {
-      "attempt": 1,
-      "startedAt": "...",
-      "endedAt": "...",
-      "status": "error",
-      "failureType": "timeout"
-    },
-    {
-      "attempt": 2,
-      "startedAt": "...",
-      "endedAt": "...",
-      "status": "success"
-    }
-  ],
-  "finalStatus": "success"
+    "attempts": [
+        {
+            "attempt": 1,
+            "startedAt": "...",
+            "endedAt": "...",
+            "status": "error",
+            "failureType": "timeout"
+        },
+        {
+            "attempt": 2,
+            "startedAt": "...",
+            "endedAt": "...",
+            "status": "success"
+        }
+    ],
+    "finalStatus": "success"
 }
 ```
 
 Notes:
+
 - Previous tickets wrote flat metadata; this ticket **extends**, not replaces it
 - Backward-compatible reading is acceptable (version check optional)
 
@@ -144,19 +146,20 @@ Introduce a retry wrapper:
 
 ```ts
 interface RetryPolicy {
-  maxRetries: number
-  baseDelayMs: number
-  maxDelayMs: number
+    maxRetries: number;
+    baseDelayMs: number;
+    maxDelayMs: number;
 }
 
 async function executeWithRetry<T>(
-  fn: () => Promise<T>,
-  policy: RetryPolicy,
-  onAttemptFailure: (info: AttemptFailureInfo) => void
-): Promise<T>
+    fn: () => Promise<T>,
+    policy: RetryPolicy,
+    onAttemptFailure: (info: AttemptFailureInfo) => void
+): Promise<T>;
 ```
 
 Used by:
+
 - Session run executor (ticket 006)
 - Parallel runner (ticket 018)
 
@@ -165,11 +168,13 @@ Used by:
 ## Integration points
 
 ### Update run executor
+
 - Wrap server execution in `executeWithRetry`
 - Capture per-attempt metadata
 - Persist final outcome
 
 ### Update parallel runner
+
 - Retry applies **per role run**, not per task
 - A run that eventually succeeds counts as success
 
@@ -178,11 +183,11 @@ Used by:
 ## Error handling rules
 
 - If all retries fail:
-  - Mark run `error`
-  - Propagate error to orchestration
+    - Mark run `error`
+    - Propagate error to orchestration
 - If cancellation occurs:
-  - Do not retry
-  - Mark failure as `cancelled`
+    - Do not retry
+    - Mark failure as `cancelled`
 
 ---
 
@@ -198,6 +203,7 @@ Used by:
 ## Proposed file structure
 
 ### New files
+
 ```
 src/core/retry/
   policy.ts
@@ -206,6 +212,7 @@ src/core/retry/
 ```
 
 ### Updated files
+
 ```
 src/server/runExecutor.ts
 src/core/orchestration/parallelRunner.ts

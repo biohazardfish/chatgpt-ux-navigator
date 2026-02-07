@@ -1,74 +1,78 @@
-import { join } from "node:path";
-import { Config } from "../config/config.ts";
-import { ensureDirs } from "../fs/ensureDirs.ts";
-import { isPathInsideRoot } from "../fs/paths.ts";
-import { 
-  validateProjectId, 
-  PROJECT_FILE, 
-  PLAN_FILE, 
-  NOTES_FILE, 
-  META_FILE,
-  DECISIONS_DIR,
-  TASKS_DIR,
-  REPORTS_DIR,
-  getIsoTimestamp
-} from "./layout.ts";
+import {join} from 'node:path';
+import {Config} from '../config/config.ts';
+import {ensureDirs} from '../fs/ensureDirs.ts';
+import {isPathInsideRoot} from '../fs/paths.ts';
+import {
+    validateProjectId,
+    PROJECT_FILE,
+    PLAN_FILE,
+    NOTES_FILE,
+    META_FILE,
+    DECISIONS_DIR,
+    TASKS_DIR,
+    REPORTS_DIR,
+    getIsoTimestamp,
+} from './layout.ts';
 
 export interface ProjectData {
-  title: string;
-  goals: string[];
-  constraints: string[];
-  nonGoals: string[];
+    title: string;
+    goals: string[];
+    constraints: string[];
+    nonGoals: string[];
 }
 
 export interface ProjectMeta {
-  version: number;
-  projectId: string;
-  createdAt: string;
-  lastUpdatedAt: string;
-  status: 'active' | 'paused' | 'completed';
+    version: number;
+    projectId: string;
+    createdAt: string;
+    lastUpdatedAt: string;
+    status: 'active' | 'paused' | 'completed';
 }
 
 export interface Project {
-  meta: ProjectMeta;
-  projectMd: string;
-  planMd: string;
-  notesMd: string;
+    meta: ProjectMeta;
+    projectMd: string;
+    planMd: string;
+    notesMd: string;
 }
 
-export async function createProject(config: Config, projectId: string, data: ProjectData): Promise<void> {
-  if (!validateProjectId(projectId)) {
-    throw new Error(`Invalid project ID: ${projectId}`);
-  }
+export async function createProject(
+    config: Config,
+    projectId: string,
+    data: ProjectData
+): Promise<void> {
+    if (!validateProjectId(projectId)) {
+        throw new Error(`Invalid project ID: ${projectId}`);
+    }
 
-  const projectDir = join(config.projectsDir, projectId);
-  
-  if (!isPathInsideRoot(projectDir, config.projectsDir)) {
-    throw new Error(`Project directory is outside projects root: ${projectDir}`);
-  }
+    const projectDir = join(config.projectsDir, projectId);
 
-  const metaFile = Bun.file(join(projectDir, META_FILE));
-  if (await metaFile.exists()) {
-    throw new Error(`Project already exists: ${projectId}`);
-  }
+    if (!isPathInsideRoot(projectDir, config.projectsDir)) {
+        throw new Error(`Project directory is outside projects root: ${projectDir}`);
+    }
 
-  await ensureDirs([
-    projectDir,
-    join(projectDir, DECISIONS_DIR),
-    join(projectDir, TASKS_DIR),
-    join(projectDir, REPORTS_DIR)
-  ]);
+    const metaFile = Bun.file(join(projectDir, META_FILE));
+    if (await metaFile.exists()) {
+        throw new Error(`Project already exists: ${projectId}`);
+    }
 
-  const timestamp = getIsoTimestamp();
-  const meta: ProjectMeta = {
-    version: 1,
-    projectId,
-    createdAt: timestamp,
-    lastUpdatedAt: timestamp,
-    status: 'active'
-  };
+    await ensureDirs([
+        projectDir,
+        join(projectDir, DECISIONS_DIR),
+        join(projectDir, TASKS_DIR),
+        join(projectDir, REPORTS_DIR),
+    ]);
 
-  const projectMd = `# Project: ${data.title}
+    const timestamp = getIsoTimestamp();
+    const meta: ProjectMeta = {
+        version: 1,
+        projectId,
+        createdAt: timestamp,
+        lastUpdatedAt: timestamp,
+        status: 'active',
+    };
+
+    const projectMd = `# Project: ${data.title}
 
 # Goals
 
@@ -83,7 +87,7 @@ ${data.constraints.map(c => `- ${c}`).join('\n')}
 ${data.nonGoals.map(n => `- ${n}`).join('\n')}
 `;
 
-  const planMd = `# Current Plan
+    const planMd = `# Current Plan
 
 # Status
 
@@ -94,7 +98,7 @@ Draft
 # Notes
 `;
 
-  const notesMd = `# Project Notes
+    const notesMd = `# Project Notes
 
 # Assumptions
 
@@ -103,79 +107,79 @@ Draft
 # Lessons Learned
 `;
 
-  await Promise.all([
-    Bun.write(join(projectDir, META_FILE), JSON.stringify(meta, null, 2)),
-    Bun.write(join(projectDir, PROJECT_FILE), projectMd),
-    Bun.write(join(projectDir, PLAN_FILE), planMd),
-    Bun.write(join(projectDir, NOTES_FILE), notesMd)
-  ]);
+    await Promise.all([
+        Bun.write(join(projectDir, META_FILE), JSON.stringify(meta, null, 2)),
+        Bun.write(join(projectDir, PROJECT_FILE), projectMd),
+        Bun.write(join(projectDir, PLAN_FILE), planMd),
+        Bun.write(join(projectDir, NOTES_FILE), notesMd),
+    ]);
 }
 
 export async function loadProject(config: Config, projectId: string): Promise<Project> {
-  const projectDir = join(config.projectsDir, projectId);
-  
-  if (!isPathInsideRoot(projectDir, config.projectsDir)) {
-    throw new Error(`Project directory is outside projects root: ${projectDir}`);
-  }
+    const projectDir = join(config.projectsDir, projectId);
 
-  const metaFile = Bun.file(join(projectDir, META_FILE));
-  if (!await metaFile.exists()) {
-    throw new Error(`Project does not exist: ${projectId}`);
-  }
+    if (!isPathInsideRoot(projectDir, config.projectsDir)) {
+        throw new Error(`Project directory is outside projects root: ${projectDir}`);
+    }
 
-  const [metaText, projectMd, planMd, notesMd] = await Promise.all([
-    metaFile.text(),
-    Bun.file(join(projectDir, PROJECT_FILE)).text(),
-    Bun.file(join(projectDir, PLAN_FILE)).text(),
-    Bun.file(join(projectDir, NOTES_FILE)).text()
-  ]);
+    const metaFile = Bun.file(join(projectDir, META_FILE));
+    if (!(await metaFile.exists())) {
+        throw new Error(`Project does not exist: ${projectId}`);
+    }
 
-  return {
-    meta: JSON.parse(metaText),
-    projectMd,
-    planMd,
-    notesMd
-  };
+    const [metaText, projectMd, planMd, notesMd] = await Promise.all([
+        metaFile.text(),
+        Bun.file(join(projectDir, PROJECT_FILE)).text(),
+        Bun.file(join(projectDir, PLAN_FILE)).text(),
+        Bun.file(join(projectDir, NOTES_FILE)).text(),
+    ]);
+
+    return {
+        meta: JSON.parse(metaText),
+        projectMd,
+        planMd,
+        notesMd,
+    };
 }
 
 export type ProjectMetaUpdates = Partial<Pick<ProjectMeta, 'lastUpdatedAt' | 'status'>>;
 
 /**
  * Update project metadata (meta.json).
- * 
+ *
  * @param config - Application configuration
  * @param projectId - Project identifier
  * @param updates - Fields to update (lastUpdatedAt, status)
  */
 export async function updateProjectMeta(
-  config: Config,
-  projectId: string,
-  updates: ProjectMetaUpdates
+    config: Config,
+    projectId: string,
+    updates: ProjectMetaUpdates
 ): Promise<void> {
-  if (!validateProjectId(projectId)) {
-    throw new Error(`Invalid project ID: ${projectId}`);
-  }
+    if (!validateProjectId(projectId)) {
+        throw new Error(`Invalid project ID: ${projectId}`);
+    }
 
-  const projectDir = join(config.projectsDir, projectId);
+    const projectDir = join(config.projectsDir, projectId);
 
-  if (!isPathInsideRoot(projectDir, config.projectsDir)) {
-    throw new Error(`Project directory is outside projects root: ${projectDir}`);
-  }
+    if (!isPathInsideRoot(projectDir, config.projectsDir)) {
+        throw new Error(`Project directory is outside projects root: ${projectDir}`);
+    }
 
-  const metaFilePath = join(projectDir, META_FILE);
-  const metaFile = Bun.file(metaFilePath);
+    const metaFilePath = join(projectDir, META_FILE);
+    const metaFile = Bun.file(metaFilePath);
 
-  if (!(await metaFile.exists())) {
-    throw new Error(`Project does not exist: ${projectId}`);
-  }
+    if (!(await metaFile.exists())) {
+        throw new Error(`Project does not exist: ${projectId}`);
+    }
 
-  const metaText = await metaFile.text();
-  const meta: ProjectMeta = JSON.parse(metaText);
+    const metaText = await metaFile.text();
+    const meta: ProjectMeta = JSON.parse(metaText);
 
-  const updatedMeta: ProjectMeta = {
-    ...meta,
-    ...updates,
-  };
+    const updatedMeta: ProjectMeta = {
+        ...meta,
+        ...updates,
+    };
 
-  await Bun.write(metaFilePath, JSON.stringify(updatedMeta, null, 2));
+    await Bun.write(metaFilePath, JSON.stringify(updatedMeta, null, 2));
 }

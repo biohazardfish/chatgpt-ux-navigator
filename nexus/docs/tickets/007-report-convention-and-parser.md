@@ -9,6 +9,7 @@ Report Convention and Parser (Text → Structured Report)
 Define a **strict, text-based report convention** for AI session outputs and implement a **robust parser** that converts plain-text responses into structured `Report` domain objects suitable for governance.
 
 This ticket is critical because:
+
 - The server returns **only text**
 - There are **no tool calls or JSON**
 - Governance depends on extracting reliable structure from free-form output
@@ -43,6 +44,7 @@ The report **must** start with:
 ```
 
 Example:
+
 ```
 # Report — Planner
 ```
@@ -81,6 +83,7 @@ NEXT:
 ```
 
 Notes:
+
 - Bullet lists must start with `- `
 - Empty sections are allowed but must still be present
 - Field names are **case-sensitive**
@@ -112,11 +115,13 @@ NEXT:
 ## Parsing rules
 
 ### General
+
 - Parser is **strict** by default
 - Deviations produce **actionable errors**
 - Parser should be tolerant of extra whitespace but not missing fields
 
 ### Role extraction
+
 - Extract role from header
 - Must match known `Role` union
 - Mismatch between expected role (from run metadata) and header role is an error
@@ -124,20 +129,22 @@ NEXT:
 ---
 
 ### Status parsing
+
 - Must be one of:
-  - `success`
-  - `partial`
-  - `blocked`
+    - `success`
+    - `partial`
+    - `blocked`
 - Anything else → error
 
 ---
 
 ### Section parsing
+
 - Sections are delimited by exact section headers:
-  - `SUMMARY:`
-  - `ARTIFACTS:`
-  - `RISKS:`
-  - `NEXT:`
+    - `SUMMARY:`
+    - `ARTIFACTS:`
+    - `RISKS:`
+    - `NEXT:`
 - Order must match the convention
 - Content continues until the next known section header or EOF
 - A `section-order` error is effectively a missing section for downstream
@@ -147,15 +154,17 @@ NEXT:
 ---
 
 ### Bullet list parsing
+
 - For `ARTIFACTS`, `RISKS`, `NEXT`:
-  - Lines must start with `- `
-  - Strip prefix and trim
+    - Lines must start with `- `
+    - Strip prefix and trim
 - If a bullet list section contains no bullets:
-  - Parse as empty array (allowed)
+    - Parse as empty array (allowed)
 
 ---
 
 ### Raw text preservation
+
 - The full input text must be preserved verbatim as `rawText` on the `Report`
 
 ---
@@ -166,15 +175,16 @@ Introduce a small error taxonomy:
 
 ```ts
 type ReportParseErrorType =
-  | 'missing-header'
-  | 'invalid-role'
-  | 'missing-section'
-  | 'invalid-status'
-  | 'section-order'
-  | 'malformed-bullets'
+    | 'missing-header'
+    | 'invalid-role'
+    | 'missing-section'
+    | 'invalid-status'
+    | 'section-order'
+    | 'malformed-bullets';
 ```
 
 Parser should throw an error including:
+
 - Error type
 - Human-readable message
 - Snippet of offending text (first ~200 chars)
@@ -185,13 +195,11 @@ Parser should throw an error including:
 
 ```ts
 interface ParseReportParams {
-  expectedRole: Role
-  rawText: string
+    expectedRole: Role;
+    rawText: string;
 }
 
-function parseReport(
-  params: ParseReportParams
-): Report
+function parseReport(params: ParseReportParams): Report;
 ```
 
 - `expectedRole` comes from run metadata (ticket 006)
@@ -202,6 +210,7 @@ function parseReport(
 ## Proposed file structure
 
 ### New files
+
 ```
 src/core/report/
   convention.ts      // string constants, section names
@@ -210,8 +219,9 @@ src/core/report/
 ```
 
 ### Updates
+
 - `src/core/domain/report.ts`
-  - Ensure it matches parsed output exactly
+    - Ensure it matches parsed output exactly
 
 ---
 
@@ -219,8 +229,8 @@ src/core/report/
 
 - Used by orchestration layer (later ticket) after a run completes
 - Parse errors should:
-  - Mark the run as “unusable”
-  - Trigger retry or escalation (later governance logic)
+    - Mark the run as “unusable”
+    - Trigger retry or escalation (later governance logic)
 - This ticket does **not** decide what happens after a parse failure
 
 ---
@@ -230,11 +240,13 @@ src/core/report/
 Add tests under `test/report/`:
 
 ### Valid cases
+
 - Fully valid report
 - Empty bullet sections
 - Multi-line summaries
 
 ### Invalid cases
+
 - Missing header
 - Missing required section
 - Invalid status value
@@ -243,6 +255,7 @@ Add tests under `test/report/`:
 - Role mismatch
 
 Tests should assert:
+
 - Correct structured output
 - Correct error type and message
 

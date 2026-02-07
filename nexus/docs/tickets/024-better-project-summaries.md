@@ -32,13 +32,13 @@ This ticket introduces **derived summaries** that compress project history into 
 ## Design principles
 
 1. **Derived, never authoritative**
-   - Summaries are computed from existing state
+    - Summaries are computed from existing state
 2. **Deterministic**
-   - No AI calls or inference
+    - No AI calls or inference
 3. **Explainable**
-   - Every summary line can be traced to concrete data
+    - Every summary line can be traced to concrete data
 4. **Cheap to compute**
-   - Recomputed on demand or on state change
+    - Recomputed on demand or on state change
 
 ---
 
@@ -124,25 +124,25 @@ Define derived summary structures:
 
 ```ts
 interface ProjectDigest {
-  projectId: string
-  statusLine: string[]
-  recentActivity: string[]
-  attentionRequired: string[]
+    projectId: string;
+    statusLine: string[];
+    recentActivity: string[];
+    attentionRequired: string[];
 }
 
 interface DecisionsSummary {
-  items: {
-    id: number
-    title: string
-    date: string
-  }[]
+    items: {
+        id: number;
+        title: string;
+        date: string;
+    }[];
 }
 
 interface BlockersSummary {
-  items: {
-    taskId: string
-    reason: string
-  }[]
+    items: {
+        taskId: string;
+        reason: string;
+    }[];
 }
 ```
 
@@ -151,6 +151,7 @@ interface BlockersSummary {
 ## Computation rules (MVP)
 
 ### Status
+
 - Project status from `meta.status`
 - Plan status from `plan.status`
 - Count blocked tasks
@@ -158,7 +159,9 @@ interface BlockersSummary {
 ---
 
 ### Recent activity
+
 Include events from:
+
 - Most recently updated tasks (last N = 5)
 - Most recent decisions (last N = 3)
 
@@ -167,7 +170,9 @@ Order by recency.
 ---
 
 ### Attention required
+
 Include:
+
 - Unacknowledged alerts of severity `warning` or `error`
 - Blocked tasks
 - Pending approvals (if any)
@@ -177,6 +182,7 @@ Include:
 ## TUI integration
 
 ### Dashboard enhancement
+
 Extend Dashboard view (ticket 009):
 
 - Add a **“Project Digest”** section at the top
@@ -191,9 +197,11 @@ Add a new view:
 - `summary`
 
 Accessible via:
+
 - Key `s`
 
 Shows:
+
 - Full Project Digest
 - Recent Decisions
 - Blockers & Risks
@@ -211,6 +219,7 @@ Shows:
 ## Proposed file structure
 
 ### New files
+
 ```
 src/core/summary/
   projectDigest.ts
@@ -220,6 +229,7 @@ src/core/summary/
 ```
 
 ### Updated files
+
 ```
 src/tui/views/dashboard.ts
 src/tui/views/summary.ts     (if added)
@@ -231,13 +241,13 @@ src/tui/keybindings.ts
 ## Implementation steps
 
 1. **Implement summary builders**
-   - Pure functions consuming domain objects + alerts
+    - Pure functions consuming domain objects + alerts
 2. **Add unit tests**
-   - Deterministic output for known inputs
+    - Deterministic output for known inputs
 3. **Integrate into dashboard**
-   - Render digest at top
+    - Render digest at top
 4. **(Optional) Add summary view**
-   - Render extended summaries
+    - Render extended summaries
 
 ---
 

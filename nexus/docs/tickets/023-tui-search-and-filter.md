@@ -33,14 +33,16 @@ This ticket introduces **non-destructive, read-only views** over existing data.
 ## Scope
 
 ### Included
+
 - Search and filter for:
-  - Task list
-  - Alerts list
+    - Task list
+    - Alerts list
 - Keyboard-driven query input
 - Clear indication of active filters
 - Zero impact on underlying project state
 
 ### Excluded
+
 - Full-text search across markdown files
 - Editing or batch operations
 - Persisting filters across restarts
@@ -50,25 +52,26 @@ This ticket introduces **non-destructive, read-only views** over existing data.
 ## Design principles
 
 1. **Fast and reversible**
-   - Filters can be applied and cleared instantly
+    - Filters can be applied and cleared instantly
 2. **Non-destructive**
-   - Never hide data permanently
+    - Never hide data permanently
 3. **Visible**
-   - Active filters/search terms must be obvious
+    - Active filters/search terms must be obvious
 4. **Keyboard-first**
-   - No modal text editors or mouse interaction
+    - No modal text editors or mouse interaction
 
 ---
 
 ## Search & filter model
 
 ### Search query
+
 - Simple case-insensitive substring match
 - Applies to:
-  - Task ID
-  - Task title
-  - Alert title
-  - Alert message
+    - Task ID
+    - Task title
+    - Alert title
+    - Alert message
 
 No regex or advanced query language in MVP.
 
@@ -77,28 +80,31 @@ No regex or advanced query language in MVP.
 ### Filters (MVP)
 
 #### Task filters
+
 - By status:
-  - `pending`
-  - `running`
-  - `blocked`
-  - `completed`
+    - `pending`
+    - `running`
+    - `blocked`
+    - `completed`
 - By role (any assigned role)
 - By task ID prefix (e.g. `T-01`)
 
 #### Alert filters
+
 - By severity:
-  - `info`
-  - `warning`
-  - `error`
+    - `info`
+    - `warning`
+    - `error`
 - By acknowledged state:
-  - `acknowledged`
-  - `unacknowledged`
+    - `acknowledged`
+    - `unacknowledged`
 
 ---
 
 ## TUI interaction model
 
 ### Global keys
+
 - `/` → enter search mode
 - `f` → toggle filter panel
 - `Esc` → exit search / clear filters (context-sensitive)
@@ -110,9 +116,9 @@ No regex or advanced query language in MVP.
 When `/` is pressed:
 
 - Footer switches to input mode:
-  ```
-  Search: _
-  ```
+    ```
+    Search: _
+    ```
 - Typed characters update the search query live
 - `Enter` confirms search
 - `Esc` cancels search and clears query
@@ -138,6 +144,7 @@ Filters:
 ```
 
 Interaction:
+
 - Arrow keys navigate
 - Space toggles filter
 - `Esc` closes panel
@@ -147,13 +154,13 @@ Interaction:
 ## Visual indicators
 
 - Active search query shown in footer:
-  ```
-  Search: "blocked"
-  ```
+    ```
+    Search: "blocked"
+    ```
 - Active filters shown in header or sub-header:
-  ```
-  Filters: status=blocked, role=reviewer
-  ```
+    ```
+    Filters: status=blocked, role=reviewer
+    ```
 
 ---
 
@@ -188,6 +195,7 @@ interface TuiState {
 ## Proposed file structure
 
 ### New files
+
 ```
 src/tui/search/
   input.ts          // search mode handling
@@ -198,6 +206,7 @@ src/tui/filters/
 ```
 
 ### Updated files
+
 ```
 src/tui/state.ts
 src/tui/keybindings.ts
@@ -210,24 +219,24 @@ src/tui/alerts/view.ts
 ## Implementation steps
 
 1. **Define filter types**
-   - Centralize filter definitions and defaults
+    - Centralize filter definitions and defaults
 
 2. **Implement selectors**
-   - `filterTasks(tasks, searchQuery, filters)`
-   - `filterAlerts(alerts, searchQuery, filters)`
+    - `filterTasks(tasks, searchQuery, filters)`
+    - `filterAlerts(alerts, searchQuery, filters)`
 
 3. **Search input handling**
-   - Capture keystrokes
-   - Update `searchQuery` in state
-   - Trigger re-render
+    - Capture keystrokes
+    - Update `searchQuery` in state
+    - Trigger re-render
 
 4. **Filter panel**
-   - Render available filters based on view
-   - Toggle filters in state
+    - Render available filters based on view
+    - Toggle filters in state
 
 5. **Integrate into views**
-   - Apply selectors before rendering lists
-   - Handle empty result states gracefully
+    - Apply selectors before rendering lists
+    - Handle empty result states gracefully
 
 ---
 

@@ -22,7 +22,7 @@ From earlier tickets:
 
 - Project intent is persisted via plans, tasks, and decisions (003, 016)
 - Session runs are captured as raw transcripts (006)
-- Decisions explain *why* major choices were made
+- Decisions explain _why_ major choices were made
 - Alerts and summaries help operators in real time (022–024)
 
 What’s missing is a **single chronological narrative** of events across the project lifecycle.
@@ -32,15 +32,15 @@ What’s missing is a **single chronological narrative** of events across the pr
 ## Design principles
 
 1. **Append-only**
-   - No mutation or deletion
+    - No mutation or deletion
 2. **Chronological**
-   - Events ordered by time
+    - Events ordered by time
 3. **Lightweight**
-   - Minimal schema, easy to inspect
+    - Minimal schema, easy to inspect
 4. **Non-authoritative**
-   - Audit log explains *what happened*, not *what is true*
+    - Audit log explains _what happened_, not _what is true_
 5. **Local-first**
-   - Plain text + JSON only
+    - Plain text + JSON only
 
 ---
 
@@ -101,19 +101,19 @@ Decision 004 — Task T-006: Request revisions
 
 ```ts
 type AuditEventType =
-  | 'PROJECT_CREATED'
-  | 'PLAN_APPROVED'
-  | 'TASK_CREATED'
-  | 'TASK_ASSIGNED'
-  | 'TASK_BLOCKED'
-  | 'TASK_COMPLETED'
-  | 'SESSION_RUN_STARTED'
-  | 'SESSION_RUN_FAILED'
-  | 'SESSION_RUN_SUCCEEDED'
-  | 'GOVERNANCE_ESCALATION'
-  | 'DECISION_RECORDED'
-  | 'PROJECT_PAUSED'
-  | 'PROJECT_COMPLETED'
+    | 'PROJECT_CREATED'
+    | 'PLAN_APPROVED'
+    | 'TASK_CREATED'
+    | 'TASK_ASSIGNED'
+    | 'TASK_BLOCKED'
+    | 'TASK_COMPLETED'
+    | 'SESSION_RUN_STARTED'
+    | 'SESSION_RUN_FAILED'
+    | 'SESSION_RUN_SUCCEEDED'
+    | 'GOVERNANCE_ESCALATION'
+    | 'DECISION_RECORDED'
+    | 'PROJECT_PAUSED'
+    | 'PROJECT_COMPLETED';
 ```
 
 Events may include free-form detail text.
@@ -125,6 +125,7 @@ Events may include free-form detail text.
 ### File: `run-history.json`
 
 Purpose:
+
 - Provide a **compact index** of all session runs
 - Enable quick lookup without scanning directories
 - Support future UI views (timeline, filtering)
@@ -135,31 +136,32 @@ Purpose:
 
 ```json
 {
-  "version": 1,
-  "runs": [
-    {
-      "runId": "20260201T131200Z-planner",
-      "taskId": "T-006",
-      "role": "planner",
-      "status": "success",
-      "startedAt": "2026-02-01T13:12:00Z",
-      "completedAt": "2026-02-01T13:12:47Z",
-      "path": "runs/nexus-mvp/20260201T131200Z-planner"
-    },
-    {
-      "runId": "20260201T131400Z-reviewer",
-      "taskId": "T-006",
-      "role": "reviewer",
-      "status": "error",
-      "startedAt": "2026-02-01T13:14:00Z",
-      "completedAt": "2026-02-01T13:14:12Z",
-      "path": "runs/nexus-mvp/20260201T131400Z-reviewer"
-    }
-  ]
+    "version": 1,
+    "runs": [
+        {
+            "runId": "20260201T131200Z-planner",
+            "taskId": "T-006",
+            "role": "planner",
+            "status": "success",
+            "startedAt": "2026-02-01T13:12:00Z",
+            "completedAt": "2026-02-01T13:12:47Z",
+            "path": "runs/nexus-mvp/20260201T131200Z-planner"
+        },
+        {
+            "runId": "20260201T131400Z-reviewer",
+            "taskId": "T-006",
+            "role": "reviewer",
+            "status": "error",
+            "startedAt": "2026-02-01T13:14:00Z",
+            "completedAt": "2026-02-01T13:14:12Z",
+            "path": "runs/nexus-mvp/20260201T131400Z-reviewer"
+        }
+    ]
 }
 ```
 
 Notes:
+
 - `path` is relative to `stateDir`
 - This file is append-only at the array level
 - No deletion or mutation of past entries
@@ -172,13 +174,13 @@ Notes:
 
 ```ts
 function appendAuditEvent(
-  projectId: string,
-  event: {
-    type: AuditEventType
-    message: string
-    details?: string[]
-  }
-): Promise<void>
+    projectId: string,
+    event: {
+        type: AuditEventType;
+        message: string;
+        details?: string[];
+    }
+): Promise<void>;
 ```
 
 ---
@@ -187,17 +189,17 @@ function appendAuditEvent(
 
 ```ts
 function recordRunHistory(
-  projectId: string,
-  runMeta: {
-    runId: string
-    taskId?: string
-    role: Role
-    status: 'success' | 'error' | 'cancelled'
-    startedAt: string
-    completedAt: string
-    path: string
-  }
-): Promise<void>
+    projectId: string,
+    runMeta: {
+        runId: string;
+        taskId?: string;
+        role: Role;
+        status: 'success' | 'error' | 'cancelled';
+        startedAt: string;
+        completedAt: string;
+        path: string;
+    }
+): Promise<void>;
 ```
 
 ---
@@ -225,25 +227,27 @@ function recordRunHistory(
 ## Error handling & safety
 
 - Append operations must be atomic:
-  - Use file append for `audit.log`
-  - For `run-history.json`, write temp file then rename
+    - Use file append for `audit.log`
+    - For `run-history.json`, write temp file then rename
 - If audit logging fails:
-  - Log error
-  - Do not block main execution (best-effort)
+    - Log error
+    - Do not block main execution (best-effort)
 - If run history write fails:
-  - Surface warning alert to operator
+    - Surface warning alert to operator
 
 ---
 
 ## Proposed file structure
 
 ### New files
+
 ```
 src/storage/auditLog.ts
 src/storage/runHistory.ts
 ```
 
 ### Updated files
+
 ```
 src/server/runExecutor.ts
 src/core/orchestration/sessionRunner.ts

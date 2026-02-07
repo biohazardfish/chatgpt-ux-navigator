@@ -39,6 +39,7 @@ This section is the canonical MVP truth; older sections below may describe futur
 In Nexus, a **session** is a live ChatGPT conversation created to perform a specific task with a specific role.
 
 Sessions are treated as:
+
 - Ephemeral
 - Replaceable
 - Isolated from each other
@@ -52,6 +53,7 @@ They are not sources of long-term memory or authority.
 Nexus creates sessions on demand when a task enters execution.
 
 When creating a session, Nexus specifies:
+
 - The assigned role
 - The task objective
 - Relevant project context
@@ -67,6 +69,7 @@ Sessions are always created intentionally; there are no background or idle sessi
 Each session receives **selective context**, not the entire project history.
 
 Injected context may include:
+
 - Task description
 - Relevant goals
 - Excerpts from the current plan
@@ -74,6 +77,7 @@ Injected context may include:
 - Constraints or assumptions
 
 Nexus controls context size and relevance to:
+
 - Reduce noise
 - Avoid accidental bias
 - Prevent context bloat
@@ -87,11 +91,13 @@ Nexus controls context size and relevance to:
 In MVP, Nexus runs sessions sequentially (one at a time).
 
 If/when implemented, common reasons include:
+
 - Speeding up work
 - Comparing perspectives
 - Reducing risk on critical tasks
 
 In that mode, parallel sessions:
+
 - Do not share context
 - Do not communicate directly
 - Are reconciled only through Nexus
@@ -103,11 +109,13 @@ This prevents cross-contamination and groupthink.
 ## Monitoring and Control
 
 While sessions are running, Nexus:
+
 - Tracks session status
 - Captures final outputs in buffered JSON mode (no streaming UI / SSE parsing in MVP)
 - Detects stalls or failures
 
 Nexus may:
+
 - Cancel a session
 - Restart a session
 - Start a follow-up session (sequential in MVP)
@@ -120,6 +128,7 @@ Session control is dynamic and responsive.
 ## Session Termination
 
 Sessions are terminated when:
+
 - The task completes
 - The task is canceled
 - Nexus shuts down
@@ -134,11 +143,13 @@ No session is kept alive for future reuse.
 ## Restart Behavior
 
 When Nexus restarts:
+
 - All previous sessions are considered terminated
 - No session state is restored
 - New sessions always start fresh
 
 If needed, Nexus can:
+
 - Re-inject summaries or notes
 - Re-issue tasks intentionally
 
@@ -149,6 +160,7 @@ This ensures clean and predictable execution.
 ## Error and Failure Handling
 
 If a session fails or produces unusable output:
+
 - Nexus records the failure
 - The session is discarded
 - A retry or alternative approach may be triggered
@@ -160,11 +172,13 @@ Failures are contained at the session level and do not corrupt project state.
 ## Authority Boundaries
 
 Sessions:
+
 - Execute tasks
 - Produce reports
 - Offer suggestions
 
 Sessions do **not**:
+
 - Make final decisions
 - Modify project state directly
 - Override plans or goals

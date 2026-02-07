@@ -1,6 +1,6 @@
-import type { Config } from './config.ts';
-import { resolveInsideRoot } from '../fs/paths.ts';
-import { ensureDirs } from '../fs/ensureDirs.ts';
+import type {Config} from './config.ts';
+import {resolveInsideRoot} from '../fs/paths.ts';
+import {ensureDirs} from '../fs/ensureDirs.ts';
 
 export type StateConfig = {
     // UI convenience only. Do NOT store secrets.
@@ -12,7 +12,7 @@ export type StateConfig = {
 };
 
 function defaultStateConfig(): StateConfig {
-    return { ui: {} };
+    return {ui: {}};
 }
 
 function stripJSONC(text: string): string {
@@ -33,12 +33,15 @@ function parseStateConfig(raw: unknown): StateConfig {
     const ui: StateConfig['ui'] = {};
 
     if (maybeUi && typeof maybeUi === 'object') {
-        if (typeof (maybeUi as any).lastProjectId === 'string') ui.lastProjectId = (maybeUi as any).lastProjectId;
-        if (typeof (maybeUi as any).lastTaskId === 'string') ui.lastTaskId = (maybeUi as any).lastTaskId;
-        if (typeof (maybeUi as any).activeView === 'string') ui.activeView = (maybeUi as any).activeView;
+        if (typeof (maybeUi as any).lastProjectId === 'string')
+            ui.lastProjectId = (maybeUi as any).lastProjectId;
+        if (typeof (maybeUi as any).lastTaskId === 'string')
+            ui.lastTaskId = (maybeUi as any).lastTaskId;
+        if (typeof (maybeUi as any).activeView === 'string')
+            ui.activeView = (maybeUi as any).activeView;
     }
 
-    return { ui };
+    return {ui};
 }
 
 function getStateConfigPath(config: Config): string {
@@ -58,9 +61,16 @@ export async function loadStateConfig(config: Config): Promise<StateConfig> {
         return parseStateConfig(parsed);
     } catch (error) {
         if (error instanceof SyntaxError) {
-            throw new Error(`Invalid JSON in state config file "${stateConfigPath}": ${error.message}`);
+            throw new Error(
+                `Invalid JSON in state config file "${stateConfigPath}": ${error.message}`
+            );
         }
-        if (error && typeof error === 'object' && 'code' in error && (error as any).code === 'ENOENT') {
+        if (
+            error &&
+            typeof error === 'object' &&
+            'code' in error &&
+            (error as any).code === 'ENOENT'
+        ) {
             return defaultStateConfig();
         }
         throw error;

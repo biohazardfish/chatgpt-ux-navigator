@@ -25,7 +25,7 @@ From earlier tickets:
 - Governance can block tasks or escalate to approvals (015, 020, 021)
 - Approvals are modal and blocking (011)
 
-What’s missing is a **non-modal, persistent signaling layer** that tells the operator *what needs attention and why*.
+What’s missing is a **non-modal, persistent signaling layer** that tells the operator _what needs attention and why_.
 
 ### Rendering baseline (OpenTUI)
 
@@ -38,13 +38,13 @@ What’s missing is a **non-modal, persistent signaling layer** that tells the o
 ## Design principles
 
 1. **Signal over noise**
-   - Only surface events that matter to operator decisions
+    - Only surface events that matter to operator decisions
 2. **Persistent until acknowledged**
-   - Alerts should not disappear silently
+    - Alerts should not disappear silently
 3. **Non-intrusive by default**
-   - Do not interrupt unless necessary
+    - Do not interrupt unless necessary
 4. **Actionable**
-   - Alerts should guide the operator to the relevant view or action
+    - Alerts should guide the operator to the relevant view or action
 
 ---
 
@@ -54,12 +54,12 @@ Define a finite set of alert types:
 
 ```ts
 type AlertType =
-  | 'task-blocked'
-  | 'task-failed'
-  | 'conflict-detected'
-  | 'approval-required'
-  | 'execution-error'
-  | 'system-warning'
+    | 'task-blocked'
+    | 'task-failed'
+    | 'conflict-detected'
+    | 'approval-required'
+    | 'execution-error'
+    | 'system-warning';
 ```
 
 ---
@@ -67,22 +67,19 @@ type AlertType =
 ## Alert severity
 
 ```ts
-type AlertSeverity =
-  | 'info'
-  | 'warning'
-  | 'error'
+type AlertSeverity = 'info' | 'warning' | 'error';
 ```
 
 Severity mapping (MVP):
 
-| Alert Type           | Severity |
-|----------------------|----------|
-| approval-required    | warning  |
-| conflict-detected    | warning  |
-| task-blocked         | error    |
-| task-failed          | error    |
-| execution-error      | error    |
-| system-warning       | warning  |
+| Alert Type        | Severity |
+| ----------------- | -------- |
+| approval-required | warning  |
+| conflict-detected | warning  |
+| task-blocked      | error    |
+| task-failed       | error    |
+| execution-error   | error    |
+| system-warning    | warning  |
 
 ---
 
@@ -90,15 +87,15 @@ Severity mapping (MVP):
 
 ```ts
 interface Alert {
-  id: string
-  type: AlertType
-  severity: AlertSeverity
-  title: string
-  message: string
-  relatedProjectId?: string
-  relatedTaskId?: string
-  createdAt: string
-  acknowledged: boolean
+    id: string;
+    type: AlertType;
+    severity: AlertSeverity;
+    title: string;
+    message: string;
+    relatedProjectId?: string;
+    relatedTaskId?: string;
+    createdAt: string;
+    acknowledged: boolean;
 }
 ```
 
@@ -111,17 +108,17 @@ Alerts are **UI-level state**, not persisted to project storage (MVP).
 ### Where alerts appear
 
 1. **Header indicator**
-   - Show alert count by severity
-   - Example:
-     ```
-     Alerts: ⚠ 2  ✖ 1
-     ```
+    - Show alert count by severity
+    - Example:
+        ```
+        Alerts: ⚠ 2  ✖ 1
+        ```
 
 2. **Footer status**
-   - If an unacknowledged alert exists, show the most recent alert summary
+    - If an unacknowledged alert exists, show the most recent alert summary
 
 3. **Alerts view**
-   - Dedicated view listing all alerts
+    - Dedicated view listing all alerts
 
 ---
 
@@ -138,6 +135,7 @@ Alerts
 ```
 
 Legend:
+
 - ✖ error
 - ⚠ warning
 - ℹ info
@@ -147,11 +145,13 @@ Legend:
 ## Navigation & interaction
 
 ### Global keys
+
 - `a` → open Alerts view
 - `Enter` → acknowledge selected alert
 - `Esc` → return to previous view
 
 ### Alert acknowledgment
+
 - Marks alert as `acknowledged = true`
 - Acknowledged alerts remain visible but de-emphasized
 - Header/ footer indicators update immediately
@@ -189,17 +189,18 @@ interface TuiState {
 ## Architecture & boundaries
 
 - **Alert generation**
-  - Happens in orchestration/governance layers
+    - Happens in orchestration/governance layers
 - **Alert rendering & acknowledgment**
-  - Handled by TUI
+    - Handled by TUI
 - **No persistence**
-  - Alerts reset on restart (intentional for MVP)
+    - Alerts reset on restart (intentional for MVP)
 
 ---
 
 ## Proposed file structure
 
 ### New files
+
 ```
 src/tui/alerts/
   types.ts
@@ -208,6 +209,7 @@ src/tui/alerts/
 ```
 
 ### Updated files
+
 ```
 src/tui/state.ts
 src/tui/keybindings.ts
@@ -219,28 +221,28 @@ src/tui/index.ts
 ## Implementation steps
 
 1. **Define alert types and model**
-   - Centralized in `alerts/types.ts`
+    - Centralized in `alerts/types.ts`
 
 2. **Alert store**
-   - In-memory store with helpers:
-     ```ts
-     addAlert(alert: Alert)
-     acknowledgeAlert(alertId: string)
-     getUnacknowledgedAlerts()
-     ```
+    - In-memory store with helpers:
+        ```ts
+        addAlert(alert: Alert)
+        acknowledgeAlert(alertId: string)
+        getUnacknowledgedAlerts()
+        ```
 
 3. **Header and footer indicators**
-   - Update layout to show alert counts
+    - Update layout to show alert counts
 
 4. **Alerts view**
-   - Render list
-   - Support selection + acknowledgment
+    - Render list
+    - Support selection + acknowledgment
 
 5. **Integration points**
-   - Wire alert creation calls from:
-     - Governance evaluation
-     - Approval escalation
-     - Execution error paths
+    - Wire alert creation calls from:
+        - Governance evaluation
+        - Approval escalation
+        - Execution error paths
 
 ---
 

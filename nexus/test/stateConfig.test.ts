@@ -1,9 +1,9 @@
-import { describe, it, expect, beforeEach, afterEach } from 'bun:test';
-import { tmpdir } from 'node:os';
-import { mkdtempSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
-import { join, resolve } from 'node:path';
-import { loadConfig } from '../src/config/config.ts';
-import { loadStateConfig, saveStateConfig } from '../src/config/stateConfig.ts';
+import {describe, it, expect, beforeEach, afterEach} from 'bun:test';
+import {tmpdir} from 'node:os';
+import {mkdtempSync, realpathSync, rmSync, writeFileSync} from 'node:fs';
+import {join, resolve} from 'node:path';
+import {loadConfig} from '../src/config/config.ts';
+import {loadStateConfig, saveStateConfig} from '../src/config/stateConfig.ts';
 
 describe('State Config (runtime UI config)', () => {
     let testDir: string;
@@ -21,14 +21,14 @@ describe('State Config (runtime UI config)', () => {
 
     afterEach(() => {
         process.chdir(originalCwd);
-        rmSync(testDir, { recursive: true, force: true });
+        rmSync(testDir, {recursive: true, force: true});
     });
 
     it('should return defaults when config.jsonc is missing', async () => {
         const config = await loadConfig();
         const state = await loadStateConfig(config);
 
-        expect(state).toEqual({ ui: {} });
+        expect(state).toEqual({ui: {}});
     });
 
     it('should strip JSONC comments correctly', async () => {
@@ -36,7 +36,7 @@ describe('State Config (runtime UI config)', () => {
         writeFileSync(
             configPath,
             JSON.stringify({
-                stateDir: './my_state'
+                stateDir: './my_state',
             })
         );
 
@@ -66,8 +66,8 @@ describe('State Config (runtime UI config)', () => {
             ui: {
                 lastProjectId: 'nexus-mvp',
                 lastTaskId: 'T-003',
-                activeView: 'tasks'
-            }
+                activeView: 'tasks',
+            },
         });
 
         const state = await loadStateConfig(config);
@@ -75,8 +75,8 @@ describe('State Config (runtime UI config)', () => {
             ui: {
                 lastProjectId: 'nexus-mvp',
                 lastTaskId: 'T-003',
-                activeView: 'tasks'
-            }
+                activeView: 'tasks',
+            },
         });
     });
 
@@ -86,7 +86,7 @@ describe('State Config (runtime UI config)', () => {
             configPath,
             JSON.stringify({
                 serverBaseUrl: 'http://localhost:9999',
-                stateDir: './my_state'
+                stateDir: './my_state',
             })
         );
 

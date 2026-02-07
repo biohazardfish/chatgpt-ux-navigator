@@ -1,5 +1,5 @@
-import { describe, it, expect } from 'bun:test';
-import { isPathInsideRoot, resolveInsideRoot } from '../src/fs/paths.ts';
+import {describe, it, expect} from 'bun:test';
+import {isPathInsideRoot, resolveInsideRoot} from '../src/fs/paths.ts';
 
 describe('Path Security', () => {
     describe('isPathInsideRoot', () => {

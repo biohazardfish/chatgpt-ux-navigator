@@ -33,12 +33,14 @@ What’s missing is a **formal, executable task specification** that orchestrati
 ## Scope
 
 ### Included
+
 - Executable task specification (`ExecutableTask`)
 - Role assignment rules
 - Task lifecycle state transitions (in-memory + persisted)
 - Validation of task readiness
 
 ### Excluded
+
 - Prompt composition
 - Session execution (next ticket)
 - Governance decisions on task acceptance
@@ -52,19 +54,19 @@ Define a structure that represents a task **ready to be executed**.
 
 ```ts
 interface ExecutableTask {
-  taskId: string
-  objective: string
-  roles: Role[]
-  context: TaskContext
+    taskId: string;
+    objective: string;
+    roles: Role[];
+    context: TaskContext;
 }
 ```
 
 ```ts
 interface TaskContext {
-  goals: string[]
-  planExcerpt: string
-  notes: string[]
-  constraints: string[]
+    goals: string[];
+    planExcerpt: string;
+    notes: string[];
+    constraints: string[];
 }
 ```
 
@@ -91,8 +93,8 @@ If any rule fails → task is not executable.
 
 - Roles come from persisted `task.md`
 - Order matters:
-  - Primary role first (e.g. Planner)
-  - Secondary roles later
+    - Primary role first (e.g. Planner)
+    - Secondary roles later
 - This ticket does **not** enforce role sequencing yet (parallel vs serial comes later)
 
 ---
@@ -110,6 +112,7 @@ running → completed
 ```
 
 Disallowed transitions:
+
 - Any transition from `completed` or `aborted` (terminal)
 
 ---
@@ -123,6 +126,7 @@ When assignment occurs:
 - No run or report files are written yet
 
 Rollback:
+
 - If assignment fails, task status must remain unchanged
 
 ---
@@ -132,10 +136,7 @@ Rollback:
 ### Task preparation
 
 ```ts
-function prepareExecutableTask(
-  project: Project,
-  taskId: string
-): ExecutableTask
+function prepareExecutableTask(project: Project, taskId: string): ExecutableTask;
 ```
 
 Throws if task is not executable.
@@ -143,10 +144,7 @@ Throws if task is not executable.
 ### Task assignment
 
 ```ts
-function assignTaskForExecution(
-  project: Project,
-  taskId: string
-): ExecutableTask
+function assignTaskForExecution(project: Project, taskId: string): ExecutableTask;
 ```
 
 - Validates readiness
@@ -158,12 +156,14 @@ function assignTaskForExecution(
 ## Proposed file structure
 
 ### New files
+
 ```
 src/core/orchestration/
   taskAssignment.ts
 ```
 
 ### Updated files
+
 ```
 src/storage/task.ts        // add status update helpers
 src/core/domain/task.ts   // ensure lifecycle enums exist
@@ -174,27 +174,28 @@ src/core/domain/task.ts   // ensure lifecycle enums exist
 ## Implementation steps
 
 1. **Validation**
-   - Check plan status
-   - Check task exists and is pending
-   - Validate roles non-empty
+    - Check plan status
+    - Check task exists and is pending
+    - Validate roles non-empty
 
 2. **Context assembly**
-   - Extract goals from `ProjectDoc`
-   - Extract plan phases (as excerpt string)
-   - Extract notes and constraints
+    - Extract goals from `ProjectDoc`
+    - Extract plan phases (as excerpt string)
+    - Extract notes and constraints
 
 3. **Persist transition**
-   - Update task status to `running`
-   - Update project meta timestamp
+    - Update task status to `running`
+    - Update project meta timestamp
 
 4. **Return executable task**
-   - No side effects beyond persistence
+    - No side effects beyond persistence
 
 ---
 
 ## Error handling
 
 Errors must be:
+
 - Typed (e.g. `TaskNotExecutableError`)
 - Descriptive (include taskId + reason)
 - Non-destructive (no partial state updates)
