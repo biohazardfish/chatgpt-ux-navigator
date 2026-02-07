@@ -13,6 +13,8 @@ export type TuiLayout = {
     footerRight: any;
     helpOverlay: any;
     helpOverlayText: any;
+    approvalOverlay: any;
+    approvalOverlayText: any;
 };
 
 function viewLabel(view: TuiViewId): string {
@@ -154,6 +156,32 @@ export async function createLayout(options?: { projectId?: string }): Promise<Tu
     helpOverlay.add(helpOverlayText);
     renderer.root.add(helpOverlay);
 
+    // Approval overlay - modal for approval checkpoints
+    const approvalOverlay = new BoxRenderable(renderer, {
+        id: 'layout-approval-overlay',
+        position: 'absolute',
+        top: '15%',
+        left: '15%',
+        width: '70%',
+        height: '70%',
+        border: true,
+        title: 'APPROVAL REQUIRED',
+        paddingTop: 1,
+        paddingLeft: 2,
+        paddingRight: 2,
+        paddingBottom: 1,
+        visible: false,
+    });
+
+    const approvalOverlayText = new TextRenderable(renderer, {
+        id: 'layout-approval-overlay-text',
+        width: '100%',
+        height: '100%',
+        content: '',
+    });
+    approvalOverlay.add(approvalOverlayText);
+    renderer.root.add(approvalOverlay);
+
     updateHeader(
         {
             headerLeft,
@@ -180,6 +208,8 @@ export async function createLayout(options?: { projectId?: string }): Promise<Tu
         footerRight,
         helpOverlay,
         helpOverlayText,
+        approvalOverlay,
+        approvalOverlayText,
     };
 }
 
@@ -191,7 +221,8 @@ export function updateHeader(layout: Pick<TuiLayout, 'headerLeft' | 'headerRight
 
 export function updateFooter(layout: Pick<TuiLayout, 'footerLeft' | 'footerRight'>, state: TuiState): void {
     layout.footerLeft.content = `Status: ${state.statusMessage}`;
-    layout.footerRight.content = `View: ${viewLabel(state.activeView)}   Mode: Normal`;
+    const mode = state.approvalRequest ? 'Approval' : 'Normal';
+    layout.footerRight.content = `View: ${viewLabel(state.activeView)}   Mode: ${mode}`;
 }
 
 function projectLabelText(projectId: string): string {
