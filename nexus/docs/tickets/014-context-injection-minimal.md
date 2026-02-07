@@ -246,3 +246,26 @@ Mock `Project` and `Task` objects.
 - Context builder and renderer
 - Truncation limits
 - Tests covering selection and rendering
+
+---
+
+## Implementation Decisions
+
+### 1. Parsing approach — parse inside sessionRunner using existing parsers
+
+The session runner (`sessionRunner.ts`) previously received raw markdown strings from the storage-level `loadProject()`. To obtain the parsed `Project` domain object (with structured `goals`, `constraints`, `plan`, `notes`), two approaches were considered:
+
+1. **Import and use existing parsers** (`parseProjectDoc`, `parsePlan`, `parseNotes`) directly inside `sessionRunner.ts`.
+2. **Use `loadProjectById()`** from `app/projectLoader.ts`, which already does full parsing.
+
+**Decision:** Option 1 — parse in `sessionRunner.ts`.
+
+**Rationale:** Option 2 would create a dependency from `core/` to `app/`, which is a layering violation. The `core/` layer must remain self-contained. Importing the parsers (which are already in `core/parsing/`) keeps the dependency direction clean.
+
+### 2. Truncation limits — Notes: 10, Total: 100
+
+The ticket specified example values of "N lines (e.g. 10)" for notes and "e.g. 50" for total context lines.
+
+**Decision:** `MAX_NOTES_LINES = 10`, `MAX_TOTAL_CONTEXT_LINES = 100`.
+
+**Rationale:** Conservative notes truncation (10 lines) prevents bloat from assumptions/clarifications. A more generous total context limit (100 lines) allows richer project context (goals, plan phases, constraints) without hitting the ceiling prematurely. The total limit can be tightened later if prompt size becomes a concern.

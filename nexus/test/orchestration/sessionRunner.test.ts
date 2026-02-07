@@ -85,9 +85,54 @@ async function writeProjectFixture(params: {
 
     await Promise.all([
         Bun.write(join(projectDir, META_FILE), JSON.stringify(meta, null, 2)),
-        Bun.write(join(projectDir, PROJECT_FILE), params.projectMd ?? '# Project: Fixture\n'),
-        Bun.write(join(projectDir, PLAN_FILE), params.planMd ?? '# Plan\n'),
-        Bun.write(join(projectDir, NOTES_FILE), params.notesMd ?? '# Notes\n'),
+        Bun.write(
+            join(projectDir, PROJECT_FILE),
+            params.projectMd ??
+                [
+                    '# Project: Fixture',
+                    '',
+                    '# Goals',
+                    '',
+                    '- Deliver MVP',
+                    '',
+                    '# Constraints',
+                    '',
+                    '# Non-Goals',
+                    '',
+                ].join('\n')
+        ),
+        Bun.write(
+            join(projectDir, PLAN_FILE),
+            params.planMd ??
+                [
+                    '# Current Plan',
+                    '',
+                    '# Status',
+                    '',
+                    'draft',
+                    '',
+                    '# Phases',
+                    '',
+                    '- Phase 1',
+                    '',
+                    '# Notes',
+                    '',
+                ].join('\n')
+        ),
+        Bun.write(
+            join(projectDir, NOTES_FILE),
+            params.notesMd ??
+                [
+                    '# Project Notes',
+                    '',
+                    '# Assumptions',
+                    '',
+                    '# Clarifications',
+                    '',
+                    '# Lessons Learned',
+                    '',
+                ].join('\n')
+        ),
     ]);
 }
 
@@ -189,6 +234,11 @@ describe('session runner', () => {
         expect(executeSessionRunCalls[0].prompt).toContain('ROLE: planner');
         expect(executeSessionRunCalls[0].prompt).toContain('TASK OBJECTIVE:');
         expect(executeSessionRunCalls[0].prompt).toContain('Ship the thing');
+        expect(executeSessionRunCalls[0].prompt).toContain('PROJECT CONTEXT');
+        expect(executeSessionRunCalls[0].prompt).toContain('GOALS:');
+        expect(executeSessionRunCalls[0].prompt).toContain('- Deliver MVP');
+        expect(executeSessionRunCalls[0].prompt).toContain('PLAN (draft):');
+        expect(executeSessionRunCalls[0].prompt).toContain('- Phase 1');
         expect(executeSessionRunCalls[0].prompt).toContain('REQUIRED REPORT FORMAT (verbatim):');
         expect(executeSessionRunCalls[0].prompt).toContain('# Report — <Role>');
     });
