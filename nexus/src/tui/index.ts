@@ -4,6 +4,8 @@ import { createInitialState } from './state.ts';
 import type { TuiLayout } from './layout.ts';
 import type { TuiState, TuiViewId } from './state.ts';
 import { registerKeybindings } from './keybindings.ts';
+import * as approvalModal from './approval/modal.ts';
+import { validateApprovalRequest } from './approval/types.ts';
 
 import type { Config } from '../config/config.ts';
 import { loadStateConfig, saveStateConfig } from '../config/stateConfig.ts';
@@ -180,6 +182,20 @@ export async function startTui(config: Config): Promise<void> {
         updateHeader(layout, state.lastProjectId);
         renderActiveView(layout, state, { config, setState, getState });
         updateFooter(layout, state);
+
+        // Handle approval modal
+        if (state.approvalRequest) {
+            const validation = validateApprovalRequest(state.approvalRequest);
+            if (validation.valid) {
+                approvalModal.render(layout, validation.request);
+            } else {
+                console.error('[tui] Invalid approval request:', validation.error, state.approvalRequest);
+                approvalModal.renderError(layout, validation.error);
+            }
+        } else {
+            approvalModal.hide(layout);
+        }
+
         layout.renderer.requestRender();
     };
 
