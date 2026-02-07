@@ -1,3 +1,4 @@
+import { loadInitialProject } from '../app/projectLoader.ts';
 import { createLayout, updateFooter, updateHeader } from './layout.ts';
 import { createInitialState } from './state.ts';
 import type { TuiLayout } from './layout.ts';
@@ -82,11 +83,32 @@ export async function startTui(config: Config): Promise<void> {
         console.error('[tui] Failed to load state config:', error);
     }
 
+    const initialProjectResult = await loadInitialProject({
+        config,
+        preferredProjectId: savedUi.lastProjectId
+    });
+
+    const activeProjectId = initialProjectResult.projectId;
+    const activeProject = initialProjectResult.project;
+
+    // Determine initial status message
+    let initialStatus = 'Ready';
+    if (loadStateError) {
+        initialStatus = 'State config load failed (see logs)';
+    } else if (initialProjectResult.errorMessage) {
+        initialStatus = initialProjectResult.errorMessage;
+    } else if (!activeProjectId) {
+        initialStatus = 'No project loaded';
+    } else {
+        initialStatus = `Loaded project: ${activeProjectId}`;
+    }
+
     let state: TuiState = createInitialState({
-        lastProjectId: savedUi.lastProjectId,
+        lastProjectId: activeProjectId ?? savedUi.lastProjectId,
         lastTaskId: savedUi.lastTaskId,
         activeView: autorun ? 'tasks' : (parseViewId(savedUi.activeView) ?? 'dashboard'),
-        statusMessage: loadStateError ? 'State config load failed (see logs)' : 'Ready'
+        statusMessage: initialStatus,
+        project: activeProject
     });
 
     const selectedProjectId = state.lastProjectId?.trim();

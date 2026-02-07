@@ -22,30 +22,7 @@ import { DomainParseError, type Project, type RawContent } from '../core/domain/
 import type { Notes } from '../core/domain/notes.ts';
 import type { Task } from '../core/domain/task.ts';
 import type { Decision } from '../core/domain/decision.ts';
-import type { TaskStatus } from '../core/domain/status.ts';
-
-export type ProjectActivityState = 'idle' | 'running' | 'blocked';
-
-export type TaskStatusCounts = Record<TaskStatus, number>;
-
-export interface NotesSectionCounts {
-  assumptions: number;
-  clarifications: number;
-  lessonsLearned: number;
-  projectNotes: number;
-}
-
-export interface ProjectSummary {
-  goalCount: number;
-  constraintCount: number;
-  nonGoalCount: number;
-  planPhaseCount: number;
-  planNotesCount: number;
-  taskCounts: TaskStatusCounts;
-  decisionCount: number;
-  notesCounts: NotesSectionCounts;
-  activityState: ProjectActivityState;
-}
+import { summarizeProject, type ProjectSummary } from '../core/domain/summary.ts';
 
 export interface LoadedProject extends Project {
   raw: {
@@ -53,7 +30,6 @@ export interface LoadedProject extends Project {
     plan: RawContent;
     notes: RawContent;
   };
-  projectNotes: string[];
 }
 
 export interface ProjectLoaderSuccess {
@@ -83,8 +59,6 @@ export interface LoadInitialProjectResult {
   errorMessage?: string;
   availableProjectIds: string[];
 }
-
-const TASK_STATUS_KEYS: TaskStatus[] = ['pending', 'running', 'blocked', 'completed', 'aborted'];
 
 export async function listProjectIds(config: Config): Promise<string[]> {
   try {
@@ -134,7 +108,7 @@ export async function loadProjectById(
     const { raw: planRaw, ...plan } = parsePlan(baseProject.planMd, {
       path: join(projectDir, PLAN_FILE),
     });
-    const { raw: notesRaw, projectNotes, ...notes } = parseNotes(baseProject.notesMd, {
+    const { raw: notesRaw, ...notes } = parseNotes(baseProject.notesMd, {
       path: join(projectDir, NOTES_FILE),
     });
 
@@ -156,7 +130,6 @@ export async function loadProjectById(
         plan: planRaw,
         notes: notesRaw,
       },
-      projectNotes,
     };
 
     return {
@@ -211,42 +184,6 @@ export async function loadInitialProject(
   };
 }
 
-export function summarizeProject(project: LoadedProject): ProjectSummary {
-  const taskCounts = createEmptyTaskCounts();
-  for (const task of project.tasks) {
-    taskCounts[task.status] += 1;
-  }
-
-  return {
-    goalCount: project.projectDoc.goals.length,
-    constraintCount: project.projectDoc.constraints.length,
-    nonGoalCount: project.projectDoc.nonGoals.length,
-    planPhaseCount: project.plan.phases.length,
-    planNotesCount: project.plan.notes.length,
-    taskCounts,
-    decisionCount: project.decisions.length,
-    notesCounts: {
-      assumptions: project.notes.assumptions.length,
-      clarifications: project.notes.clarifications.length,
-      lessonsLearned: project.notes.lessonsLearned.length,
-      projectNotes: project.projectNotes.length,
-    },
-    activityState: deriveActivityState(taskCounts),
-  };
-}
-
-function deriveActivityState(counts: TaskStatusCounts): ProjectActivityState {
-  if (counts.running > 0) {
-    return 'running';
-  }
-
-  if (counts.blocked > 0) {
-    return 'blocked';
-  }
-
-  return 'idle';
-}
-
 async function loadTasks(projectDir: string): Promise<Task[]> {
   const tasksDir = join(projectDir, TASKS_DIR);
   const entries = await entriesForDir(tasksDir, 'Tasks');
@@ -298,13 +235,6 @@ async function entriesForDir(path: string, label: string): Promise<Dirent[]> {
     }
     throw error;
   }
-}
-
-function createEmptyTaskCounts(): TaskStatusCounts {
-  return TASK_STATUS_KEYS.reduce((acc, status) => {
-    acc[status] = 0;
-    return acc;
-  }, {} as TaskStatusCounts);
 }
 
 function formatLoaderError(error: unknown, projectId: string): string {

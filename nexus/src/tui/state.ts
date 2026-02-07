@@ -1,3 +1,5 @@
+import type { Project } from '../core/domain/project.ts';
+
 export type TuiViewId = 'dashboard' | 'tasks' | 'sessions' | 'decisions' | 'logs';
 
 export type TuiState = {
@@ -5,6 +7,7 @@ export type TuiState = {
     lastTaskId?: string;
     activeView: TuiViewId;
     statusMessage: string;
+    project?: Project;
 };
 
 export function createInitialState(init?: Partial<TuiState>): TuiState {
@@ -12,7 +15,8 @@ export function createInitialState(init?: Partial<TuiState>): TuiState {
         lastProjectId: init?.lastProjectId,
         lastTaskId: init?.lastTaskId,
         activeView: init?.activeView ?? 'dashboard',
-        statusMessage: init?.statusMessage ?? 'Ready'
+        statusMessage: init?.statusMessage ?? 'Ready',
+        project: init?.project
     };
 }
 
