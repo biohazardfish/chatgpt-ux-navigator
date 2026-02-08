@@ -12,7 +12,7 @@ This is a **Bun-managed monorepo** consisting of:
 | ------------- | --------------- | -------------------------------------------------------------- |
 | `server/`     | `@repo/server`  | Lightweight HTTP + WebSocket server for prompt management      |
 | `extension/`  | `extension`     | Chrome extension that enhances the ChatGPT interface           |
-| `orchestrator/`| --             | Planning docs for "Nexus" multi-agent orchestrator (no code yet) |
+| `orchestrator/`| `orchestrator` | CLI tool for running multi-agent AI conversations (Nexus)      |
 
 ## Features
 
@@ -40,6 +40,15 @@ This is a **Bun-managed monorepo** consisting of:
 - **Thread History**: Supports "chat mode" in Markdown files using `# {{USER}}` and `# {{ASSISTANT}}` headers to preserve context.
 - **WebSocket API**: Supports low-latency, real-time response streaming from ChatGPT directly to your local files.
 - **Privacy-First**: Your files stay on your machine. The extension only talks to `localhost`.
+
+### Orchestrator (Nexus)
+
+- **Multi-Agent Conversations**: Run automated conversations between multiple AI agents with distinct personas.
+- **Round-Robin Workflow**: Agents take turns speaking in a fixed order defined in YAML config.
+- **Judge System**: Optional judge agent that evaluates the conversation and decides when to stop.
+- **Inbox-Based Delivery**: Each agent only receives messages from the previous speaker (not the full transcript).
+- **Full Artifacts**: Every run produces timestamped markdown files, JSON metadata, and a complete transcript.
+- **CLI Tool**: Simple command-line interface for running multi-agent workflows locally.
 
 ## Prerequisites
 
@@ -138,6 +147,48 @@ Refactor the following code to be more functional:
 4.  Click the prompt text in the sidebar to insert it into the chat input.
 5.  After ChatGPT replies, click the **Save** icon in the sidebar to append the response to `my-task.md`.
 
+### Running Multi-Agent Conversations
+
+See the [orchestrator README](orchestrator/README.md) for complete documentation on Nexus.
+
+**Quick Start:**
+
+1. Ensure the server is running (`bun dev`)
+2. Open multiple ChatGPT tabs (one per agent + one for judge)
+3. Note the client IDs from the server console
+4. Create a config file:
+
+```yaml
+version: 1
+server:
+  url: http://localhost:8765
+agents:
+  alice:
+    client_id: client-abc123  # Your actual client ID
+    system: "You are Alice, a creative thinker."
+  bob:
+    client_id: client-def456  # Your actual client ID
+    system: "You are Bob, a practical analyst."
+workflow:
+  type: round_robin
+  order: [alice, bob]
+seed:
+  content: "Let's brainstorm app ideas. Alice, start us off!"
+judge:
+  enabled: false
+termination:
+  max_turns: 6
+```
+
+5. Run the orchestrator:
+
+```bash
+cd orchestrator
+bun start my-config.yml
+```
+
+Output will be saved to `orchestrator/runs/` as timestamped folders with full transcripts, individual message files, and metadata.
+
 ## Development
 
 ### Project Structure
@@ -154,7 +205,10 @@ chatgpt-ux-navigator/
 │   ├── content/          # Content scripts
 │   ├── options/          # Options page
 │   └── manifest.json     # Extension manifest (V3)
-├── orchestrator/         # Nexus planning docs (not a workspace)
+├── orchestrator/         # Nexus CLI -- TypeScript + Bun
+│   ├── src/              # Orchestrator source code
+│   ├── examples/         # Example config files
+│   └── runs/             # Output artifacts (gitignored)
 └── prompts/              # Local prompt files (gitignored)
 ```
 

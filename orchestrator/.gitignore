@@ -1,3 +1,6 @@
+# The test runs
+runs
+
 # Dependencies
 node_modules/
 pnpm-lock.yaml
