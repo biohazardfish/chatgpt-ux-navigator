@@ -3,7 +3,8 @@
     "private": true,
     "workspaces": [
         "server",
-        "extension"
+        "extension",
+        "orchestrator"
     ],
     "scripts": {
         "dev": "bun --filter @repo/server dev",
