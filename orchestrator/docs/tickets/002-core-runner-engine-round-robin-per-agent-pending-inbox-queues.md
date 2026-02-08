@@ -4,7 +4,13 @@
 
 Implement the **deterministic orchestration engine** that executes a run from a validated `AppConfig`, applying **round-robin speaker selection** and **next-speaker-only delivery** using **per-agent pending inbox queues**.
 
-This ticket covers **control flow and state management only**. It must not implement OpenAI API calls, prompt building, or judge logic beyond calling provided interfaces.
+This ticket covers **control flow and state management only**. It must not implement HTTP calls to the server, prompt building, or judge logic beyond calling provided interfaces.
+
+---
+
+## Architecture Context
+
+The runner does not interact with ChatGPT or the local server directly. It calls injected `callAgent` and `callJudge` functions which are implemented in Tickets 003 and 004 respectively. Those implementations use `POST /responses/:clientId` on the `@repo/server` to send prompts to browser extension clients, but the runner is unaware of this transport layer.
 
 ---
 
@@ -26,7 +32,7 @@ Provided by Ticket 001. Runner must assume it is already validated and normalize
 
 ### Dependency Interfaces (MUST)
 
-Runner must not call OpenAI directly. It uses injected functions.
+Runner must not call the server directly. It uses injected functions.
 
 ```ts
 export type AgentMessage = {
@@ -44,6 +50,7 @@ export type InboxItem = {
 
 export type AgentCallInput = {
     agent_id: string;
+    client_id: string; // the WebSocket clientId for this agent (from config)
     turn: number;
     inbox: InboxItem[]; // all pending messages for this agent (chronological)
 };
@@ -87,7 +94,7 @@ Runner must maintain:
 At run start:
 
 - Initialize `pending[agent] = []` for all agents in `workflow.order`
-- Insert the seed prompt into the start agent’s pending inbox:
+- Insert the seed prompt into the start agent's pending inbox:
 
     ```ts
     pending[start].push({turn: 0, from: 'user', content: config.seed.content});
@@ -110,10 +117,11 @@ For each turn until termination:
         - `pending[speaker] = []`
 
 3. **Call agent**
-    - Await `deps.callAgent({ agent_id: speaker, turn, inbox })`
+    - Resolve `client_id` from config: `config.agents[speaker].client_id`
+    - Await `deps.callAgent({ agent_id: speaker, client_id, turn, inbox })`
     - Validate agent output:
         - `content` must be a string
-        - trimmed length must be ≥ 1
+        - trimmed length must be >= 1
         - If invalid, terminate with stop_reason `"error"` and throw (see error handling).
 
 4. **Append to transcript**
@@ -189,6 +197,10 @@ For each turn until termination:
     - runner must still return a partial `RunResult` only if explicitly implemented; v1 requirement:
         - **propagate error** and do not claim successful completion.
 
+### Server-specific errors
+
+- The runner does not handle server errors (409 Conflict, 404 Not Found, etc.) directly. These are propagated by the `callAgent`/`callJudge` implementations (Tickets 003/004).
+
 ---
 
 ## Output Types (MUST)
@@ -234,6 +246,7 @@ Using mock deps:
         - B turn2 inbox contains A1
         - A turn3 inbox contains B2
         - B turn4 inbox contains A3
+    - verify `client_id` is passed correctly to `callAgent` for each agent
 
 2. **3-agent pending accumulation**
     - order [A, B, C], start A, max_turns 6, judge disabled
@@ -264,4 +277,5 @@ Using mock deps:
 - Implements algorithm exactly as specified.
 - Deterministic sequencing and inbox semantics match the contracts in `AGENTS.md`.
 - Tests pass and cover required scenarios.
-- Runner does not implement OpenAI calls or prompt formatting; it only calls injected functions.
+- Runner does not implement HTTP calls or prompt formatting; it only calls injected functions.
+- `client_id` from config is correctly threaded through `AgentCallInput` for each agent.

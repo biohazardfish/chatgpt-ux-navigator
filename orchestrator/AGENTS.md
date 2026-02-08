@@ -6,14 +6,33 @@ All implementations **must follow these rules exactly** unless a new major versi
 
 ---
 
+## Architecture
+
+Nexus does **not** call OpenAI directly. Instead, it sends prompts to the **local `@repo/server`** via `POST /responses/:clientId`, where each `clientId` maps to a Chrome extension instance connected to a ChatGPT browser tab via WebSocket. The server forwards the prompt to the extension, which injects it into ChatGPT, intercepts the SSE response stream, and relays it back through the server as an OpenAI-compatible SSE or JSON response.
+
+```
+Orchestrator  --POST /responses/:clientId-->  @repo/server  --WebSocket-->  Extension (ChatGPT tab)
+                                                                                   |
+                                                                           Injects prompt, submits
+                                                                                   |
+Orchestrator  <--SSE stream--  @repo/server  <--WebSocket--  Extension  <--ChatGPT SSE stream
+```
+
+For agents: `POST /responses/:clientId` sends into the current chat.
+For judge: `POST /responses/:clientId/new` starts a new temporary chat for each evaluation.
+
+---
+
 ## Terminology
 
-- **Agent**: an AI model instance with a system persona that produces messages.
-- **Judge**: a special AI agent that evaluates the conversation but never participates in it.
+- **Agent**: a ChatGPT browser session (identified by a `client_id`) with a system persona that produces messages via the `@repo/server` and Chrome extension.
+- **Judge**: a dedicated ChatGPT browser session that evaluates the conversation but never participates in it. Uses `POST /responses/:clientId/new` to start fresh chats for each evaluation.
 - **Turn**: one agent producing exactly one message.
 - **Inbox**: the list of messages an agent receives when it is their turn to speak.
 - **Transcript**: the ordered, global list of all agent messages.
-- **Pending messages**: messages waiting in an agent’s inbox.
+- **Pending messages**: messages waiting in an agent's inbox.
+- **Client**: a Chrome extension instance connected to the `@repo/server` via WebSocket, running in a ChatGPT browser tab.
+- **Server**: the local `@repo/server` that bridges the orchestrator and browser extension clients via `POST /responses/:clientId`.
 
 ---
 
@@ -21,11 +40,12 @@ All implementations **must follow these rules exactly** unless a new major versi
 
 1. An agent is defined by:
     - a unique ID
-    - a model identifier
+    - a `client_id` (the WebSocket clientId of the connected browser tab)
     - a system prompt (persona)
 2. An agent produces **exactly one message per turn**.
 3. An agent only speaks when selected by the workflow engine.
 4. Agents are stateless across runs.
+5. The model used is determined by the ChatGPT browser session, not the orchestrator config.
 
 ---
 
@@ -44,19 +64,19 @@ No branching, skipping, or dynamic selection is allowed in v1.
 
 ### Delivery Policy
 
-- **An agent’s output is delivered only to the next speaker.**
+- **An agent's output is delivered only to the next speaker.**
 - Messages are not broadcast.
 - The speaker never receives its own message.
 
 ### Inbox Semantics
 
 - Each agent maintains a **pending inbox queue**.
-- When an agent’s turn begins:
+- When an agent's turn begins:
     - they receive **all pending messages** accumulated since they last spoke
     - messages are delivered in chronological order
 - After delivery, the inbox is cleared.
 
-### Example (3 agents: A → B → C)
+### Example (3 agents: A -> B -> C)
 
 | Turn | Speaker | Inbox Received | Message Delivered To |
 | ---- | ------- | -------------- | -------------------- |
@@ -65,7 +85,7 @@ No branching, skipping, or dynamic selection is allowed in v1.
 | 3    | C       | B2             | A                    |
 | 4    | A       | C3             | B                    |
 
-This model must hold for any number of agents ≥ 2.
+This model must hold for any number of agents >= 2.
 
 ---
 
@@ -80,13 +100,13 @@ This model must hold for any number of agents ≥ 2.
 
 ## Agent Prompt Construction
 
-Each agent call to OpenAI must include:
+Each agent call sends a single prompt string to the ChatGPT browser tab via `POST /responses/:clientId`. The prompt combines:
 
-### System Message
+### System Persona
 
-- The agent’s persona (from config).
+- The agent's persona (from config), included at the top of the prompt.
 
-### Developer Message
+### Developer Preamble
 
 - Framework constraints, e.g.:
     - You are participating in a multi-agent run.
@@ -94,14 +114,14 @@ Each agent call to OpenAI must include:
     - Do not mention the judge.
     - Address the messages you received.
 
-### User Message
+### Inbox Bundle
 
 - A structured list of inbox messages:
     - sender
     - turn number
     - content
 
-If an agent’s inbox is empty:
+If an agent's inbox is empty:
 
 - a seed prompt must be injected for the starting agent.
 
@@ -114,6 +134,7 @@ If an agent’s inbox is empty:
 - The judge evaluates the conversation after turns.
 - The judge **never sends messages to agents**.
 - Judge output is for the runtime only.
+- The judge uses `POST /responses/:clientId/new` to start a **new temporary chat** for each evaluation, ensuring no context contamination.
 
 ### Authority
 
@@ -152,7 +173,7 @@ Required fields:
 - Only the first JSON code block is parsed.
 - Output must be valid JSON.
 - If parsing fails:
-    - retry once with a correction prompt
+    - retry once with a correction prompt (sent as a new `/new` request)
     - if it fails again, terminate the run with an error
 
 - Judge outputs are stored separately and never delivered to agents.
@@ -165,7 +186,7 @@ A run ends when **any** of the following occurs:
 
 - Maximum number of turns is reached
 - Judge returns `should_stop: true`
-- A fatal runtime error occurs
+- A fatal runtime error occurs (server error, client disconnect, timeout, etc.)
 
 The stop reason must be recorded in `run.json`.
 
@@ -189,9 +210,21 @@ Agents must never see:
 
 ## Determinism & Reproducibility
 
-- Model outputs are non-deterministic by design.
+- Model outputs are non-deterministic by design (depends on the ChatGPT browser session).
 - Workflow execution order **must** be deterministic.
 - Given the same config, the same sequence of speakers must occur.
+
+---
+
+## Server Error Handling
+
+The orchestrator must handle these server-specific error conditions:
+
+- **404 Not Found**: client not connected (browser tab closed or extension disabled)
+- **409 Conflict**: client already has an inflight request (previous turn not yet complete)
+- **Timeout**: 120-second deadline for each agent/judge call
+
+These are propagated as errors that terminate the run.
 
 ---
 
@@ -205,6 +238,7 @@ The following are explicitly deferred to later versions:
 - parallel agents
 - agent-private memory
 - broadcast delivery
+- direct OpenAI API support (bypassing browser)
 
 v1 implementations must not include partial or experimental support for these.
 
