@@ -56,19 +56,13 @@ export function createServerJudgeCaller(config: AppConfig): {
 
 			// If parse/validation failed, retry once with correction prompt
 			if (isParseError(parsed)) {
-				try {
-					const retryPrompt = buildJudgePrompt(config, transcript, true);
-					const retryResponse = await callJudgeOnce(config, clientId, retryPrompt, turn);
-					parsed = parseJudgeResponse(retryResponse, config);
+				const retryPrompt = buildJudgePrompt(config, transcript, true);
+				const retryResponse = await callJudgeOnce(config, clientId, retryPrompt, turn);
+				parsed = parseJudgeResponse(retryResponse, config);
 
-					// Check if retry also failed
-					if (isParseError(parsed)) {
-						throw new Error('Judge output invalid after retry');
-					}
-				} catch (err) {
-					throw new Error(
-						`Judge retry failed at turn ${turn}: ${err instanceof Error ? err.message : String(err)}`
-					);
+				// Check if retry also failed
+				if (isParseError(parsed)) {
+					throw new Error('Judge output invalid after retry');
 				}
 			}
 

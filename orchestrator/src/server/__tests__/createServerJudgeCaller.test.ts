@@ -382,5 +382,58 @@ event: [DONE]
 			expect(result.scores.agent_b).toBe(8);
 			expect(callCount).toBe(2);
 		});
+
+		it('test 11: concurrent requests to same judge client return 409', async () => {
+			// Simulate concurrent requests where second gets 409 (inflight conflict)
+			// First request succeeds
+			const validResponse = JSON.stringify({
+				should_stop: false,
+				scores: {agent_a: 7, agent_b: 8},
+				reason: 'First request',
+			});
+
+			const responseObj = {
+				response: {
+					output_text: `Evaluation:\n\`\`\`json\n${validResponse}\n\`\`\``,
+				},
+			};
+
+			fetchMocks.push({
+				response: {
+					status: 200,
+					headers: {'Content-Type': 'text/event-stream'},
+					body: `event: response.completed
+data: ${JSON.stringify(responseObj)}
+
+event: [DONE]
+`,
+				},
+			});
+
+			// Second request gets 409 (inflight request already pending)
+			fetchMocks.push({
+				response: {
+					status: 409,
+					body: 'Judge client already has an inflight request',
+				},
+			});
+
+			const caller = createServerJudgeCaller(baseConfig);
+
+			// First call should succeed
+			const result1 = await caller.callJudge(judgeInput);
+			expect(result1.reason).toBe('First request');
+
+			// Second call should throw 409
+			try {
+				await caller.callJudge(judgeInput);
+				expect(true).toBe(false); // Should throw
+			} catch (err) {
+				expect(err instanceof Error).toBe(true);
+				const message = (err as Error).message;
+				expect(message).toContain('Server error: 409');
+				expect(message).toContain('inflight request');
+			}
+		});
 	});
 });

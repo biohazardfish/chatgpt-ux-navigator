@@ -193,5 +193,5 @@ export function parseJudgeResponse(
  * Type guard to check if result is a ParseError
  */
 export function isParseError(result: JudgeDecision | ParseError): result is ParseError {
-	return typeof result === 'object' && 'type' in result && 'type' in result;
+	return typeof result === 'object' && result !== null && 'type' in result;
 }
