@@ -208,18 +208,18 @@ The server returns an SSE stream with `Content-Type: text/event-stream`. The eve
 
 ### Event types to handle
 
-| Event | Action |
-|---|---|
-| `response.created` | Ignore (informational) |
-| `response.in_progress` | Ignore (informational) |
-| `response.output_item.added` | Ignore (informational) |
-| `response.content_part.added` | Ignore (informational) |
-| `response.output_text.delta` | Accumulate `data.delta` into response text |
-| `response.output_text.done` | Use `data.text` as the final text (preferred over accumulated deltas) |
-| `response.content_part.done` | Ignore (redundant with output_text.done) |
-| `response.output_item.done` | Ignore |
-| `response.completed` | Mark response as complete; extract `data.response.output_text` as final result |
-| `response.error` | Extract error message from `data` and throw |
+| Event                         | Action                                                                         |
+| ----------------------------- | ------------------------------------------------------------------------------ |
+| `response.created`            | Ignore (informational)                                                         |
+| `response.in_progress`        | Ignore (informational)                                                         |
+| `response.output_item.added`  | Ignore (informational)                                                         |
+| `response.content_part.added` | Ignore (informational)                                                         |
+| `response.output_text.delta`  | Accumulate `data.delta` into response text                                     |
+| `response.output_text.done`   | Use `data.text` as the final text (preferred over accumulated deltas)          |
+| `response.content_part.done`  | Ignore (redundant with output_text.done)                                       |
+| `response.output_item.done`   | Ignore                                                                         |
+| `response.completed`          | Mark response as complete; extract `data.response.output_text` as final result |
+| `response.error`              | Extract error message from `data` and throw                                    |
 
 ### SSE frame parsing
 

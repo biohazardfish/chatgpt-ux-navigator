@@ -132,13 +132,13 @@ The prompt sent as `input` is a single string combining all sections.
 
 ### System preamble (exact)
 
-```
+````
 You are a judge for a multi-agent AI conversation.
 
 You must output ONLY a JSON object inside a fenced code block (```json ... ```).
 Do not include any other text outside the code block.
 The JSON must include: should_stop (boolean), scores (object), reason (string).
-```
+````
 
 ### Evaluation content (appended after preamble)
 
@@ -242,7 +242,7 @@ If initial judge response results in parse failure or validation failure:
 - Perform exactly **one** retry call to the server with the same endpoint (`POST /responses/:clientId/new`).
 - The retry prompt must be the same system preamble + evaluation content, but with an additional **correction section** appended at the end:
 
-```
+````
 
 YOUR PREVIOUS OUTPUT WAS INVALID.
 Output ONLY a valid JSON object inside a fenced ```json code block.
@@ -251,7 +251,7 @@ Follow the required schema exactly:
 - should_stop: boolean
 - scores: object with keys for each agent (0-10 range)
 - reason: string
-```
+````
 
 If the retry also fails parsing/validation:
 
