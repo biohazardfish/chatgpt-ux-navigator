@@ -8,39 +8,39 @@ import {parseJudgeResponse, isParseError} from '../judgeResponseParser';
 import type {AppConfig} from '../../config/types';
 
 describe('judgeResponseParser', () => {
-	const baseConfig: AppConfig = {
-		version: 1,
-		server: {url: 'http://localhost:8765'},
-		run: {id: 'test-run', out_dir: '/tmp'},
-		agents: {
-			agent_a: {client_id: 'client-a', system: 'You are A'},
-			agent_b: {client_id: 'client-b', system: 'You are B'},
-		},
-		workflow: {
-			type: 'round_robin',
-			order: ['agent_a', 'agent_b'],
-			start: 'agent_a',
-		},
-		delivery: {type: 'next_speaker'},
-		seed: {from: 'user', content: 'Start here'},
-		judge: {
-			enabled: true,
-			client_id: 'judge-client',
-			rubric: 'Score based on helpfulness',
-			eval_every_turn: true,
-		},
-		termination: {max_turns: 5, judge_stop: true},
-	};
+    const baseConfig: AppConfig = {
+        version: 1,
+        server: {url: 'http://localhost:8765'},
+        run: {id: 'test-run', out_dir: '/tmp'},
+        agents: {
+            agent_a: {client_id: 'client-a', system: 'You are A'},
+            agent_b: {client_id: 'client-b', system: 'You are B'},
+        },
+        workflow: {
+            type: 'round_robin',
+            order: ['agent_a', 'agent_b'],
+            start: 'agent_a',
+        },
+        delivery: {type: 'next_speaker'},
+        seed: {from: 'user', content: 'Start here'},
+        judge: {
+            enabled: true,
+            client_id: 'judge-client',
+            rubric: 'Score based on helpfulness',
+            eval_every_turn: true,
+        },
+        termination: {max_turns: 5, judge_stop: true},
+    };
 
-	const validResponse = {
-		should_stop: false,
-		scores: {agent_a: 7, agent_b: 8},
-		reason: 'Both agents performed well',
-	};
+    const validResponse = {
+        should_stop: false,
+        scores: {agent_a: 7, agent_b: 8},
+        reason: 'Both agents performed well',
+    };
 
-	describe('Successful parsing', () => {
-		it('test 1: parses valid ```json code block', () => {
-			const responseText = `Here's my evaluation:
+    describe('Successful parsing', () => {
+        it('test 1: parses valid ```json code block', () => {
+            const responseText = `Here's my evaluation:
 
 \`\`\`json
 {
@@ -52,18 +52,18 @@ describe('judgeResponseParser', () => {
 
 That's my assessment.`;
 
-			const result = parseJudgeResponse(responseText, baseConfig);
+            const result = parseJudgeResponse(responseText, baseConfig);
 
-			expect(isParseError(result)).toBe(false);
-			const decision = result as any;
-			expect(decision.should_stop).toBe(false);
-			expect(decision.scores.agent_a).toBe(7);
-			expect(decision.scores.agent_b).toBe(8);
-			expect(decision.reason).toBe('Both agents performed well');
-		});
+            expect(isParseError(result)).toBe(false);
+            const decision = result as any;
+            expect(decision.should_stop).toBe(false);
+            expect(decision.scores.agent_a).toBe(7);
+            expect(decision.scores.agent_b).toBe(8);
+            expect(decision.reason).toBe('Both agents performed well');
+        });
 
-		it('test 2: parses valid ``` code block (no json)', () => {
-			const responseText = `Evaluation:
+        it('test 2: parses valid ``` code block (no json)', () => {
+            const responseText = `Evaluation:
 
 \`\`\`
 {
@@ -73,18 +73,18 @@ That's my assessment.`;
 }
 \`\`\``;
 
-			const result = parseJudgeResponse(responseText, baseConfig);
+            const result = parseJudgeResponse(responseText, baseConfig);
 
-			expect(isParseError(result)).toBe(false);
-			const decision = result as any;
-			expect(decision.should_stop).toBe(true);
-			expect(decision.scores.agent_a).toBe(5);
-			expect(decision.scores.agent_b).toBe(6);
-			expect(decision.reason).toBe('Stopping here');
-		});
+            expect(isParseError(result)).toBe(false);
+            const decision = result as any;
+            expect(decision.should_stop).toBe(true);
+            expect(decision.scores.agent_a).toBe(5);
+            expect(decision.scores.agent_b).toBe(6);
+            expect(decision.reason).toBe('Stopping here');
+        });
 
-		it('test 3: extracts first code block when multiple exist', () => {
-			const responseText = `First evaluation:
+        it('test 3: extracts first code block when multiple exist', () => {
+            const responseText = `First evaluation:
 
 \`\`\`json
 {
@@ -104,15 +104,15 @@ And here's another (should be ignored):
 }
 \`\`\``;
 
-			const result = parseJudgeResponse(responseText, baseConfig);
+            const result = parseJudgeResponse(responseText, baseConfig);
 
-			expect(isParseError(result)).toBe(false);
-			const decision = result as any;
-			expect(decision.reason).toBe('First is correct');
-		});
+            expect(isParseError(result)).toBe(false);
+            const decision = result as any;
+            expect(decision.reason).toBe('First is correct');
+        });
 
-		it('test 4: handles edge case scores at boundaries [0, 10]', () => {
-			const responseText = `\`\`\`json
+        it('test 4: handles edge case scores at boundaries [0, 10]', () => {
+            const responseText = `\`\`\`json
 {
   "should_stop": false,
   "scores": {"agent_a": 0, "agent_b": 10},
@@ -120,41 +120,41 @@ And here's another (should be ignored):
 }
 \`\`\``;
 
-			const result = parseJudgeResponse(responseText, baseConfig);
+            const result = parseJudgeResponse(responseText, baseConfig);
 
-			expect(isParseError(result)).toBe(false);
-			const decision = result as any;
-			expect(decision.scores.agent_a).toBe(0);
-			expect(decision.scores.agent_b).toBe(10);
-		});
-	});
+            expect(isParseError(result)).toBe(false);
+            const decision = result as any;
+            expect(decision.scores.agent_a).toBe(0);
+            expect(decision.scores.agent_b).toBe(10);
+        });
+    });
 
-	describe('Parsing failures', () => {
-		it('test 5: fails when no code block present', () => {
-			const responseText = 'No code block here, just text with some JSON-like content {}.';
+    describe('Parsing failures', () => {
+        it('test 5: fails when no code block present', () => {
+            const responseText = 'No code block here, just text with some JSON-like content {}.';
 
-			const result = parseJudgeResponse(responseText, baseConfig);
+            const result = parseJudgeResponse(responseText, baseConfig);
 
-			expect(isParseError(result)).toBe(true);
-			const error = result as any;
-			expect(error.type).toBe('no_code_block');
-		});
+            expect(isParseError(result)).toBe(true);
+            const error = result as any;
+            expect(error.type).toBe('no_code_block');
+        });
 
-		it('test 6: fails when code block exists but is empty', () => {
-			const responseText = `Here's nothing:
+        it('test 6: fails when code block exists but is empty', () => {
+            const responseText = `Here's nothing:
 
 \`\`\`json
 \`\`\``;
 
-			const result = parseJudgeResponse(responseText, baseConfig);
+            const result = parseJudgeResponse(responseText, baseConfig);
 
-			expect(isParseError(result)).toBe(true);
-			const error = result as any;
-			expect(error.type).toBe('json_parse_error');
-		});
+            expect(isParseError(result)).toBe(true);
+            const error = result as any;
+            expect(error.type).toBe('json_parse_error');
+        });
 
-		it('test 7: fails on invalid JSON in code block', () => {
-			const responseText = `\`\`\`json
+        it('test 7: fails on invalid JSON in code block', () => {
+            const responseText = `\`\`\`json
 {
   "should_stop": false,
   "scores": {"agent_a": 7, "agent_b": 8},
@@ -163,17 +163,17 @@ And here's another (should be ignored):
 }
 \`\`\``;
 
-			const result = parseJudgeResponse(responseText, baseConfig);
+            const result = parseJudgeResponse(responseText, baseConfig);
 
-			expect(isParseError(result)).toBe(true);
-			const error = result as any;
-			expect(error.type).toBe('json_parse_error');
-		});
-	});
+            expect(isParseError(result)).toBe(true);
+            const error = result as any;
+            expect(error.type).toBe('json_parse_error');
+        });
+    });
 
-	describe('Validation failures', () => {
-		it('test 8: fails when should_stop is not boolean', () => {
-			const responseText = `\`\`\`json
+    describe('Validation failures', () => {
+        it('test 8: fails when should_stop is not boolean', () => {
+            const responseText = `\`\`\`json
 {
   "should_stop": "false",
   "scores": {"agent_a": 7, "agent_b": 8},
@@ -181,16 +181,16 @@ And here's another (should be ignored):
 }
 \`\`\``;
 
-			const result = parseJudgeResponse(responseText, baseConfig);
+            const result = parseJudgeResponse(responseText, baseConfig);
 
-			expect(isParseError(result)).toBe(true);
-			const error = result as any;
-			expect(error.type).toBe('validation_error');
-			expect(error.details).toContain('should_stop');
-		});
+            expect(isParseError(result)).toBe(true);
+            const error = result as any;
+            expect(error.type).toBe('validation_error');
+            expect(error.details).toContain('should_stop');
+        });
 
-		it('test 9: fails when reason is empty or missing', () => {
-			const responseText = `\`\`\`json
+        it('test 9: fails when reason is empty or missing', () => {
+            const responseText = `\`\`\`json
 {
   "should_stop": false,
   "scores": {"agent_a": 7, "agent_b": 8},
@@ -198,16 +198,16 @@ And here's another (should be ignored):
 }
 \`\`\``;
 
-			const result = parseJudgeResponse(responseText, baseConfig);
+            const result = parseJudgeResponse(responseText, baseConfig);
 
-			expect(isParseError(result)).toBe(true);
-			const error = result as any;
-			expect(error.type).toBe('validation_error');
-			expect(error.details).toContain('reason');
-		});
+            expect(isParseError(result)).toBe(true);
+            const error = result as any;
+            expect(error.type).toBe('validation_error');
+            expect(error.details).toContain('reason');
+        });
 
-		it('test 10: fails when missing score key for required agent', () => {
-			const responseText = `\`\`\`json
+        it('test 10: fails when missing score key for required agent', () => {
+            const responseText = `\`\`\`json
 {
   "should_stop": false,
   "scores": {"agent_a": 7},
@@ -215,17 +215,17 @@ And here's another (should be ignored):
 }
 \`\`\``;
 
-			const result = parseJudgeResponse(responseText, baseConfig);
+            const result = parseJudgeResponse(responseText, baseConfig);
 
-			expect(isParseError(result)).toBe(true);
-			const error = result as any;
-			expect(error.type).toBe('validation_error');
-			expect(error.details).toContain('agent_b');
-			expect(error.details).toContain('missing');
-		});
+            expect(isParseError(result)).toBe(true);
+            const error = result as any;
+            expect(error.type).toBe('validation_error');
+            expect(error.details).toContain('agent_b');
+            expect(error.details).toContain('missing');
+        });
 
-		it('test 11: fails when extra score key not in workflow', () => {
-			const responseText = `\`\`\`json
+        it('test 11: fails when extra score key not in workflow', () => {
+            const responseText = `\`\`\`json
 {
   "should_stop": false,
   "scores": {"agent_a": 7, "agent_b": 8, "agent_c": 9},
@@ -233,17 +233,17 @@ And here's another (should be ignored):
 }
 \`\`\``;
 
-			const result = parseJudgeResponse(responseText, baseConfig);
+            const result = parseJudgeResponse(responseText, baseConfig);
 
-			expect(isParseError(result)).toBe(true);
-			const error = result as any;
-			expect(error.type).toBe('validation_error');
-			expect(error.details).toContain('agent_c');
-			expect(error.details).toContain('extra');
-		});
+            expect(isParseError(result)).toBe(true);
+            const error = result as any;
+            expect(error.type).toBe('validation_error');
+            expect(error.details).toContain('agent_c');
+            expect(error.details).toContain('extra');
+        });
 
-		it('test 12: fails when score is not a number', () => {
-			const responseText = `\`\`\`json
+        it('test 12: fails when score is not a number', () => {
+            const responseText = `\`\`\`json
 {
   "should_stop": false,
   "scores": {"agent_a": "seven", "agent_b": 8},
@@ -251,16 +251,16 @@ And here's another (should be ignored):
 }
 \`\`\``;
 
-			const result = parseJudgeResponse(responseText, baseConfig);
+            const result = parseJudgeResponse(responseText, baseConfig);
 
-			expect(isParseError(result)).toBe(true);
-			const error = result as any;
-			expect(error.type).toBe('validation_error');
-			expect(error.details).toContain('agent_a');
-		});
+            expect(isParseError(result)).toBe(true);
+            const error = result as any;
+            expect(error.type).toBe('validation_error');
+            expect(error.details).toContain('agent_a');
+        });
 
-		it('test 13: fails when score is out of range [0, 10]', () => {
-			const responseText = `\`\`\`json
+        it('test 13: fails when score is out of range [0, 10]', () => {
+            const responseText = `\`\`\`json
 {
   "should_stop": false,
   "scores": {"agent_a": 11, "agent_b": 8},
@@ -268,16 +268,16 @@ And here's another (should be ignored):
 }
 \`\`\``;
 
-			const result = parseJudgeResponse(responseText, baseConfig);
+            const result = parseJudgeResponse(responseText, baseConfig);
 
-			expect(isParseError(result)).toBe(true);
-			const error = result as any;
-			expect(error.type).toBe('validation_error');
-			expect(error.details).toContain('out of range');
-		});
+            expect(isParseError(result)).toBe(true);
+            const error = result as any;
+            expect(error.type).toBe('validation_error');
+            expect(error.details).toContain('out of range');
+        });
 
-		it('test 14: fails when score is negative', () => {
-			const responseText = `\`\`\`json
+        it('test 14: fails when score is negative', () => {
+            const responseText = `\`\`\`json
 {
   "should_stop": false,
   "scores": {"agent_a": -1, "agent_b": 8},
@@ -285,16 +285,16 @@ And here's another (should be ignored):
 }
 \`\`\``;
 
-			const result = parseJudgeResponse(responseText, baseConfig);
+            const result = parseJudgeResponse(responseText, baseConfig);
 
-			expect(isParseError(result)).toBe(true);
-			const error = result as any;
-			expect(error.type).toBe('validation_error');
-			expect(error.details).toContain('out of range');
-		});
+            expect(isParseError(result)).toBe(true);
+            const error = result as any;
+            expect(error.type).toBe('validation_error');
+            expect(error.details).toContain('out of range');
+        });
 
-		it('test 15: fails when scores is not an object', () => {
-			const responseText = `\`\`\`json
+        it('test 15: fails when scores is not an object', () => {
+            const responseText = `\`\`\`json
 {
   "should_stop": false,
   "scores": [7, 8],
@@ -302,29 +302,29 @@ And here's another (should be ignored):
 }
 \`\`\``;
 
-			const result = parseJudgeResponse(responseText, baseConfig);
+            const result = parseJudgeResponse(responseText, baseConfig);
 
-			expect(isParseError(result)).toBe(true);
-			const error = result as any;
-			expect(error.type).toBe('validation_error');
-			expect(error.details).toContain('object');
-		});
+            expect(isParseError(result)).toBe(true);
+            const error = result as any;
+            expect(error.type).toBe('validation_error');
+            expect(error.details).toContain('object');
+        });
 
-		it('test 16: fails when response is not an object', () => {
-			const responseText = `\`\`\`json
+        it('test 16: fails when response is not an object', () => {
+            const responseText = `\`\`\`json
 ["should_stop", false, "scores", {}]
 \`\`\``;
 
-			const result = parseJudgeResponse(responseText, baseConfig);
+            const result = parseJudgeResponse(responseText, baseConfig);
 
-			expect(isParseError(result)).toBe(true);
-			const error = result as any;
-			expect(error.type).toBe('validation_error');
-			expect(error.details).toContain('must be a JSON object');
-		});
+            expect(isParseError(result)).toBe(true);
+            const error = result as any;
+            expect(error.type).toBe('validation_error');
+            expect(error.details).toContain('must be a JSON object');
+        });
 
-		it('test 17: fails when score is not finite (Infinity)', () => {
-			const responseText = `\`\`\`json
+        it('test 17: fails when score is not finite (Infinity)', () => {
+            const responseText = `\`\`\`json
 {
   "should_stop": false,
   "scores": {"agent_a": null, "agent_b": 8},
@@ -332,18 +332,18 @@ And here's another (should be ignored):
 }
 \`\`\``;
 
-			const result = parseJudgeResponse(responseText, baseConfig);
+            const result = parseJudgeResponse(responseText, baseConfig);
 
-			expect(isParseError(result)).toBe(true);
-			const error = result as any;
-			expect(error.type).toBe('validation_error');
-			expect(error.details).toContain('finite');
-		});
-	});
+            expect(isParseError(result)).toBe(true);
+            const error = result as any;
+            expect(error.type).toBe('validation_error');
+            expect(error.details).toContain('finite');
+        });
+    });
 
-	describe('Edge cases', () => {
-		it('test 18: handles reason with special characters', () => {
-			const responseText = `\`\`\`json
+    describe('Edge cases', () => {
+        it('test 18: handles reason with special characters', () => {
+            const responseText = `\`\`\`json
 {
   "should_stop": false,
   "scores": {"agent_a": 7, "agent_b": 8},
@@ -351,16 +351,16 @@ And here's another (should be ignored):
 }
 \`\`\``;
 
-			const result = parseJudgeResponse(responseText, baseConfig);
+            const result = parseJudgeResponse(responseText, baseConfig);
 
-			expect(isParseError(result)).toBe(false);
-			const decision = result as any;
-			expect(decision.reason).toContain('hello');
-			expect(decision.reason).toContain('&');
-		});
+            expect(isParseError(result)).toBe(false);
+            const decision = result as any;
+            expect(decision.reason).toContain('hello');
+            expect(decision.reason).toContain('&');
+        });
 
-		it('test 19: handles whitespace in code block', () => {
-			const responseText = `\`\`\`json
+        it('test 19: handles whitespace in code block', () => {
+            const responseText = `\`\`\`json
 
 {
   "should_stop": false,
@@ -370,13 +370,13 @@ And here's another (should be ignored):
 
 \`\`\``;
 
-			const result = parseJudgeResponse(responseText, baseConfig);
+            const result = parseJudgeResponse(responseText, baseConfig);
 
-			expect(isParseError(result)).toBe(false);
-		});
+            expect(isParseError(result)).toBe(false);
+        });
 
-		it('test 20: handles decimal scores', () => {
-			const responseText = `\`\`\`json
+        it('test 20: handles decimal scores', () => {
+            const responseText = `\`\`\`json
 {
   "should_stop": false,
   "scores": {"agent_a": 7.5, "agent_b": 8.25},
@@ -384,12 +384,12 @@ And here's another (should be ignored):
 }
 \`\`\``;
 
-			const result = parseJudgeResponse(responseText, baseConfig);
+            const result = parseJudgeResponse(responseText, baseConfig);
 
-			expect(isParseError(result)).toBe(false);
-			const decision = result as any;
-			expect(decision.scores.agent_a).toBe(7.5);
-			expect(decision.scores.agent_b).toBe(8.25);
-		});
-	});
+            expect(isParseError(result)).toBe(false);
+            const decision = result as any;
+            expect(decision.scores.agent_a).toBe(7.5);
+            expect(decision.scores.agent_b).toBe(8.25);
+        });
+    });
 });

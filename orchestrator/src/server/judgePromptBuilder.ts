@@ -41,42 +41,42 @@ Follow the required schema exactly:
  * @throws Error if transcript is empty (per spec: should not happen in normal operation)
  */
 export function buildJudgePrompt(
-	config: AppConfig,
-	transcript: AgentMessage[],
-	isRetry: boolean = false
+    config: AppConfig,
+    transcript: AgentMessage[],
+    isRetry: boolean = false
 ): string {
-	// Throw error on empty transcript (should not happen in normal operation)
-	if (transcript.length === 0) {
-		throw new Error('Judge prompt builder: empty transcript (should not happen)');
-	}
+    // Throw error on empty transcript (should not happen in normal operation)
+    if (transcript.length === 0) {
+        throw new Error('Judge prompt builder: empty transcript (should not happen)');
+    }
 
-	let prompt = JUDGE_SYSTEM_PREAMBLE;
+    let prompt = JUDGE_SYSTEM_PREAMBLE;
 
-	// Rubric section
-	prompt += '\n\nRUBRIC:\n';
-	prompt += config.judge.rubric || '';
+    // Rubric section
+    prompt += '\n\nRUBRIC:\n';
+    prompt += config.judge.rubric || '';
 
-	// Agent list section (in workflow order)
-	prompt += '\n\nAGENTS:\n';
-	prompt += config.workflow.order.join(', ');
+    // Agent list section (in workflow order)
+    prompt += '\n\nAGENTS:\n';
+    prompt += config.workflow.order.join(', ');
 
-	// Transcript section
-	prompt += '\n\nTRANSCRIPT (most recent last):';
+    // Transcript section
+    prompt += '\n\nTRANSCRIPT (most recent last):';
 
-	// Format each transcript entry with 1-based indexing
-	transcript.forEach((msg, index) => {
-		const entryNumber = index + 1;
-		prompt += `\n[${entryNumber}] ${msg.speaker}: ${msg.content}`;
-		// Add blank line after each entry except the last
-		if (index < transcript.length - 1) {
-			prompt += '\n';
-		}
-	});
+    // Format each transcript entry with 1-based indexing
+    transcript.forEach((msg, index) => {
+        const entryNumber = index + 1;
+        prompt += `\n[${entryNumber}] ${msg.speaker}: ${msg.content}`;
+        // Add blank line after each entry except the last
+        if (index < transcript.length - 1) {
+            prompt += '\n';
+        }
+    });
 
-	// Add correction prompt if this is a retry
-	if (isRetry) {
-		prompt += JUDGE_CORRECTION_PROMPT;
-	}
+    // Add correction prompt if this is a retry
+    if (isRetry) {
+        prompt += JUDGE_CORRECTION_PROMPT;
+    }
 
-	return prompt;
+    return prompt;
 }
