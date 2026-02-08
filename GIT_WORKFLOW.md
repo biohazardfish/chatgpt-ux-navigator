@@ -33,11 +33,14 @@ We follow a **lightweight Git Flow** model.
 - Use **lowercase**
 - Use **kebab-case**
 - Keep names **short and descriptive**
+- For workspace-specific changes, optionally include the workspace name
 
 Examples:
 
 ```
 feature/012-add-dark-mode
+feature/server-add-jwt-auth
+bugfix/extension-sidebar-z-index
 bugfix/fix-token-expiry
 hotfix/crash-on-startup
 release/v2.0.1
@@ -48,18 +51,18 @@ release/v2.0.1
 ## 3. Workflow Overview
 
 ```
-main ← hotfix/*
-  ↑
+main <- hotfix/*
+  ^
 release/*
-  ↑
-develop ← feature/* & bugfix/*
+  ^
+develop <- feature/* & bugfix/*
 ```
 
 ### Development Flow
 
 1. Create branch from `develop`
 2. Work on feature / fix
-3. Open Pull Request → `develop`
+3. Open Pull Request -> `develop`
 4. Code review + tests
 5. Merge into `develop`
 
@@ -76,10 +79,13 @@ git checkout -b feature/my-feature
 After finishing:
 
 ```bash
+# Run tests across all workspaces before pushing
+bun test
+
 git push origin feature/my-feature
 ```
 
-➡ Open a Pull Request into `develop`
+-> Open a Pull Request into `develop`
 
 ---
 
@@ -94,10 +100,13 @@ git checkout -b bugfix/my-bug
 After fixing:
 
 ```bash
+# Run tests across all workspaces before pushing
+bun test
+
 git push origin bugfix/my-bug
 ```
 
-➡ Open a Pull Request into `develop`
+-> Open a Pull Request into `develop`
 
 ---
 
@@ -115,7 +124,7 @@ After fixing:
 git push origin hotfix/critical-fix
 ```
 
-➡ Open Pull Requests into:
+-> Open Pull Requests into:
 
 - `main`
 - `develop`
@@ -132,14 +141,14 @@ git checkout -b release/v1.2.0
 ### Tasks:
 
 - Version bump
-- Final testing
+- Final testing (`bun test` from monorepo root)
 - Documentation updates
 
 After approval:
 
 ```bash
-git merge release/v1.2.0 → main
-git merge release/v1.2.0 → develop
+git merge release/v1.2.0 -> main
+git merge release/v1.2.0 -> develop
 ```
 
 ---
@@ -149,8 +158,10 @@ git merge release/v1.2.0 → develop
 We follow **Conventional Commits**:
 
 ```
-<type>: <short summary>
+<type>(<scope>): <short summary>
 ```
+
+The `(<scope>)` is optional but recommended when the change is specific to a single workspace.
 
 ### Types:
 
@@ -164,13 +175,24 @@ We follow **Conventional Commits**:
 | `test`     | Adding/updating tests     |
 | `chore`    | Tooling, configs, cleanup |
 
+### Scopes (optional):
+
+| Scope       | When to use                          |
+| ----------- | ------------------------------------ |
+| `server`    | Changes in `server/` workspace       |
+| `extension` | Changes in `extension/` workspace    |
+| `monorepo`  | Root config, workspace setup changes |
+| _(omit)_    | Cross-cutting or general changes     |
+
 ### Examples:
 
 ```
-feat: add JWT authentication
-fix: prevent null pointer on login
-docs: update API usage examples
-refactor: simplify auth middleware
+feat(server): add JWT authentication
+fix(extension): prevent sidebar z-index overlap
+docs: update monorepo setup instructions
+refactor(server): simplify thread parsing logic
+chore(monorepo): add typecheck script to root package.json
+test(server): add prompt parser edge case tests
 ```
 
 ---
@@ -180,13 +202,13 @@ refactor: simplify auth middleware
 ### PR Title Format
 
 ```
-<type>: <summary>
+<type>(<scope>): <summary>
 ```
 
 Example:
 
 ```
-feat: implement role-based access control
+feat(server): implement role-based access control
 ```
 
 ### PR Requirements
@@ -194,6 +216,7 @@ feat: implement role-based access control
 - Clear description
 - Linked issue (if exists)
 - All CI checks passing
+- `bun test` passing from monorepo root
 - At least **1 reviewer approval**
 
 ---
@@ -220,9 +243,9 @@ MAJOR.MINOR.PATCH
 
 Examples:
 
-- `1.0.0` – Initial release
-- `1.1.0` – New features
-- `1.1.1` – Bug fixes
+- `1.0.0` -- Initial release
+- `1.1.0` -- New features
+- `1.1.1` -- Bug fixes
 
 ---
 
@@ -231,4 +254,17 @@ Examples:
 ```bash
 git tag -a v1.2.0 -m "Release v1.2.0"
 git push origin v1.2.0
+```
+
+---
+
+## 13. Pre-Commit Checklist
+
+Before pushing any changes, verify from the **monorepo root**:
+
+```bash
+bun test          # Run tests across all workspaces
+bun lint          # Lint all workspaces
+bun format        # Format all workspaces
+bun typecheck     # Type-check all workspaces
 ```

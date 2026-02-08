@@ -8,6 +8,14 @@ This ticket defines the **entire v1 config spec**. Do not add fields not listed 
 
 ---
 
+## Architecture Context
+
+Nexus does **not** call OpenAI directly. Instead, it sends prompts to the **local `@repo/server`** via `POST /responses/:clientId`, where each `clientId` maps to a Chrome extension instance connected to a ChatGPT browser tab via WebSocket. The server forwards the prompt to the extension, which injects it into ChatGPT, intercepts the SSE response stream, and relays it back through the server as an OpenAI-compatible SSE or JSON response.
+
+Each agent in the config maps to a **connected browser client** identified by `client_id`. The model selection happens in the ChatGPT browser UI, not in the orchestrator config.
+
+---
+
 ## Deliverables
 
 1. `loadConfig(configPath: string): Promise<AppConfig>`
@@ -41,6 +49,10 @@ This ticket defines the **entire v1 config spec**. Do not add fields not listed 
 export type AppConfig = {
     version: 1;
 
+    server: {
+        url: string; // required, e.g. "http://localhost:8765"
+    };
+
     run?: {
         id?: string; // optional, default derived (see defaults)
         out_dir?: string; // optional, default "runs"
@@ -65,7 +77,7 @@ export type AppConfig = {
 
     judge: {
         enabled: boolean;
-        model: string; // required if enabled=true
+        client_id: string; // required if enabled=true; the clientId of the browser tab used for judge evaluation
         rubric: string; // required if enabled=true, non-empty
         eval_every_turn: true; // fixed true in v1
     };
@@ -77,8 +89,8 @@ export type AppConfig = {
 };
 
 export type AgentConfig = {
-    model: string; // required, non-empty
-    system: string; // required, may be empty string? NO (see validation)
+    client_id: string; // required, the WebSocket clientId of the connected browser tab running this agent
+    system: string; // required, non-empty; the agent persona injected as prompt preamble
 };
 ```
 
@@ -91,6 +103,12 @@ export type AgentConfig = {
 - Required.
 - Must equal integer `1`.
 
+### `server`
+
+- Required.
+- `url`: required, string, trimmed length >= 1.
+- Must be a valid URL (parseable by `new URL()`).
+
 ### `agents`
 
 - Required.
@@ -100,8 +118,8 @@ export type AgentConfig = {
     - Must be unique (YAML keys already enforce uniqueness; still validate)
 
 - Each `AgentConfig`:
-    - `model`: required, string, trimmed length ≥ 1
-    - `system`: required, string, trimmed length ≥ 1
+    - `client_id`: required, string, trimmed length >= 1
+    - `system`: required, string, trimmed length >= 1
 
 ### `workflow`
 
@@ -125,7 +143,7 @@ export type AgentConfig = {
 - Required.
 - `from` must equal `"user"`.
 - `content` required:
-    - string, trimmed length ≥ 1
+    - string, trimmed length >= 1
 
 ### `judge`
 
@@ -133,11 +151,11 @@ export type AgentConfig = {
 - `enabled` required boolean.
 - `eval_every_turn` must exist and equal boolean `true`.
 - If `enabled: true`:
-    - `model` required: string, trimmed length ≥ 1
-    - `rubric` required: string, trimmed length ≥ 1
+    - `client_id` required: string, trimmed length >= 1
+    - `rubric` required: string, trimmed length >= 1
 
 - If `enabled: false`:
-    - `model` and `rubric` may be present or absent, but **if present** must still be strings (no additional validation).
+    - `client_id` and `rubric` may be present or absent, but **if present** must still be strings (no additional validation).
     - Runtime will ignore them.
 
 ### `termination`
@@ -149,6 +167,12 @@ export type AgentConfig = {
 
 - `judge_stop` required boolean.
 - If `judge.enabled` is `false` then `termination.judge_stop` must be `false`. (Reject otherwise.)
+
+### Client ID Uniqueness (cross-section)
+
+- All `client_id` values across agents and judge (when enabled) SHOULD be unique.
+    - Two agents sharing the same `client_id` would cause request conflicts (`409 Conflict` from the server when an inflight is already active).
+    - Validation MUST warn but MAY allow duplicate client IDs (the runner will handle serialization).
 
 ### Unknown Fields
 
@@ -164,7 +188,7 @@ export type AgentConfig = {
 - If `run` missing: treat as `{}`.
 - `run.out_dir` default: `"runs"`
 - `run.id` default: derived from config filename (without extension)
-    - Example: `configs/debate.yml` → `debate`
+    - Example: `configs/debate.yml` -> `debate`
     - If filename cannot be derived: default `"run"`
 
 ### `workflow.start`
@@ -177,7 +201,7 @@ No other defaults exist.
 
 ## Normalization Rules (MUST)
 
-- All string fields validated by “trimmed length ≥ 1” must be **stored trimmed** in the final `AppConfig`.
+- All string fields validated by "trimmed length >= 1" must be **stored trimmed** in the final `AppConfig`.
 - `workflow.order` entries must be stored exactly as provided (no case folding), but validated against agent IDs.
 
 ---
@@ -191,9 +215,10 @@ Validation failures must throw an Error with:
 - A concise summary line: `Invalid config: <reason>`
 - Followed by one error per line, each including a **path**.
     - Example:
-        - `agents.A.model: required`
+        - `agents.A.client_id: required`
         - `workflow.order[2]: unknown agent id "X"`
         - `termination.max_turns: must be integer 1..1000`
+        - `server.url: must be a valid URL`
 
 ### Required: deterministic ordering
 
@@ -254,6 +279,9 @@ export async function loadConfig(configPath: string): Promise<AppConfig>;
     - Invalid: start not in order
     - Invalid: judge_stop true while judge.enabled false
     - Invalid: unknown field at top-level and nested
+    - Invalid: server.url missing or not a valid URL
+    - Invalid: agent missing client_id
+    - Warning: duplicate client_id across agents
 
 ---
 
@@ -261,12 +289,14 @@ export async function loadConfig(configPath: string): Promise<AppConfig>;
 
 ```yaml
 version: 1
+server:
+    url: 'http://localhost:8765'
 agents:
     A:
-        model: gpt-4.1-mini
+        client_id: agent-alpha
         system: 'You are A.'
     B:
-        model: gpt-4.1-mini
+        client_id: agent-bravo
         system: 'You are B.'
 workflow:
     type: round_robin
@@ -278,7 +308,7 @@ seed:
     content: 'Discuss ways to improve onboarding.'
 judge:
     enabled: true
-    model: gpt-4.1-mini
+    client_id: judge-tab
     rubric: 'Score both agents 0-10. Stop when converged.'
     eval_every_turn: true
 termination:

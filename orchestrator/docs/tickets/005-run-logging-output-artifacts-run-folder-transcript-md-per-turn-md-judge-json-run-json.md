@@ -15,6 +15,12 @@ This ticket defines the **only** on-disk format for v1. Do not add additional fi
 
 ---
 
+## Architecture Context
+
+The orchestrator sends prompts to the `@repo/server` via `POST /responses/:clientId`, which forwards them to Chrome extension instances connected to ChatGPT browser tabs. Each agent is identified by a `client_id` (not a model name). The model selection happens in the browser, so logging records `client_id` instead of `model` for each agent.
+
+---
+
 ## Deliverables
 
 1. `RunLogger` module that manages run folder creation and file writes
@@ -139,7 +145,7 @@ For each agent message turn `N`:
 ---
 turn: <turn>
 speaker: <speaker>
-model: <model>
+client_id: <client_id>
 created_at: <created_at>
 received_turns: [<t1>, <t2>, ...]
 ---
@@ -149,7 +155,7 @@ received_turns: [<t1>, <t2>, ...]
 
 Rules:
 
-- `<model>` is the model configured for that speaker in `config.agents[speaker].model`
+- `<client_id>` is the `client_id` configured for that speaker in `config.agents[speaker].client_id`
 - `received_turns` must be a JSON array on one line.
 - After the closing `---` line, include exactly one blank line, then `<content>` verbatim.
 - Ensure file ends with a trailing newline.
@@ -212,8 +218,11 @@ Write once at end of run:
   "ended_at": "<iso>",
   "stop_reason": "max_turns" | "judge_stop",
   "total_turns": <number>,
+  "server": {
+    "url": "<config.server.url>"
+  },
   "agents": [
-    { "id": "<agent_id>", "model": "<model>" }
+    { "id": "<agent_id>", "client_id": "<client_id>" }
   ],
   "workflow": {
     "type": "round_robin",
@@ -223,7 +232,7 @@ Write once at end of run:
   "delivery": { "type": "next_speaker" },
   "judge": {
     "enabled": <boolean>,
-    "model": "<model-or-empty>",
+    "client_id": "<client_id-or-empty>",
     "eval_every_turn": true
   },
   "termination": {
@@ -236,7 +245,7 @@ Write once at end of run:
 Rules:
 
 - `agents` array must be in workflow order.
-- If judge is disabled, set `"model": ""` (empty string).
+- If judge is disabled, set `"client_id": ""` (empty string).
 - Ensure trailing newline.
 
 ---
@@ -250,7 +259,7 @@ Runner integration will call:
 - `writeJudge(...)` immediately after each judge decision (if enabled)
 - `finalize(...)` once after run ends successfully
 
-No writes occur if the runner throws due to dependency or API errors beyond what was already written for completed turns.
+No writes occur if the runner throws due to dependency or server errors beyond what was already written for completed turns.
 
 ---
 
@@ -293,15 +302,15 @@ Use a temporary directory per test.
     - config.yml written exactly
 
 2. **Writes one turn**
-    - verify `messages/0001_A.md` exact format including frontmatter fields
+    - verify `messages/0001_A.md` exact format including frontmatter fields (`client_id` instead of `model`)
     - verify `transcript.md` appended format
 
 3. **Writes judge file**
     - enabled judge: `judge/0001.json` exists and matches schema and key ordering
 
 4. **Finalize writes run.json**
-    - verify required keys
-    - judge disabled writes model as empty string
+    - verify required keys including `server.url` and agent `client_id` fields
+    - judge disabled writes client_id as empty string
 
 5. **Run folder collision**
     - pre-create run folder path and ensure `createRunLogger` throws
@@ -317,4 +326,6 @@ Use a temporary directory per test.
 2. Filenames, padding, and headings match spec exactly.
 3. Writes are atomic and sequential.
 4. `run.json` is written only once during finalize and matches schema and ordering constraints.
-5. Unit tests pass and validate content and structure.
+5. Per-turn markdown frontmatter includes `client_id` (not `model`).
+6. `run.json` includes `server.url` and agent `client_id` fields.
+7. Unit tests pass and validate content and structure.

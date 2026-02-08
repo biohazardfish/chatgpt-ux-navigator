@@ -11,7 +11,7 @@ Implement the **judge caller** and **strict judge output parsing** used by the r
 
 This ticket covers:
 
-- OpenAI Responses API call for **judge only**
+- `POST /responses/:clientId/new` call to the local `@repo/server` for **judge only**
 - Prompt construction for judge
 - JSON-in-fenced-code-block extraction + validation
 - A `callJudge()` function compatible with Ticket 002
@@ -20,9 +20,40 @@ It does **not** implement disk storage (Ticket 005).
 
 ---
 
+## Architecture Context
+
+The judge uses `POST /responses/:clientId/new` (note the `/new` suffix) on the local server. This tells the extension to **open a new temporary chat** before injecting the judge prompt, ensuring each evaluation starts with a clean context and previous evaluations do not contaminate the judge's reasoning.
+
+```
+callJudge()
+    |
+    v
+POST /responses/<judge_client_id>/new  (to @repo/server)
+    |
+    v
+Server sends {type: "prompt.new"} via WebSocket to judge extension tab
+    |
+    v
+Extension creates new temporary chat, injects judge prompt, submits
+    |
+    v
+ChatGPT generates response (SSE stream)
+    |
+    v
+Extension intercepts stream, forwards to server via WebSocket
+    |
+    v
+Server emits OpenAI-compatible SSE events back to HTTP caller
+    |
+    v
+callJudge() parses response, extracts JSON from code block, returns JudgeDecision
+```
+
+---
+
 ## Deliverables
 
-1. `createOpenAIJudgeCaller(config: AppConfig): { callJudge: (input: JudgeInput) => Promise<JudgeDecision> }`
+1. `createServerJudgeCaller(config: AppConfig): { callJudge: (input: JudgeInput) => Promise<JudgeDecision> }`
 2. Prompt builder for judge
 3. Parser: extract first JSON code block and validate required fields
 4. One retry on parse/validation failure with a correction prompt
@@ -32,19 +63,15 @@ It does **not** implement disk storage (Ticket 005).
 
 ## Environment / Configuration
 
-### Required env vars
+### Required config (from `AppConfig`)
 
-- `OPENAI_API_KEY` (string, required)
+- `config.server.url` — base URL of the local server (e.g. `http://localhost:8765`)
+- `config.judge.client_id` — the WebSocket clientId of the browser tab used for judge evaluation
+- `config.judge.rubric` — the evaluation rubric text
 
-### Optional env vars (v1)
+### No API keys required
 
-- `OPENAI_BASE_URL` (string, optional; default `https://api.openai.com/v1`)
-
-Same HTTP rules as Ticket 003:
-
-- Bun `fetch`
-- 120s timeout
-- No general retries; ONLY the single “fix JSON” retry described below.
+Authentication is handled by the browser session in the judge's ChatGPT tab.
 
 ---
 
@@ -60,7 +87,7 @@ import type {AppConfig} from '../config/types';
 ### Public factory (MUST)
 
 ```ts
-export function createOpenAIJudgeCaller(config: AppConfig): {
+export function createServerJudgeCaller(config: AppConfig): {
     callJudge: (input: JudgeInput) => Promise<JudgeDecision>;
 };
 ```
@@ -71,53 +98,56 @@ export function createOpenAIJudgeCaller(config: AppConfig): {
 
 ---
 
-## HTTP Request Payload (MUST)
+## HTTP Request (MUST)
 
-- Endpoint: `${baseUrl}/responses`
-- Model: `config.judge.model`
-- No tools, no response_format, no structured outputs.
-- Only the required message sequence below.
+- Endpoint: `${config.server.url}/responses/${config.judge.client_id}/new`
+- Method: `POST`
+- Headers:
+    - `Content-Type: application/json`
+- No `Authorization` header required.
 
-Payload shape (representative):
+Request body:
 
 ```json
 {
-    "model": "<judge-model>",
-    "input": [
-        {"role": "system", "content": [{"type": "text", "text": "..."}]},
-        {"role": "developer", "content": [{"type": "text", "text": "..."}]},
-        {"role": "user", "content": [{"type": "text", "text": "..."}]}
-    ]
+    "input": "<judge_prompt_text>",
+    "stream": true
 }
 ```
 
-No other fields allowed.
+- Timeout: 120 seconds (AbortController).
+- No general retries; ONLY the single "fix JSON" retry described below.
+
+On error responses:
+
+- **404 Not Found**: throw `Error("Server error: 404 - judge client '<client_id>' not connected")`
+- **409 Conflict**: throw `Error("Server error: 409 - judge client '<client_id>' already has an inflight request")`
+- Other non-2xx: throw `Error("Server error: <status> <body_snippet>")` (truncate body_snippet to 500 chars)
 
 ---
 
 ## Judge Prompt Content (MUST)
 
-### System message (exact)
+The prompt sent as `input` is a single string combining all sections.
+
+### System preamble (exact)
 
 ```
 You are a judge for a multi-agent AI conversation.
-```
 
-### Developer message (exact)
-
-````
 You must output ONLY a JSON object inside a fenced code block (```json ... ```).
 Do not include any other text outside the code block.
 The JSON must include: should_stop (boolean), scores (object), reason (string).
-````
+```
 
-### User message (exact format)
+### Evaluation content (appended after preamble)
 
-User message is a concatenation of:
+Concatenate the following sections separated by blank lines:
 
 1. Rubric header:
 
 ```
+
 RUBRIC:
 <config.judge.rubric>
 ```
@@ -125,6 +155,7 @@ RUBRIC:
 2. Agent list header (agent IDs in workflow order, comma-separated):
 
 ```
+
 AGENTS:
 <id1>, <id2>, <id3>
 ```
@@ -132,6 +163,7 @@ AGENTS:
 3. Transcript header + transcript content:
 
 ```
+
 TRANSCRIPT (most recent last):
 [1] <speaker>: <content>
 
@@ -152,15 +184,16 @@ Rules for transcript rendering:
 
 ---
 
-## Judge Response Extraction (MUST)
+## SSE Stream Parsing (MUST)
 
-Use same response text extraction rules as Ticket 003:
+Use the same SSE parsing logic as Ticket 003 (shared `sseParser` module):
 
-1. Prefer `output_text` if present and non-empty.
-2. Else derive from `output[]` message content parts.
-3. `trimEnd()` only.
+- Parse SSE events from the server's `text/event-stream` response.
+- Extract final text from `response.completed`, `response.output_text.done`, or accumulated deltas.
+- Handle JSON mode fallback if server returns `application/json`.
+- Handle `response.error` events by throwing.
 
-Then parse judge decision using the rules below.
+Then apply judge-specific parsing below.
 
 ---
 
@@ -169,10 +202,8 @@ Then parse judge decision using the rules below.
 ### Extraction
 
 - Find the **first fenced code block** in the response whose opening fence is:
-    - ```json
-
-      ```
-    - or ```
+    - ` ```json `
+    - or ` ``` `
 
 - Extract the text inside that code block.
 - If no fenced code block exists: parse failure.
@@ -190,7 +221,7 @@ Parsed object must:
 - contain:
     - `should_stop`: boolean
     - `scores`: object (Record<string, number>)
-    - `reason`: string (trimmed length ≥ 1)
+    - `reason`: string (trimmed length >= 1)
 
 - `scores` must include **all agent IDs** from `config.workflow.order` as keys.
 - Each `scores[agent_id]` must be a finite number in range `0..10` inclusive.
@@ -208,15 +239,19 @@ Return the parsed/validated `JudgeDecision` exactly.
 
 If initial judge response results in parse failure or validation failure:
 
-- Perform exactly **one** retry call to OpenAI with the same model and headers.
-- The message sequence must be the same system + developer + user, but the **developer message** must be replaced with exactly:
+- Perform exactly **one** retry call to the server with the same endpoint (`POST /responses/:clientId/new`).
+- The retry prompt must be the same system preamble + evaluation content, but with an additional **correction section** appended at the end:
 
-````
-Your previous output was invalid.
+```
+
+YOUR PREVIOUS OUTPUT WAS INVALID.
 Output ONLY a valid JSON object inside a fenced ```json code block.
 Do not include any other text.
-Follow the required schema exactly.
-````
+Follow the required schema exactly:
+- should_stop: boolean
+- scores: object with keys for each agent (0-10 range)
+- reason: string
+```
 
 If the retry also fails parsing/validation:
 
@@ -226,8 +261,8 @@ If the retry also fails parsing/validation:
 
 ## Error Handling (MUST)
 
-- Non-2xx OpenAI response: throw `Error("OpenAI error: <status> <body_snippet>")` (truncate body_snippet to 500 chars)
-- Empty extracted text: throw `Error("OpenAI judge returned empty content")`
+- Non-2xx server response: throw with specific error messages (see HTTP Request section)
+- Empty extracted text: throw `Error("Server judge returned empty content")`
 - Invalid judge output after retry: throw `Error("Judge output invalid after retry")`
 
 No console logging.
@@ -236,11 +271,13 @@ No console logging.
 
 ## Files / Modules (MUST)
 
-- `src/openai/createOpenAIJudgeCaller.ts`
-- `src/openai/judgePromptBuilder.ts`
-- `src/openai/judgeResponseParser.ts`
-- `src/openai/__tests__/judgePromptBuilder.test.ts`
-- `src/openai/__tests__/judgeResponseParser.test.ts`
+- `src/server/createServerJudgeCaller.ts`
+- `src/server/judgePromptBuilder.ts`
+- `src/server/judgeResponseParser.ts`
+- `src/server/__tests__/judgePromptBuilder.test.ts`
+- `src/server/__tests__/judgeResponseParser.test.ts`
+
+Note: The SSE parser (`src/server/sseParser.ts`) is shared with Ticket 003.
 
 ---
 
@@ -251,6 +288,7 @@ No console logging.
 1. Correct inclusion of rubric.
 2. Agent list rendered in workflow order.
 3. Transcript rendered with correct indexing and spacing.
+4. System preamble includes judge identity and JSON output instructions.
 
 ### Parser/Validator
 
@@ -258,12 +296,18 @@ Fixtures:
 
 1. Valid ` ```json { ... } ``` ` parses successfully
 2. Valid ` ``` { ... } ``` ` parses successfully
-3. Missing code block → fails then retry invoked (mocked)
-4. Scores missing an agent key → validation failure
-5. Extra score key → validation failure
-6. Score out of range → validation failure
+3. Missing code block -> fails then retry invoked (mocked)
+4. Scores missing an agent key -> validation failure
+5. Extra score key -> validation failure
+6. Score out of range -> validation failure
 7. Retry path succeeds on second response
-8. Retry path fails → throws `Judge output invalid after retry`
+8. Retry path fails -> throws `Judge output invalid after retry`
+
+### Integration (mocked fetch)
+
+1. Successful judge call with streaming response — extracts JSON and returns JudgeDecision
+2. 404 response — throws client-not-connected error
+3. 409 response — throws inflight-conflict error
 
 Tests must mock fetch; no network calls.
 
@@ -271,8 +315,10 @@ Tests must mock fetch; no network calls.
 
 ## Acceptance Criteria
 
-1. `createOpenAIJudgeCaller(config).callJudge()` performs a valid `POST /responses` request with locked prompt templates.
-2. Parser extracts first fenced code block, parses JSON, and validates strict schema including agent keys and score range.
-3. Exactly one retry occurs on parse/validation failure with the specified correction developer message.
-4. On success, returns `JudgeDecision` compatible with the runner.
-5. No judge content is ever routed to agents (enforced by architecture: runner consumes only `JudgeDecision`).
+1. `createServerJudgeCaller(config).callJudge()` performs a valid `POST /responses/:clientId/new` request with locked prompt templates.
+2. The `/new` endpoint is used (not `/responses/:clientId`) to ensure each judge evaluation starts in a fresh chat context.
+3. Parser extracts first fenced code block, parses JSON, and validates strict schema including agent keys and score range.
+4. Exactly one retry occurs on parse/validation failure with the specified correction prompt, using a new `/new` request.
+5. On success, returns `JudgeDecision` compatible with the runner.
+6. No judge content is ever routed to agents (enforced by architecture: runner consumes only `JudgeDecision`).
+7. No API keys or OpenAI-specific fields are used.
