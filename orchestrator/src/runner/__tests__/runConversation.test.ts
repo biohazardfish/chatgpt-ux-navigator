@@ -1,0 +1,362 @@
+/**
+ * Unit tests for runConversation runner engine
+ * Tests core behavior: round-robin, pending inbox, judge evaluation, termination
+ *
+ * Based on Ticket 002 test requirements
+ */
+
+import {describe, it, expect} from 'bun:test';
+import {runConversation} from '../runConversation';
+import type {AppConfig} from '../../config/types';
+import type {
+    AgentCallInput,
+    AgentCallOutput,
+    JudgeInput,
+    JudgeDecision,
+    RunnerDeps,
+} from '../types';
+
+/**
+ * Test 1: 2-agent basic round-robin
+ * Verifies: speakers alternate A→B→A→B
+ *           inbox delivery is correct
+ *           client_id is passed correctly
+ */
+describe('runConversation', () => {
+    it('test 1: 2-agent basic round-robin', async () => {
+        const mockCalls: {speaker: string; turn: number; inbox: AgentCallInput['inbox']}[] = [];
+        let now_counter = 0;
+
+        const deps: RunnerDeps = {
+            callAgent: async (input: AgentCallInput) => {
+                mockCalls.push({
+                    speaker: input.agent_id,
+                    turn: input.turn,
+                    inbox: input.inbox,
+                });
+                expect(input.client_id).toBeDefined();
+                if (input.agent_id === 'A') {
+                    expect(input.client_id).toBe('client_a');
+                } else if (input.agent_id === 'B') {
+                    expect(input.client_id).toBe('client_b');
+                }
+                return {content: `Response from ${input.agent_id} at turn ${input.turn}`};
+            },
+            nowISO: () => {
+                now_counter++;
+                return `2026-02-08T12:00:${String(now_counter).padStart(2, '0')}Z`;
+            },
+        };
+
+        const config: AppConfig = {
+            version: 1,
+            server: {url: 'http://localhost:8080'},
+            run: {id: 'run_001', out_dir: '/tmp/run_001'},
+            agents: {
+                A: {client_id: 'client_a', system: 'You are agent A'},
+                B: {client_id: 'client_b', system: 'You are agent B'},
+            },
+            workflow: {
+                type: 'round_robin',
+                order: ['A', 'B'],
+                start: 'A',
+            },
+            delivery: {type: 'next_speaker'},
+            seed: {from: 'user', content: 'Start here'},
+            judge: {enabled: false, eval_every_turn: true},
+            termination: {max_turns: 4, judge_stop: false},
+        };
+
+        const result = await runConversation(config, deps);
+
+        // Verify speakers alternate
+        expect(result.transcript.length).toBe(4);
+        expect(result.transcript[0].speaker).toBe('A');
+        expect(result.transcript[1].speaker).toBe('B');
+        expect(result.transcript[2].speaker).toBe('A');
+        expect(result.transcript[3].speaker).toBe('B');
+
+        // Verify inbox delivery
+        // A turn 1: seed only
+        expect(mockCalls[0].inbox).toEqual([{turn: 0, from: 'user', content: 'Start here'}]);
+
+        // B turn 2: A1 only
+        expect(mockCalls[1].inbox.length).toBe(1);
+        expect(mockCalls[1].inbox[0].from).toBe('A');
+        expect(mockCalls[1].inbox[0].turn).toBe(1);
+
+        // A turn 3: B2 only
+        expect(mockCalls[2].inbox.length).toBe(1);
+        expect(mockCalls[2].inbox[0].from).toBe('B');
+        expect(mockCalls[2].inbox[0].turn).toBe(2);
+
+        // B turn 4: A3 only
+        expect(mockCalls[3].inbox.length).toBe(1);
+        expect(mockCalls[3].inbox[0].from).toBe('A');
+        expect(mockCalls[3].inbox[0].turn).toBe(3);
+
+        // Verify termination
+        expect(result.stop_reason).toBe('max_turns');
+        expect(result.total_turns).toBe(4);
+        expect(result.judge).toEqual([]);
+    });
+
+    /**
+     * Test 2: 3-agent pending accumulation
+     * Verifies: next-speaker-only delivery (not broadcast)
+     *           pending queues are empty post-delivery
+     */
+    it('test 2: 3-agent pending accumulation', async () => {
+        const mockCalls: {speaker: string; inbox: AgentCallInput['inbox']}[] = [];
+
+        const deps: RunnerDeps = {
+            callAgent: async (input: AgentCallInput) => {
+                mockCalls.push({
+                    speaker: input.agent_id,
+                    inbox: input.inbox,
+                });
+                return {content: `Message from ${input.agent_id}`};
+            },
+            nowISO: () => '2026-02-08T12:00:00Z',
+        };
+
+        const config: AppConfig = {
+            version: 1,
+            server: {url: 'http://localhost:8080'},
+            run: {id: 'run_002', out_dir: '/tmp/run_002'},
+            agents: {
+                A: {client_id: 'client_a', system: 'Agent A'},
+                B: {client_id: 'client_b', system: 'Agent B'},
+                C: {client_id: 'client_c', system: 'Agent C'},
+            },
+            workflow: {
+                type: 'round_robin',
+                order: ['A', 'B', 'C'],
+                start: 'A',
+            },
+            delivery: {type: 'next_speaker'},
+            seed: {from: 'user', content: 'Start'},
+            judge: {enabled: false, eval_every_turn: true},
+            termination: {max_turns: 6, judge_stop: false},
+        };
+
+        const result = await runConversation(config, deps);
+
+        // Verify each agent receives exactly one message when speaking (next-speaker-only delivery)
+        // Turn 1: A speaks, seed goes to B
+        expect(mockCalls[0].speaker).toBe('A');
+        expect(mockCalls[0].inbox.length).toBe(1);
+        expect(mockCalls[0].inbox[0].from).toBe('user');
+
+        // Turn 2: B speaks, A's message goes to C
+        expect(mockCalls[1].speaker).toBe('B');
+        expect(mockCalls[1].inbox.length).toBe(1);
+        expect(mockCalls[1].inbox[0].from).toBe('A');
+
+        // Turn 3: C speaks, B's message goes to A
+        expect(mockCalls[2].speaker).toBe('C');
+        expect(mockCalls[2].inbox.length).toBe(1);
+        expect(mockCalls[2].inbox[0].from).toBe('B');
+
+        // Turn 4: A speaks again, C's message only (not accumulated with previous)
+        expect(mockCalls[3].speaker).toBe('A');
+        expect(mockCalls[3].inbox.length).toBe(1);
+        expect(mockCalls[3].inbox[0].from).toBe('C');
+
+        expect(result.transcript.length).toBe(6);
+        expect(result.stop_reason).toBe('max_turns');
+    });
+
+    /**
+     * Test 3: Judge stop
+     * Verifies: judge is called after each turn
+     *           runner stops when judge returns should_stop: true
+     *           stop_reason is 'judge_stop'
+     */
+    it('test 3: judge stop', async () => {
+        const judge_calls: {turn: number; transcript_len: number}[] = [];
+
+        const deps: RunnerDeps = {
+            callAgent: async (input: AgentCallInput) => {
+                return {content: 'Agent response'};
+            },
+            callJudge: async (input: JudgeInput) => {
+                judge_calls.push({
+                    turn: input.turn,
+                    transcript_len: input.transcript.length,
+                });
+                // Stop at turn 3
+                return {
+                    should_stop: input.turn >= 3,
+                    scores: {A: 0.8, B: 0.7},
+                    reason: 'Stopping at turn 3',
+                };
+            },
+            nowISO: () => '2026-02-08T12:00:00Z',
+        };
+
+        const config: AppConfig = {
+            version: 1,
+            server: {url: 'http://localhost:8080'},
+            run: {id: 'run_003', out_dir: '/tmp/run_003'},
+            agents: {
+                A: {client_id: 'client_a', system: 'Agent A'},
+                B: {client_id: 'client_b', system: 'Agent B'},
+            },
+            workflow: {
+                type: 'round_robin',
+                order: ['A', 'B'],
+                start: 'A',
+            },
+            delivery: {type: 'next_speaker'},
+            seed: {from: 'user', content: 'Start'},
+            judge: {enabled: true, eval_every_turn: true},
+            termination: {max_turns: 10, judge_stop: true},
+        };
+
+        const result = await runConversation(config, deps);
+
+        expect(result.total_turns).toBe(3);
+        expect(result.stop_reason).toBe('judge_stop');
+        expect(judge_calls.length).toBe(3);
+        expect(judge_calls[0].turn).toBe(1);
+        expect(judge_calls[1].turn).toBe(2);
+        expect(judge_calls[2].turn).toBe(3);
+        expect(result.judge.length).toBe(3);
+        expect(result.judge[2].decision.should_stop).toBe(true);
+    });
+
+    /**
+     * Test 4: Max turns stop
+     * Verifies: runner stops at max_turns even with judge enabled
+     *           judge is called for each turn
+     */
+    it('test 4: max turns stop', async () => {
+        const deps: RunnerDeps = {
+            callAgent: async (input: AgentCallInput) => {
+                return {content: 'Response'};
+            },
+            callJudge: async (input: JudgeInput) => {
+                return {
+                    should_stop: false, // Never stops
+                    scores: {},
+                    reason: 'Continue',
+                };
+            },
+            nowISO: () => '2026-02-08T12:00:00Z',
+        };
+
+        const config: AppConfig = {
+            version: 1,
+            server: {url: 'http://localhost:8080'},
+            run: {id: 'run_004', out_dir: '/tmp/run_004'},
+            agents: {
+                A: {client_id: 'client_a', system: 'Agent A'},
+                B: {client_id: 'client_b', system: 'Agent B'},
+            },
+            workflow: {
+                type: 'round_robin',
+                order: ['A', 'B'],
+                start: 'A',
+            },
+            delivery: {type: 'next_speaker'},
+            seed: {from: 'user', content: 'Start'},
+            judge: {enabled: true, eval_every_turn: true},
+            termination: {max_turns: 5, judge_stop: false},
+        };
+
+        const result = await runConversation(config, deps);
+
+        expect(result.total_turns).toBe(5);
+        expect(result.stop_reason).toBe('max_turns');
+        expect(result.transcript.length).toBe(5);
+        expect(result.judge.length).toBe(5);
+    });
+
+    /**
+     * Test 5: Missing callJudge dependency
+     * Verifies: runner throws before executing any turns
+     */
+    it('test 5: missing callJudge dependency', async () => {
+        const deps: RunnerDeps = {
+            callAgent: async () => {
+                throw new Error('Should not be called');
+            },
+            callJudge: undefined,
+            nowISO: () => '2026-02-08T12:00:00Z',
+        };
+
+        const config: AppConfig = {
+            version: 1,
+            server: {url: 'http://localhost:8080'},
+            run: {id: 'run_005', out_dir: '/tmp/run_005'},
+            agents: {
+                A: {client_id: 'client_a', system: 'Agent A'},
+            },
+            workflow: {
+                type: 'round_robin',
+                order: ['A'],
+                start: 'A',
+            },
+            delivery: {type: 'next_speaker'},
+            seed: {from: 'user', content: 'Start'},
+            judge: {enabled: true, eval_every_turn: true}, // Enabled but no dependency
+            termination: {max_turns: 10, judge_stop: false},
+        };
+
+        try {
+            await runConversation(config, deps);
+            expect.unreachable('Should have thrown');
+        } catch (error) {
+            expect(error).toBeInstanceOf(Error);
+            expect((error as Error).message).toBe('Missing dependency: callJudge');
+        }
+    });
+
+    /**
+     * Test 6: Invalid agent output
+     * Verifies: runner throws when agent returns empty content
+     */
+    it('test 6: invalid agent output', async () => {
+        let turn_counter = 0;
+
+        const deps: RunnerDeps = {
+            callAgent: async (input: AgentCallInput) => {
+                turn_counter++;
+                // Return empty string on turn 2
+                if (turn_counter === 2) {
+                    return {content: '  '}; // Only whitespace
+                }
+                return {content: 'Valid response'};
+            },
+            nowISO: () => '2026-02-08T12:00:00Z',
+        };
+
+        const config: AppConfig = {
+            version: 1,
+            server: {url: 'http://localhost:8080'},
+            run: {id: 'run_006', out_dir: '/tmp/run_006'},
+            agents: {
+                A: {client_id: 'client_a', system: 'Agent A'},
+                B: {client_id: 'client_b', system: 'Agent B'},
+            },
+            workflow: {
+                type: 'round_robin',
+                order: ['A', 'B'],
+                start: 'A',
+            },
+            delivery: {type: 'next_speaker'},
+            seed: {from: 'user', content: 'Start'},
+            judge: {enabled: false, eval_every_turn: true},
+            termination: {max_turns: 10, judge_stop: false},
+        };
+
+        try {
+            await runConversation(config, deps);
+            expect.unreachable('Should have thrown');
+        } catch (error) {
+            expect(error).toBeInstanceOf(Error);
+            expect((error as Error).message).toContain('Agent output invalid: B turn 2');
+        }
+    });
+});
