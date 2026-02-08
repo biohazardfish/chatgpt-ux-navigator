@@ -1,6 +1,6 @@
 # Code Conventions
 
-This document outlines the coding standards and best practices for the **ChatGPT UX Navigator** project. Adhering to these conventions ensures code consistency, maintainability, and stability across both the extension and the local server.
+This document outlines the coding standards and best practices for the **ChatGPT UX Navigator** monorepo. Adhering to these conventions ensures code consistency, maintainability, and stability across all workspaces.
 
 ## Core Principles
 
@@ -11,13 +11,47 @@ This document outlines the coding standards and best practices for the **ChatGPT
 
 ---
 
+## Monorepo Conventions
+
+### Workspace Management
+
+- **Package Manager**: Bun (with workspace support via `bunfig.toml`).
+- **Workspaces**: Declared in root `package.json` under the `workspaces` field.
+- **Running Scripts**: Use `bun --filter <package-name> <script>` from the monorepo root.
+    ```bash
+    bun --filter @repo/server dev      # Start server in watch mode
+    bun --filter '*' test              # Run tests across all workspaces
+    bun --filter '*' lint              # Lint all workspaces
+    bun --filter '*' format            # Format all workspaces
+    ```
+- **Adding Dependencies**: Install dependencies within the correct workspace directory, not at the root.
+    ```bash
+    # From monorepo root
+    bun --filter @repo/server add <package>
+
+    # Or from within the workspace
+    cd server && bun add <package>
+    ```
+- **Root `package.json`**: Only contains workspace declarations and top-level convenience scripts. No dependencies should be added at the root level.
+
+### Naming Conventions
+
+| Workspace     | Package Name    | Scope         |
+| ------------- | --------------- | ------------- |
+| `server/`     | `@repo/server`  | `@repo` scope |
+| `extension/`  | `extension`     | Unscoped      |
+
+---
+
 ## Server (TypeScript & Bun)
 
 ### 1. Style & Formatting
 
+- **Formatter**: Prettier (configured via `server/.prettierrc`).
 - **Indentation**: 4 spaces.
 - **Quotes**: Single quotes (`'`) for strings, unless escaping is required.
 - **Semicolons**: Always use semicolons.
+- **Bracket Spacing**: None (e.g., `{foo}` not `{ foo }`).
 - **Structure**:
     - Imports at the top.
     - Types/Interfaces defined next or in a separate `types/` file.
@@ -42,6 +76,8 @@ This document outlines the coding standards and best practices for the **ChatGPT
     import Router from './router'; // Avoid
     ```
 
+- **tsconfig**: Strict mode with `noUncheckedIndexedAccess`, `noImplicitOverride`, target `ESNext`, module resolution `bundler`, `noEmit: true` (Bun runs TS natively).
+
 ### 3. Bun APIs
 
 - **File I/O**: Use `Bun.file()` and `Bun.write()` instead of `fs.readFile`/`fs.writeFile`.
@@ -51,7 +87,7 @@ This document outlines the coding standards and best practices for the **ChatGPT
 ### 4. Security
 
 - **Path Validation**: **NEVER** trust user input for file paths.
-- **Mandatory Check**: Always wrap file system access with `isPathInsideRoot()` from `src/fs/security.ts`.
+- **Mandatory Check**: Always wrap file system access with `isPathInsideRoot()` from `server/src/fs/security.ts`.
     ```typescript
     if (!isPathInsideRoot(requestedPath, config.filesRoot)) {
         throw new Error('Access denied');
@@ -81,6 +117,7 @@ This document outlines the coding standards and best practices for the **ChatGPT
 
 ### 2. Style & Formatting
 
+- **Formatter**: Prettier (configured via `extension/.prettierrc`).
 - **Indentation**: 4 spaces.
 - **Quotes**: Single quotes (`'`).
 - **Comments**: Use JSDoc format (`/** ... */`) for complex logic or type hinting.
@@ -101,7 +138,7 @@ This document outlines the coding standards and best practices for the **ChatGPT
 
 ## Testing & Verification
 
-- **Server**: Run `bun test` in the `server/` directory before committing.
+- **Server**: Run `bun test` from the monorepo root (uses `bun --filter '*' test`) or directly inside `server/`.
 - **Extension**: Manual verification required.
     1.  Reload extension in `chrome://extensions`.
     2.  Refresh ChatGPT tab.
@@ -109,10 +146,15 @@ This document outlines the coding standards and best practices for the **ChatGPT
 
 ## Git Workflow
 
+Please refer to [GIT_WORKFLOW.md](./GIT_WORKFLOW.md) for the full branching and commit conventions.
+
 - **Atomic Commits**: One feature or fix per commit.
-- **Message Format**:
+- **Message Format** (Conventional Commits):
     - `feat: add response streaming`
     - `fix: resolve sidebar z-index issue`
     - `docs: update installation steps`
     - `refactor: simplify thread parsing logic`
-- **No Broken Code**: Do not commit code that fails `bun test` or breaks the extension build.
+- **Scope** (optional): Use workspace name to clarify which package is affected.
+    - `feat(server): add JWT authentication`
+    - `fix(extension): resolve sidebar z-index issue`
+- **No Broken Code**: Do not commit code that fails `bun test` or breaks the extension.

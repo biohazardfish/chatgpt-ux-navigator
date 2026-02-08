@@ -6,10 +6,13 @@ A power-user browser extension for ChatGPT that improves navigation and workflow
 
 ## Overview
 
-This project consists of two components:
+This is a **Bun-managed monorepo** consisting of:
 
-1.  **Browser Extension**: Enhances the ChatGPT interface with a sticky sidebar for navigation and prompt management.
-2.  **Local Prompt Server (Bun)**: A lightweight local server that allows you to manage prompts in Markdown files, reuse code snippets via file inclusion, and save ChatGPT responses back to your local disk.
+| Workspace     | Package Name    | Description                                                    |
+| ------------- | --------------- | -------------------------------------------------------------- |
+| `server/`     | `@repo/server`  | Lightweight HTTP + WebSocket server for prompt management      |
+| `extension/`  | `extension`     | Chrome extension that enhances the ChatGPT interface           |
+| `orchestrator/`| --             | Planning docs for "Nexus" multi-agent orchestrator (no code yet) |
 
 ## Features
 
@@ -22,32 +25,42 @@ This project consists of two components:
 - **Save Responses**: Save the last Assistant response directly back to the local prompt file (appending it to the thread).
 - **Copy Thread**: One-click copy of the entire visible conversation as structured Markdown (`# {{USER}}` / `# {{ASSISTANT}}`).
 - **Filters**: Toggle visibility of User or Assistant messages in the sidebar.
-- **WebSocket Streaming**: Toggle between standard and real-time streaming modes (🔌🟢/🔌❌) for instant response saving.
-- **Temporary Chat**: Start a new, temporary chat session with one click (🆕).
+- **WebSocket Streaming**: Toggle between standard and real-time streaming modes for instant response saving.
+- **Temporary Chat**: Start a new, temporary chat session with one click.
 - **Token Estimation**: Real-time token count estimation for your messages.
 
 ### Local Prompt Server
 
 - **Markdown-based Prompts**: Write prompts in your favorite local editor.
-- **File Inclusion**: dynamically include local files or directories in your prompt using `@path` syntax.
+- **File Inclusion**: Dynamically include local files or directories in your prompt using `@path` syntax.
     - **Single file**: `@./src/index.ts` injects the full contents of that file.
     - **Directory tree**: `@./src` injects a formatted directory tree (recursive, no file contents).
-    - **Directory content concat**: `@@./src` injects the contents of **all files in that directory (first level only)**, concatenated in the same format as single-file inclusion.
+    - **Directory content concat**: `@@./src` injects the contents of **all files in that directory (first level only)**, concatenated.
     - Paths are resolved relative to the configured files root and cannot escape it.
-- **Advanced Directory Includes**: Use `@dir` for structure, or `@@dir` to inline all files in that directory (non-recursive).
 - **Thread History**: Supports "chat mode" in Markdown files using `# {{USER}}` and `# {{ASSISTANT}}` headers to preserve context.
 - **WebSocket API**: Supports low-latency, real-time response streaming from ChatGPT directly to your local files.
 - **Privacy-First**: Your files stay on your machine. The extension only talks to `localhost`.
 
+## Prerequisites
+
+- [Bun](https://bun.sh) (v1.0+)
+- A Chromium-based browser (Chrome, Edge, Brave, etc.)
+
 ## Installation
 
-### 1. Start the Local Server
+### 1. Clone and Install
 
-The server is built with [Bun](https://bun.sh).
+```bash
+git clone <repo-url>
+cd chatgpt-ux-navigator
+bun install
+```
 
-#### Configuration
+This installs dependencies across all workspaces.
 
-Create a `.env` file in the project root to configure the server:
+### 2. Configure the Server
+
+Create a `.env` file in the project root:
 
 ```bash
 cp .env.example .env
@@ -60,7 +73,7 @@ Edit `.env` to customize settings:
 PORT=8765
 
 # Directory where prompt markdown files are stored
-PROMPTS_DIR=./server
+PROMPTS_DIR=./prompts
 
 # Root directory for file inclusion (@path syntax)
 FILES_ROOT=./server
@@ -72,33 +85,36 @@ NO_STREAM=false
 DEBUG_EVENTS=false
 ```
 
-#### Starting the Server
+### 3. Start the Server
+
+From the **monorepo root**:
+
+```bash
+bun dev
+```
+
+This starts the server in watch mode with automatic restarts on file changes.
+
+Alternatively, run directly from the server workspace:
 
 ```bash
 cd server
-bun install
-bun run src/index.ts
-```
-
-_For development with automatic restarts, use:_
-
-```bash
 bun run dev
 ```
 
-### 2. Install the Extension
+### 4. Install the Extension
 
 1.  Open your browser (Chrome, Edge, Brave, or other Chromium-based browsers).
 2.  Navigate to `chrome://extensions`.
 3.  Enable **Developer mode** (top right).
 4.  Click **Load unpacked**.
-5.  Select the `extension` folder from this repository.
+5.  Select the `extension/` folder from this repository.
 
 ## Usage
 
 ### Managing Prompts
 
-Create a `.md` file in the directory your server is watching.
+Create a `.md` file in the directory your server is watching (configured via `PROMPTS_DIR`).
 
 **Example `my-task.md`:**
 
@@ -120,17 +136,66 @@ Refactor the following code to be more functional:
 2.  The **Navigator** sidebar will appear on the right.
 3.  Use the dropdown at the top to select `my-task.md`.
 4.  Click the prompt text in the sidebar to insert it into the chat input.
-5.  After ChatGPT replies, click the **Save** (💾) icon in the sidebar to append the response to `my-task.md`.
+5.  After ChatGPT replies, click the **Save** icon in the sidebar to append the response to `my-task.md`.
 
 ## Development
 
-- **Extension**: Vanilla JS/CSS. No build step required. Just reload the extension in `chrome://extensions` after changes.
-- **Server**: TypeScript running on Bun.
-- **Testing**: The server includes a test suite. Run it using:
-    ```bash
-    cd server
-    bun test
-    ```
+### Project Structure
+
+```
+chatgpt-ux-navigator/
+├── package.json          # Root monorepo config (workspaces)
+├── bunfig.toml           # Bun workspace config
+├── .env.example          # Environment variable template
+├── server/               # @repo/server -- TypeScript + Bun
+│   ├── src/              # Server source code
+│   └── test/             # Server tests
+├── extension/            # Chrome extension -- Vanilla JS
+│   ├── content/          # Content scripts
+│   ├── options/          # Options page
+│   └── manifest.json     # Extension manifest (V3)
+├── orchestrator/         # Nexus planning docs (not a workspace)
+└── prompts/              # Local prompt files (gitignored)
+```
+
+### Root Scripts
+
+| Script           | Description                          |
+| ---------------- | ------------------------------------ |
+| `bun dev`        | Start server in watch mode           |
+| `bun test`       | Run tests across all workspaces      |
+| `bun lint`       | Lint all workspaces                  |
+| `bun format`     | Format all workspaces                |
+| `bun typecheck`  | Type-check all workspaces            |
+
+### Running Workspace-Specific Commands
+
+```bash
+# Run a script in a specific workspace
+bun --filter @repo/server <script>
+bun --filter extension <script>
+
+# Run a script across all workspaces
+bun --filter '*' <script>
+```
+
+### Testing
+
+```bash
+# Run all tests from the monorepo root
+bun test
+
+# Run server tests only
+bun --filter @repo/server test
+```
+
+### Extension Development
+
+The extension uses vanilla JS with no build step. After making changes:
+
+1. Go to `chrome://extensions`
+2. Click the reload button on the extension
+3. Refresh the ChatGPT tab
 
 ## License
 
