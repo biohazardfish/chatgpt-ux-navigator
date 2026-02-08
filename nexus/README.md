@@ -25,8 +25,11 @@ bun install
 # Run dev server
 bun dev
 
-# Run tests
+# Run all tests
 bun test
+
+# Run only the E2E smoke tests (ticket 017)
+bun test test/e2e/mvp-flow.test.ts
 ```
 
 ## Report parser module
