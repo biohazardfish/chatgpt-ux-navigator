@@ -1,10 +1,6 @@
 prompts/
 nexus_state
 
-### Allow tracking the server prompt helpers
-!server/src/prompts/
-!server/src/prompts/**
-
 ######################################
 # Node / Package Managers
 ######################################
