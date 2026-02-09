@@ -372,7 +372,7 @@ async function handleResponsesRequest(
     const id = `resp_${crypto.randomUUID()}`;
     const createdAt = Math.floor(Date.now() / 1000);
     const messageItemId = `msg_${crypto.randomUUID()}`;
-    const timeoutMs = 120_000;
+    const timeoutMs = cfg.requestTimeout * 1000; // Convert seconds to milliseconds
 
     const responseObj = createResponseObject(id, createdAt, body, prompt);
 

@@ -4,10 +4,12 @@ import {setClient, removeClient} from '../src/ws/hub';
 import type {AppConfig} from '../src/config/config';
 
 const config: AppConfig = {
-    promptsDir: 'prompts',
-    filesRoot: 'files',
     port: 0,
+    promptsDir: '/tmp',
+    filesRoot: '/tmp',
     noStream: false,
+    debugEvents: false,
+    requestTimeout: 360,
 };
 
 describe('GET /clients', () => {

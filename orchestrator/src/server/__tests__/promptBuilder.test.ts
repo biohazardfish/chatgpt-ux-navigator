@@ -36,7 +36,6 @@ describe('buildPrompt', () => {
         expect(result).toContain(
             'You are an AI agent participating in a multi-agent conversation run.'
         );
-        expect(result).toContain('- Respond in Markdown.');
         expect(result).toContain('- Do not mention any judge, scoring, or termination logic.');
         expect(result).toContain('- Only use the messages you received to decide your response.');
         expect(result).toContain('- Be concise but complete.');

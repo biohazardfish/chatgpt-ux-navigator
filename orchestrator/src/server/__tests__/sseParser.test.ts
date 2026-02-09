@@ -224,9 +224,9 @@ data: {"delta":" More data"}
 describe('parseJSONResponse', () => {
     it('test 1: JSON mode response extracts text correctly', () => {
         const jsonBody = JSON.stringify({
-            response: {
-                output_text: 'JSON mode response text',
-            },
+            id: 'resp_123',
+            status: 'completed',
+            output_text: 'JSON mode response text',
         });
 
         const result = parseJSONResponse(jsonBody, 'agent_a', 1);
@@ -236,9 +236,9 @@ describe('parseJSONResponse', () => {
 
     it('test 2: JSON mode with trimming', () => {
         const jsonBody = JSON.stringify({
-            response: {
-                output_text: 'Text with spaces  \n\t  ',
-            },
+            id: 'resp_456',
+            status: 'completed',
+            output_text: 'Text with spaces  \n\t  ',
         });
 
         const result = parseJSONResponse(jsonBody, 'agent_a', 1);
@@ -248,7 +248,8 @@ describe('parseJSONResponse', () => {
 
     it('test 3: JSON mode with missing output_text throws error', () => {
         const jsonBody = JSON.stringify({
-            response: {},
+            id: 'resp_789',
+            status: 'completed',
         });
 
         expect(() => {
@@ -258,9 +259,9 @@ describe('parseJSONResponse', () => {
 
     it('test 4: JSON mode with null output_text throws error', () => {
         const jsonBody = JSON.stringify({
-            response: {
-                output_text: null,
-            },
+            id: 'resp_abc',
+            status: 'completed',
+            output_text: null,
         });
 
         expect(() => {

@@ -1,6 +1,6 @@
 /**
- * SSE (Server-Sent Events) stream parser for OpenAI-compatible responses
- * Handles both streaming (text/event-stream) and JSON modes
+ * Response parser for OpenAI-compatible JSON responses
+ * Handles JSON mode only (SSE parsing removed after migration to JSON-only)
  * Per Ticket 003 specification
  */
 
@@ -13,6 +13,9 @@ type SSEEvent = {
 };
 
 /**
+ * @deprecated SSE parsing is no longer used. Orchestrator now uses JSON-only responses.
+ * This function is kept for backward compatibility and testing only.
+ * 
  * Parses a complete SSE stream and extracts the response text
  * Handles OpenAI Responses API format with priority:
  * 1. response.completed → data.response.output_text
@@ -123,8 +126,29 @@ export function parseJSONResponse(body: string, agentId: string, turn: number): 
         );
     }
 
-    const responseObj = response as {response?: {output_text?: string}} | null;
-    const outputText = responseObj?.response?.output_text ?? '';
+    // The server returns the response object directly (not nested under a "response" key)
+    // Response structure: { id, status, output_text, output: [...], ... }
+    const responseObj = response as {output_text?: string; status?: string; error?: unknown} | null;
+    
+    // Check for error status
+    if (responseObj?.status === 'error') {
+        // Extract error message from server response
+        // Server error format: { error: { message: "..." } } or { error: "string" }
+        let errorMsg = 'Unknown error';
+        if (responseObj?.error) {
+            if (typeof responseObj.error === 'string') {
+                errorMsg = responseObj.error;
+            } else if (typeof responseObj.error === 'object' && responseObj.error !== null) {
+                const errorObj = responseObj.error as {message?: string};
+                errorMsg = errorObj.message || JSON.stringify(responseObj.error);
+            } else {
+                errorMsg = String(responseObj.error);
+            }
+        }
+        throw new Error(`Server agent error for ${agentId} turn ${turn}: ${errorMsg}`);
+    }
+    
+    const outputText = responseObj?.output_text ?? '';
     const trimmed = String(outputText).trimEnd();
 
     if (trimmed.length < 1) {

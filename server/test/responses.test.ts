@@ -19,6 +19,8 @@ const config: AppConfig = {
     promptsDir: '/tmp',
     filesRoot: '/tmp',
     noStream: false,
+    debugEvents: false,
+    requestTimeout: 360,
 };
 
 const CLIENT_ID = 'test-client';

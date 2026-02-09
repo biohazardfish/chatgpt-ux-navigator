@@ -10,6 +10,10 @@ export type AppConfig = {
     // If true, emit raw upstream events as response.event (for debugging).
     // Default: false (hides internal protocol events from clients).
     debugEvents: boolean;
+
+    // Request timeout in seconds for agent/judge responses.
+    // Default: 360 seconds (6 minutes).
+    requestTimeout: number;
 };
 
 export function makeConfig(partial: Partial<AppConfig>): AppConfig {
@@ -19,5 +23,6 @@ export function makeConfig(partial: Partial<AppConfig>): AppConfig {
         filesRoot: partial.filesRoot ?? process.cwd(),
         noStream: partial.noStream ?? false,
         debugEvents: partial.debugEvents ?? false,
+        requestTimeout: partial.requestTimeout ?? 360,
     };
 }

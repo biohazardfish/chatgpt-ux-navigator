@@ -24,24 +24,12 @@ describe('createServerAgentCaller integration tests', () => {
      * Test 1: Successful agent call with streaming SSE response
      * Verifies: correct URL, headers, body structure, SSE parsing, content extraction
      */
-    it('test 1: successful agent call with streaming SSE response', async () => {
-        const sseResponse = `event: response.output_text.delta
-data: {"delta": {"text": "Hello"}}
-
-event: response.output_text.delta
-data: {"delta": {"text": " from"}}
-
-event: response.output_text.delta
-data: {"delta": {"text": " agent"}}
-
-event: response.output_text.done
-data: {"text": "Hello from agent"}
-
-event: response.completed
-data: {"output_text": "Hello from agent"}
-
-data: [DONE]
-`;
+    it('test 1: successful agent call with JSON response', async () => {
+        const jsonResponse = JSON.stringify({
+            id: 'resp_test1',
+            status: 'completed',
+            output_text: 'Hello from agent',
+        });
 
         mockFetchImpl = mock(async (url: string, options: any) => {
             // Verify request structure
@@ -53,7 +41,7 @@ data: [DONE]
             expect(body.input).toContain('You are agent A');
             expect(body.input).toContain('Developer preamble');
             expect(body.input).toContain('Now write your response.');
-            expect(body.stream).toBe(true);
+            expect(body.stream).toBe(false);
 
             // Verify AbortController signal is present
             expect(options.signal).toBeDefined();
@@ -63,11 +51,11 @@ data: [DONE]
                 status: 200,
                 headers: {
                     get: (name: string) => {
-                        if (name === 'Content-Type') return 'text/event-stream';
+                        if (name === 'Content-Type') return 'application/json';
                         return null;
                     },
                 },
-                text: async () => sseResponse,
+                text: async () => jsonResponse,
             };
         });
 
@@ -331,16 +319,15 @@ data: [DONE]
     });
 
     /**
-     * Test 7: Content-Type detection - SSE vs JSON
-     * Verifies: correctly parses both SSE and JSON responses based on Content-Type
+     * Test 7: JSON response parsing
+     * Verifies: correctly parses JSON responses
      */
-    it('test 7: content-type detection handles SSE and JSON', async () => {
-        // Test SSE first
-        const sseResponse = `event: response.completed
-data: {"response":{"output_text":"SSE response"}}
-
-data: [DONE]
-`;
+    it('test 7: parses JSON responses correctly', async () => {
+        const jsonResponse = JSON.stringify({
+            id: 'resp_test7',
+            status: 'completed',
+            output_text: 'JSON response',
+        });
 
         mockFetchImpl = mock(async () => {
             return {
@@ -348,11 +335,11 @@ data: [DONE]
                 status: 200,
                 headers: {
                     get: (name: string) => {
-                        if (name === 'Content-Type') return 'text/event-stream';
+                        if (name === 'Content-Type') return 'application/json';
                         return null;
                     },
                 },
-                text: async () => sseResponse,
+                text: async () => jsonResponse,
             };
         });
 
@@ -380,33 +367,7 @@ data: [DONE]
             inbox: [],
         };
 
-        let result = await caller.callAgent(input);
-        expect(result.content).toBe('SSE response');
-
-        // Now test JSON
-        const jsonResponse = JSON.stringify({
-            response: {
-                output_text: 'JSON response',
-            },
-        });
-
-        mockFetchImpl = mock(async () => {
-            return {
-                ok: true,
-                status: 200,
-                headers: {
-                    get: (name: string) => {
-                        if (name === 'Content-Type') return 'application/json';
-                        return null;
-                    },
-                },
-                text: async () => jsonResponse,
-            };
-        });
-
-        globalThis.fetch = mockFetchImpl as any;
-
-        result = await caller.callAgent(input);
+        const result = await caller.callAgent(input);
         expect(result.content).toBe('JSON response');
     });
 
