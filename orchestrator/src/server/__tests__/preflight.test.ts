@@ -13,7 +13,7 @@ function makeConfig(overrides?: Partial<any>) {
         workflow: {type: 'round_robin', order: ['a', 'b'], start: 'a'},
         delivery: {type: 'next_speaker'},
         seed: {from: 'user', content: 'hi'},
-        judge: {enabled: false, eval_every_turn: true},
+        judge: {enabled: false},
         termination: {max_turns: 2, judge_stop: false},
         ...overrides,
     };
@@ -41,7 +41,7 @@ describe('preflightCheckClients', () => {
     });
 
     test('fails when any required client_id is missing', async () => {
-        const config = makeConfig({judge: {enabled: true, client_id: 'cj', rubric: 'r', eval_every_turn: true}});
+        const config = makeConfig({judge: {enabled: true, client_id: 'cj', rubric: 'r'}});
 
         const originalFetch = globalThis.fetch;
         globalThis.fetch = (async () => {

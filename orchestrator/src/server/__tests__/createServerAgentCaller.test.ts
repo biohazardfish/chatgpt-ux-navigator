@@ -83,7 +83,7 @@ data: [DONE]
             workflow: {type: 'round_robin', order: ['agent_a'], start: 'agent_a'},
             delivery: {type: 'next_speaker'},
             seed: {from: 'user', content: 'Start'},
-            judge: {enabled: false, eval_every_turn: true},
+            judge: {enabled: false},
             termination: {max_turns: 1, judge_stop: false},
         };
 
@@ -126,7 +126,7 @@ data: [DONE]
             workflow: {type: 'round_robin', order: ['agent_b'], start: 'agent_b'},
             delivery: {type: 'next_speaker'},
             seed: {from: 'user', content: 'Start'},
-            judge: {enabled: false, eval_every_turn: true},
+            judge: {enabled: false},
             termination: {max_turns: 1, judge_stop: false},
         };
 
@@ -174,7 +174,7 @@ data: [DONE]
             workflow: {type: 'round_robin', order: ['agent_c'], start: 'agent_c'},
             delivery: {type: 'next_speaker'},
             seed: {from: 'user', content: 'Start'},
-            judge: {enabled: false, eval_every_turn: true},
+            judge: {enabled: false},
             termination: {max_turns: 1, judge_stop: false},
         };
 
@@ -222,7 +222,7 @@ data: [DONE]
             workflow: {type: 'round_robin', order: ['agent_d'], start: 'agent_d'},
             delivery: {type: 'next_speaker'},
             seed: {from: 'user', content: 'Start'},
-            judge: {enabled: false, eval_every_turn: true},
+            judge: {enabled: false},
             termination: {max_turns: 1, judge_stop: false},
         };
 
@@ -269,7 +269,7 @@ data: [DONE]
             workflow: {type: 'round_robin', order: ['agent_e'], start: 'agent_e'},
             delivery: {type: 'next_speaker'},
             seed: {from: 'user', content: 'Start'},
-            judge: {enabled: false, eval_every_turn: true},
+            judge: {enabled: false},
             termination: {max_turns: 1, judge_stop: false},
         };
 
@@ -307,7 +307,7 @@ data: [DONE]
             workflow: {type: 'round_robin', order: ['agent_exists'], start: 'agent_exists'},
             delivery: {type: 'next_speaker'},
             seed: {from: 'user', content: 'Start'},
-            judge: {enabled: false, eval_every_turn: true},
+            judge: {enabled: false},
             termination: {max_turns: 1, judge_stop: false},
         };
 
@@ -368,7 +368,7 @@ data: [DONE]
             workflow: {type: 'round_robin', order: ['agent_f'], start: 'agent_f'},
             delivery: {type: 'next_speaker'},
             seed: {from: 'user', content: 'Start'},
-            judge: {enabled: false, eval_every_turn: true},
+            judge: {enabled: false},
             termination: {max_turns: 1, judge_stop: false},
         };
 
@@ -437,7 +437,7 @@ data: [DONE]
             workflow: {type: 'round_robin', order: ['agent_g'], start: 'agent_g'},
             delivery: {type: 'next_speaker'},
             seed: {from: 'user', content: 'Start'},
-            judge: {enabled: false, eval_every_turn: true},
+            judge: {enabled: false},
             termination: {max_turns: 1, judge_stop: false},
         };
 

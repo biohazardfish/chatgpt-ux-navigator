@@ -79,7 +79,6 @@ export type AppConfig = {
         enabled: boolean;
         client_id: string; // required if enabled=true; the clientId of the browser tab used for judge evaluation
         rubric: string; // required if enabled=true, non-empty
-        eval_every_turn: true; // fixed true in v1
     };
 
     termination: {
@@ -149,7 +148,6 @@ export type AgentConfig = {
 
 - Required.
 - `enabled` required boolean.
-- `eval_every_turn` must exist and equal boolean `true`.
 - If `enabled: true`:
     - `client_id` required: string, trimmed length >= 1
     - `rubric` required: string, trimmed length >= 1
@@ -310,7 +308,6 @@ judge:
     enabled: true
     client_id: judge-tab
     rubric: 'Score both agents 0-10. Stop when converged.'
-    eval_every_turn: true
 termination:
     max_turns: 10
     judge_stop: true

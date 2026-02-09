@@ -16,13 +16,15 @@ const USAGE = `
 Nexus - Multi-Agent Conversation Orchestrator
 
 Usage:
-  bun run src/cli.ts <config.yml>
+  bun run src/cli.ts <config.yml> [options]
 
 Example:
   bun run src/cli.ts examples/debate.yml
+  bun run src/cli.ts examples/debate.yml --debug
 
 Options:
   <config.yml>    Path to YAML configuration file (required)
+  --debug         Enable debug logging (prints to console and logs.jsonl)
   --help, -h      Show this help message
 
 Description:
@@ -52,11 +54,23 @@ async function main() {
         process.exit(args.length === 0 ? 1 : 0);
     }
 
-    // Get config path
-    const configPath = args[0];
+    // Parse options
+    const debugMode = args.includes('--debug');
+
+    // Get config path (first non-flag argument)
+    const configPath = args.find(arg => !arg.startsWith('--'));
+
+    if (!configPath) {
+        console.error('Error: config.yml path is required');
+        console.log(USAGE);
+        process.exit(1);
+    }
 
     console.log('🚀 Nexus Multi-Agent Orchestrator\n');
     console.log(`📄 Loading config: ${configPath}`);
+    if (debugMode) {
+        console.log('🐛 Debug mode enabled\n');
+    }
 
     // Load and validate config
     let config;
@@ -118,6 +132,7 @@ async function main() {
             configText,
             config,
             started_at,
+            debugMode,
         });
         console.log(`📁 Run directory: ${logger.runDir}\n`);
     } catch (error) {
@@ -127,13 +142,14 @@ async function main() {
     }
 
     // Create dependencies
-    const agentCaller = createServerAgentCaller(config);
-    const judgeCaller = config.judge.enabled ? createServerJudgeCaller(config) : undefined;
+    const agentCaller = createServerAgentCaller(config, logger.jsonLogger);
+    const judgeCaller = config.judge.enabled ? createServerJudgeCaller(config, logger.jsonLogger) : undefined;
 
     const deps: RunnerDeps = {
         callAgent: agentCaller.callAgent,
         callJudge: judgeCaller?.callJudge,
         nowISO: () => new Date().toISOString(),
+        jsonLogger: logger.jsonLogger,
     };
 
     // Run conversation with live logging

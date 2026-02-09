@@ -45,7 +45,6 @@ seed:
 # No judge for this simple conversation
 judge:
     enabled: false
-    eval_every_turn: true
 
 termination:
     max_turns: 6 # Just 3 exchanges (6 total messages)

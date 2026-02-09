@@ -6,6 +6,7 @@
 
 import type {AppConfig} from '../config/types';
 import type {AgentCallInput, AgentCallOutput} from '../runner/types';
+import type {JSONLogger} from '../logging/jsonLogger';
 import {buildPrompt} from './promptBuilder';
 import {parseSSEStream, parseJSONResponse} from './sseParser';
 
@@ -14,23 +15,46 @@ import {parseSSEStream, parseJSONResponse} from './sseParser';
  * Returns a callAgent function that sends prompts to the local server
  *
  * @param config - Validated app configuration
+ * @param jsonLogger - Optional JSON logger for debugging
  * @returns Object with callAgent method
  */
-export function createServerAgentCaller(config: AppConfig): {
+export function createServerAgentCaller(
+    config: AppConfig,
+    jsonLogger?: JSONLogger
+): {
     callAgent: (input: AgentCallInput) => Promise<AgentCallOutput>;
 } {
     return {
         callAgent: async (input: AgentCallInput): Promise<AgentCallOutput> => {
             const {agent_id, client_id, turn, inbox} = input;
 
+            await jsonLogger?.debug('agent_caller', 'call_start', {
+                agent_id,
+                client_id,
+                turn,
+                inbox_size: inbox.length,
+            });
+
             // Get agent config for system prompt
             const agentConfig = config.agents[agent_id];
             if (!agentConfig) {
-                throw new Error(`Agent config not found for ${agent_id} turn ${turn}`);
+                const errorMsg = `Agent config not found for ${agent_id} turn ${turn}`;
+                await jsonLogger?.error('agent_caller', 'config_not_found', {
+                    agent_id,
+                    turn,
+                }, errorMsg);
+                throw new Error(errorMsg);
             }
 
             // Build the prompt
             const prompt = buildPrompt(agentConfig.system, inbox);
+
+            await jsonLogger?.debug('agent_caller', 'prompt_built', {
+                agent_id,
+                turn,
+                prompt_length: prompt.length,
+                inbox_items: inbox.length,
+            });
 
             // Prepare the request
             const useNewChat = config.server.agents_new_chat ?? true;
@@ -40,9 +64,20 @@ export function createServerAgentCaller(config: AppConfig): {
                 stream: true,
             };
 
+            await jsonLogger?.debug('agent_caller', 'http_request', {
+                agent_id,
+                client_id,
+                turn,
+                url,
+                use_new_chat: useNewChat,
+                prompt_length: prompt.length,
+            });
+
             // Create abort controller for 120-second timeout
             const controller = new AbortController();
             const timeoutId = setTimeout(() => controller.abort(), 120 * 1000);
+
+            const requestStartTime = Date.now();
 
             try {
                 const response = await fetch(url, {
@@ -54,12 +89,31 @@ export function createServerAgentCaller(config: AppConfig): {
                     signal: controller.signal,
                 });
 
+                const responseTime = Date.now() - requestStartTime;
+
                 clearTimeout(timeoutId);
+
+                await jsonLogger?.debug('agent_caller', 'http_response', {
+                    agent_id,
+                    client_id,
+                    turn,
+                    status: response.status,
+                    content_type: response.headers.get('Content-Type'),
+                    response_time_ms: responseTime,
+                });
 
                 // Handle error responses
                 if (!response.ok) {
                     const errorBody = await response.text();
                     const snippet = errorBody.slice(0, 500);
+
+                    await jsonLogger?.error('agent_caller', 'http_error', {
+                        agent_id,
+                        client_id,
+                        turn,
+                        status: response.status,
+                        error_snippet: snippet.slice(0, 200),
+                    });
 
                     if (response.status === 400) {
                         throw new Error(
@@ -82,35 +136,90 @@ export function createServerAgentCaller(config: AppConfig): {
                 const contentType = response.headers.get('Content-Type') || '';
                 let content: string;
 
+                const responseBody = await response.text();
+
+                await jsonLogger?.debug('agent_caller', 'response_body_received', {
+                    agent_id,
+                    turn,
+                    body_length: responseBody.length,
+                    content_type: contentType,
+                });
+
                 if (contentType.includes('text/event-stream')) {
                     // SSE streaming mode
-                    const body = await response.text();
-                    content = parseSSEStream(body, agent_id, turn);
+                    content = parseSSEStream(responseBody, agent_id, turn);
                 } else if (contentType.includes('application/json')) {
                     // JSON fallback mode
-                    const body = await response.text();
-                    content = parseJSONResponse(body, agent_id, turn);
+                    content = parseJSONResponse(responseBody, agent_id, turn);
                 } else {
                     // Unknown content type, try JSON first then SSE
-                    const body = await response.text();
                     try {
-                        content = parseJSONResponse(body, agent_id, turn);
+                        content = parseJSONResponse(responseBody, agent_id, turn);
                     } catch {
                         // Fall back to SSE parsing
-                        content = parseSSEStream(body, agent_id, turn);
+                        content = parseSSEStream(responseBody, agent_id, turn);
                     }
                 }
+
+                await jsonLogger?.info('agent_caller', 'call_success', {
+                    agent_id,
+                    client_id,
+                    turn,
+                    content_length: content.length,
+                    response_time_ms: responseTime,
+                });
 
                 return {content};
             } catch (err) {
                 clearTimeout(timeoutId);
 
+                const responseTime = Date.now() - requestStartTime;
+
+                // Properly extract error message
+                let errorMsg: string;
+                let errorDetails: Record<string, unknown> = {};
+
+                if (err instanceof Error) {
+                    errorMsg = err.message;
+                    errorDetails = {
+                        name: err.name,
+                        stack: err.stack,
+                    };
+                } else if (typeof err === 'string') {
+                    errorMsg = err;
+                } else {
+                    // Handle objects or unknown error types
+                    try {
+                        errorMsg = JSON.stringify(err);
+                        errorDetails = {raw_error: err};
+                    } catch {
+                        errorMsg = String(err);
+                    }
+                }
+
                 // Handle abort (timeout)
                 if (err instanceof Error && err.name === 'AbortError') {
+                    await jsonLogger?.error('agent_caller', 'timeout', {
+                        agent_id,
+                        client_id,
+                        turn,
+                        timeout_ms: 120000,
+                        elapsed_ms: responseTime,
+                    }, 'Request timed out after 120 seconds');
+
                     throw new Error(`Server request timeout for ${agent_id} turn ${turn}`);
                 }
 
-                // Re-throw other errors
+                // Log other errors with full details
+                await jsonLogger?.error('agent_caller', 'call_failed', {
+                    agent_id,
+                    client_id,
+                    turn,
+                    elapsed_ms: responseTime,
+                    error_details: errorDetails,
+                }, errorMsg);
+
+                // Re-throw original error
                 throw err;
             }
         },

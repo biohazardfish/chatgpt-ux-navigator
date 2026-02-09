@@ -60,7 +60,6 @@ function createTestConfig(overrides?: Partial<AppConfig>): AppConfig {
         },
         judge: {
             enabled: false,
-            eval_every_turn: true,
             ...overrides?.judge,
         },
         termination: {
@@ -337,7 +336,7 @@ describe('RunLogger', () => {
 
     describe('writeJudge', () => {
         it('writes judge JSON with correct format when enabled', async () => {
-            const config = createTestConfig({judge: {enabled: true, eval_every_turn: true}});
+            const config = createTestConfig({judge: {enabled: true}});
             const configText = 'version: 1\n';
             const startedAt = '2026-02-08T14:32:10Z';
 
@@ -377,7 +376,7 @@ describe('RunLogger', () => {
         });
 
         it('does not write judge JSON when judge disabled', async () => {
-            const config = createTestConfig({judge: {enabled: false, eval_every_turn: true}});
+            const config = createTestConfig({judge: {enabled: false}});
             const configText = 'version: 1\n';
             const startedAt = '2026-02-08T14:32:10Z';
 
@@ -409,7 +408,7 @@ describe('RunLogger', () => {
 
         it('maintains scores key order in JSON output', async () => {
             const config = createTestConfig({
-                judge: {enabled: true, eval_every_turn: true},
+                judge: {enabled: true},
                 workflow: {type: 'round_robin', order: ['A', 'B', 'C'], start: 'A'},
                 agents: {
                     A: {client_id: 'a', system: 'A'},
@@ -510,7 +509,6 @@ describe('RunLogger', () => {
             expect(runData.judge).toEqual({
                 enabled: false,
                 client_id: '',
-                eval_every_turn: true,
             });
 
             // Verify termination
@@ -524,7 +522,7 @@ describe('RunLogger', () => {
         });
 
         it('sets judge client_id to empty string when judge disabled', async () => {
-            const config = createTestConfig({judge: {enabled: false, eval_every_turn: true}});
+            const config = createTestConfig({judge: {enabled: false}});
             const configText = 'version: 1\n';
             const startedAt = '2026-02-08T14:32:10Z';
 
@@ -552,7 +550,7 @@ describe('RunLogger', () => {
 
         it('includes judge client_id when judge enabled', async () => {
             const config = createTestConfig({
-                judge: {enabled: true, client_id: 'judge-client', eval_every_turn: true},
+                judge: {enabled: true, client_id: 'judge-client'},
             });
             const configText = 'version: 1\n';
             const startedAt = '2026-02-08T14:32:10Z';
@@ -621,7 +619,7 @@ describe('RunLogger', () => {
     describe('integration', () => {
         it('produces complete run with transcript and judge outputs', async () => {
             const config = createTestConfig({
-                judge: {enabled: true, client_id: 'judge-client', eval_every_turn: true},
+                judge: {enabled: true, client_id: 'judge-client'},
                 workflow: {type: 'round_robin', order: ['A', 'B'], start: 'A'},
             });
             const configText = 'version: 1\nserver:\n  url: http://localhost:8765\n';

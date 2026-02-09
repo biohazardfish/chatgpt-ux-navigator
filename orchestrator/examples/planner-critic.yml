@@ -96,7 +96,6 @@ judge:
           "reason": "A viable solution has emerged with logistics, incentives, and scalability addressed. Further refinement would require implementation details beyond this scope."
         }
         ```
-    eval_every_turn: true
 
 termination:
     max_turns: 12

@@ -65,7 +65,6 @@ describe('createServerJudgeCaller', () => {
             enabled: true,
             client_id: 'judge-client',
             rubric: 'Score on helpfulness',
-            eval_every_turn: true,
         },
         termination: {max_turns: 5, judge_stop: true},
     };
@@ -88,7 +87,6 @@ describe('createServerJudgeCaller', () => {
                 ...baseConfig,
                 judge: {
                     enabled: false,
-                    eval_every_turn: true,
                 },
             };
 
@@ -104,7 +102,6 @@ describe('createServerJudgeCaller', () => {
                     enabled: true,
                     client_id: '',
                     rubric: 'Test rubric',
-                    eval_every_turn: true,
                 },
             };
 
@@ -120,7 +117,6 @@ describe('createServerJudgeCaller', () => {
                     enabled: true,
                     client_id: 'judge-client',
                     rubric: '',
-                    eval_every_turn: true,
                 },
             };
 

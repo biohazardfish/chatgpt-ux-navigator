@@ -55,10 +55,12 @@ export function parseSSEStream(body: string, agentId: string, turn: number): str
                         finalText = response.output_text;
                     }
                 } else if (event === 'response.error') {
-                    // Extract error and throw
-                    const errorMsg =
-                        (data.message as string) || (data.error as string) || JSON.stringify(data);
-                    throw new Error(`Server agent error for ${agentId} turn ${turn}: ${errorMsg}`);
+                    // Extract error and throw with full details
+                    const errorMsg = (data.message as string) || (data.error as string) || 'Unknown error';
+                    const errorDetails = JSON.stringify(data, null, 2);
+                    throw new Error(
+                        `Server agent error for ${agentId} turn ${turn}: ${errorMsg}\nDetails: ${errorDetails}`
+                    );
                 }
                 // Ignore other events (informational)
             }
