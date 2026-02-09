@@ -1,0 +1,52 @@
+# Example Nexus Config: Simple Conversation (No Judge)
+# Two agents having a collaborative discussion
+
+version: 1
+
+server:
+  url: http://localhost:8765
+
+run:
+  id: simple-chat
+  out_dir: runs
+
+# Two collaborative agents
+agents:
+  alice:
+    client_id: client-1  # Replace with actual client ID
+    system: |
+      You are Alice, a creative thinker who loves brainstorming new ideas.
+      You're enthusiastic and build on others' suggestions.
+      Keep responses brief and conversational.
+      
+  bob:
+    client_id: client-2  # Replace with actual client ID
+    system: |
+      You are Bob, a practical problem-solver who refines ideas.
+      You're thoughtful and ask clarifying questions.
+      Keep responses brief and conversational.
+
+workflow:
+  type: round_robin
+  order:
+    - alice
+    - bob
+  start: alice
+
+delivery:
+  type: next_speaker
+
+seed:
+  from: user
+  content: |
+    Let's brainstorm ideas for a mobile app that helps people learn new skills.
+    Alice, kick us off with an initial concept!
+
+# No judge for this simple conversation
+judge:
+  enabled: false
+  eval_every_turn: true
+
+termination:
+  max_turns: 6  # Just 3 exchanges (6 total messages)
+  judge_stop: false

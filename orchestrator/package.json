@@ -3,6 +3,7 @@
     "type": "module",
     "module": "src/index.ts",
     "scripts": {
+        "start": "bun src/cli.ts",
         "test": "bun test",
         "typecheck": "tsc --noEmit",
         "format": "prettier --write ."

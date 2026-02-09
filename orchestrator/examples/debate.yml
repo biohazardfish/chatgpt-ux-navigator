@@ -1,0 +1,75 @@
+# Example Nexus Config: Two-Agent Debate
+# This demonstrates a simple debate between two AI agents with a judge
+
+version: 1
+
+# Server configuration (local @repo/server)
+server:
+  url: http://localhost:8765
+
+# Run metadata and output location
+run:
+  id: debate
+  out_dir: runs
+
+# Agent definitions
+# IMPORTANT: Replace client_id values with actual IDs from your connected browser tabs
+# Run 'bun dev' in the server directory and check the console for client IDs
+agents:
+  pro:
+    client_id: client-1  # Replace with actual client ID
+    system: |
+      You are participating in a debate as the PRO side.
+      Your role is to argue in favor of the proposition.
+      Be persuasive, use evidence, and respond to counter-arguments.
+      Keep responses concise (2-3 paragraphs max).
+      
+  con:
+    client_id: client-2  # Replace with actual client ID
+    system: |
+      You are participating in a debate as the CON side.
+      Your role is to argue against the proposition.
+      Be persuasive, use evidence, and respond to counter-arguments.
+      Keep responses concise (2-3 paragraphs max).
+
+# Workflow configuration
+workflow:
+  type: round_robin
+  order:
+    - pro
+    - con
+  start: pro  # Pro speaks first
+
+# Message delivery rules
+delivery:
+  type: next_speaker
+
+# Initial seed prompt (sent to the starting agent)
+seed:
+  from: user
+  content: |
+    Debate Topic: "AI will have a net positive impact on society by 2030"
+    
+    You are the PRO side. Present your opening argument.
+
+# Judge configuration
+judge:
+  enabled: true
+  client_id: client-3  # Replace with actual client ID for judge
+  rubric: |
+    Evaluate the debate based on:
+    1. Argument quality and evidence
+    2. Response to counter-arguments
+    3. Persuasiveness and clarity
+    
+    Score each agent from 0-100.
+    Stop the debate when:
+    - Arguments become repetitive
+    - A clear winner emerges
+    - At least 4 turns have passed
+  eval_every_turn: true
+
+# Termination conditions
+termination:
+  max_turns: 10
+  judge_stop: true
