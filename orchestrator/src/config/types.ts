@@ -7,6 +7,12 @@ export type AppConfig = {
     version: 1;
     server: {
         url: string;
+        /**
+         * If true, agent prompts are sent via POST /responses/:clientId/new to force a fresh chat.
+         * If false, agent prompts are sent via POST /responses/:clientId (continue current chat).
+         * Optional in config; defaults to true.
+         */
+        agents_new_chat?: boolean;
     };
     run: {
         id: string;

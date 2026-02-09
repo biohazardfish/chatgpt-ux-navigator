@@ -65,6 +65,7 @@ termination:
             const config = await loadConfig(configPath);
             expect(config.version).toBe(1);
             expect(config.server.url).toBe('http://localhost:8765');
+            expect(config.server.agents_new_chat).toBe(true);
             expect(Object.keys(config.agents).length).toBe(2);
             expect(config.workflow.order).toEqual(['A', 'B']);
             expect(config.run.id).toBe('minimal');
@@ -224,6 +225,7 @@ termination:
 
             const config = await loadConfig(configPath);
             expect(config.server.url).toBe('http://localhost:8765');
+            expect(config.server.agents_new_chat).toBe(true);
             expect(config.agents.A.client_id).toBe('agent-a');
             expect(config.agents.A.system).toBe('You are A.');
             expect(config.seed.content).toBe('Trimmed content.');
@@ -304,6 +306,121 @@ termination:
 
             const config = await loadConfig(configPath);
             expect(config.workflow.start).toBe('B');
+
+            cleanup();
+        });
+    });
+
+    describe('server.agents_new_chat', () => {
+        it('defaults to true when omitted', async () => {
+            const configPath = createTestConfig(
+                'agents-new-chat-omitted.yml',
+                `
+version: 1
+server:
+  url: 'http://localhost:8765'
+agents:
+  A:
+    client_id: agent-a
+    system: 'You are A.'
+  B:
+    client_id: agent-b
+    system: 'You are B.'
+workflow:
+  type: round_robin
+  order: [A, B]
+delivery:
+  type: next_speaker
+seed:
+  from: user
+  content: 'Test.'
+judge:
+  enabled: false
+  eval_every_turn: true
+termination:
+  max_turns: 2
+  judge_stop: false
+`
+            );
+
+            const config = await loadConfig(configPath);
+            expect(config.server.agents_new_chat).toBe(true);
+
+            cleanup();
+        });
+
+        it('allows explicit agents_new_chat: true', async () => {
+            const configPath = createTestConfig(
+                'agents-new-chat-true.yml',
+                `
+version: 1
+server:
+  url: 'http://localhost:8765'
+  agents_new_chat: true
+agents:
+  A:
+    client_id: agent-a
+    system: 'You are A.'
+  B:
+    client_id: agent-b
+    system: 'You are B.'
+workflow:
+  type: round_robin
+  order: [A, B]
+delivery:
+  type: next_speaker
+seed:
+  from: user
+  content: 'Test.'
+judge:
+  enabled: false
+  eval_every_turn: true
+termination:
+  max_turns: 2
+  judge_stop: false
+`
+            );
+
+            const config = await loadConfig(configPath);
+            expect(config.server.agents_new_chat).toBe(true);
+
+            cleanup();
+        });
+
+        it('allows overriding agents_new_chat to false', async () => {
+            const configPath = createTestConfig(
+                'agents-new-chat-false.yml',
+                `
+version: 1
+server:
+  url: 'http://localhost:8765'
+  agents_new_chat: false
+agents:
+  A:
+    client_id: agent-a
+    system: 'You are A.'
+  B:
+    client_id: agent-b
+    system: 'You are B.'
+workflow:
+  type: round_robin
+  order: [A, B]
+delivery:
+  type: next_speaker
+seed:
+  from: user
+  content: 'Test.'
+judge:
+  enabled: false
+  eval_every_turn: true
+termination:
+  max_turns: 2
+  judge_stop: false
+`
+            );
+
+            const config = await loadConfig(configPath);
+            expect(config.server.agents_new_chat).toBe(false);
 
             cleanup();
         });
