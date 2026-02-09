@@ -59,7 +59,8 @@ export function createServerJudgeCaller(config: AppConfig): {
                 // Wait a bit for any page navigation to settle
                 await new Promise(resolve => setTimeout(resolve, 2000));
 
-                const retryPrompt = buildJudgePrompt(config, transcript, true);
+                const errorDetails = 'details' in parsed ? parsed.details : 'Invalid judge output';
+                const retryPrompt = buildJudgePrompt(config, transcript, true, errorDetails);
                 // Retry WITHOUT starting a new chat - reuse the existing temporary chat
                 const retryResponse = await callJudgeOnce(
                     config,

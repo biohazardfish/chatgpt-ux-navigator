@@ -100,6 +100,17 @@ function validateSchema(obj: unknown, agentIds: string[]): ParseError | null {
     }
 
     const decision = obj as Record<string, unknown>;
+    const decisionKeys = Object.keys(decision);
+    const allowedKeys = ['should_stop', 'scores', 'reason'];
+
+    for (const key of decisionKeys) {
+        if (!allowedKeys.includes(key)) {
+            return {
+                type: 'validation_error',
+                details: `response contains extra key not in schema: ${key}`,
+            };
+        }
+    }
 
     // Check should_stop is boolean
     if (typeof decision.should_stop !== 'boolean') {
