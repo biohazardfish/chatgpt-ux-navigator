@@ -4,6 +4,7 @@
  */
 
 import type {AppConfig} from '../config/types';
+import type {JSONLogger} from '../logging/jsonLogger';
 
 /**
  * A single agent message in the transcript
@@ -67,6 +68,7 @@ export type RunnerDeps = {
     callAgent: (input: AgentCallInput) => Promise<AgentCallOutput>;
     callJudge?: (input: JudgeInput) => Promise<JudgeDecision>; // only used if judge.enabled=true
     nowISO: () => string; // deterministic time injection for tests
+    jsonLogger?: JSONLogger; // optional JSON logger for debugging
 };
 
 /**

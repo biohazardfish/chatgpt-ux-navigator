@@ -55,7 +55,6 @@ judge:
   enabled: true
   client_id: judge-tab
   rubric: 'Score both 0-10.'
-  eval_every_turn: true
 termination:
   max_turns: 10
   judge_stop: true
@@ -99,7 +98,6 @@ seed:
   content: 'Debate.'
 judge:
   enabled: false
-  eval_every_turn: true
 termination:
   max_turns: 5
   judge_stop: false
@@ -140,7 +138,6 @@ seed:
   content: 'Start.'
 judge:
   enabled: false
-  eval_every_turn: true
 termination:
   max_turns: 5
   judge_stop: false
@@ -179,7 +176,6 @@ seed:
   content: 'Test.'
 judge:
   enabled: false
-  eval_every_turn: true
 termination:
   max_turns: 5
   judge_stop: false
@@ -216,7 +212,6 @@ seed:
   content: '  Trimmed content.  '
 judge:
   enabled: false
-  eval_every_turn: true
 termination:
   max_turns: 5
   judge_stop: false
@@ -257,7 +252,6 @@ seed:
   content: 'Test.'
 judge:
   enabled: false
-  eval_every_turn: true
 termination:
   max_turns: 5
   judge_stop: false
@@ -297,7 +291,6 @@ seed:
   content: 'Test.'
 judge:
   enabled: false
-  eval_every_turn: true
 termination:
   max_turns: 5
   judge_stop: false
@@ -336,7 +329,6 @@ seed:
   content: 'Test.'
 judge:
   enabled: false
-  eval_every_turn: true
 termination:
   max_turns: 2
   judge_stop: false
@@ -374,7 +366,6 @@ seed:
   content: 'Test.'
 judge:
   enabled: false
-  eval_every_turn: true
 termination:
   max_turns: 2
   judge_stop: false
@@ -412,7 +403,6 @@ seed:
   content: 'Test.'
 judge:
   enabled: false
-  eval_every_turn: true
 termination:
   max_turns: 2
   judge_stop: false
@@ -451,7 +441,6 @@ seed:
   content: 'Test.'
 judge:
   enabled: false
-  eval_every_turn: true
 termination:
   max_turns: 5
   judge_stop: false
@@ -487,7 +476,6 @@ seed:
   content: 'Test.'
 judge:
   enabled: false
-  eval_every_turn: true
 termination:
   max_turns: 5
   judge_stop: false
@@ -524,7 +512,6 @@ seed:
   content: 'Test.'
 judge:
   enabled: false
-  eval_every_turn: true
 termination:
   max_turns: 5
   judge_stop: false
@@ -559,7 +546,6 @@ seed:
   content: 'Test.'
 judge:
   enabled: false
-  eval_every_turn: true
 termination:
   max_turns: 5
   judge_stop: false
@@ -595,7 +581,6 @@ seed:
   content: 'Test.'
 judge:
   enabled: false
-  eval_every_turn: true
 termination:
   max_turns: 5
   judge_stop: false
@@ -631,7 +616,6 @@ seed:
   content: 'Test.'
 judge:
   enabled: false
-  eval_every_turn: true
 termination:
   max_turns: 5
   judge_stop: false
@@ -680,7 +664,6 @@ seed:
   content: 'Test.'
 judge:
   enabled: false
-  eval_every_turn: true
 termination:
   max_turns: 5
   judge_stop: false
@@ -716,7 +699,6 @@ seed:
   content: 'Test.'
 judge:
   enabled: false
-  eval_every_turn: true
 termination:
   max_turns: 5
   judge_stop: false
@@ -752,7 +734,6 @@ seed:
   content: 'Test.'
 judge:
   enabled: false
-  eval_every_turn: true
 termination:
   max_turns: 5
   judge_stop: false
@@ -787,7 +768,6 @@ seed:
   content: 'Test.'
 judge:
   enabled: false
-  eval_every_turn: true
 termination:
   max_turns: 5
   judge_stop: false
@@ -822,7 +802,6 @@ seed:
   content: 'Test.'
 judge:
   enabled: false
-  eval_every_turn: true
 termination:
   max_turns: 5
   judge_stop: false
@@ -861,7 +840,6 @@ seed:
   content: 'Test.'
 judge:
   enabled: false
-  eval_every_turn: true
 termination:
   max_turns: 5
   judge_stop: false
@@ -897,7 +875,6 @@ seed:
   content: 'Test.'
 judge:
   enabled: false
-  eval_every_turn: true
 termination:
   max_turns: 5
   judge_stop: false
@@ -933,7 +910,6 @@ seed:
   content: 'Test.'
 judge:
   enabled: false
-  eval_every_turn: true
 termination:
   max_turns: 5
   judge_stop: false
@@ -969,7 +945,6 @@ seed:
   content: 'Test.'
 judge:
   enabled: false
-  eval_every_turn: true
 termination:
   max_turns: 5
   judge_stop: false
@@ -1006,7 +981,6 @@ seed:
   content: 'Test.'
 judge:
   enabled: false
-  eval_every_turn: true
 termination:
   max_turns: 5
   judge_stop: false
@@ -1045,7 +1019,6 @@ seed:
   content: 'Test.'
 judge:
   enabled: false
-  eval_every_turn: true
 termination:
   max_turns: 5
   judge_stop: false
@@ -1084,7 +1057,6 @@ seed:
   content: 'Test.'
 judge:
   enabled: false
-  eval_every_turn: true
 termination:
   max_turns: 5
   judge_stop: false
@@ -1119,7 +1091,6 @@ seed:
   from: user
 judge:
   enabled: false
-  eval_every_turn: true
 termination:
   max_turns: 5
   judge_stop: false
@@ -1155,7 +1126,6 @@ seed:
   content: '   '
 judge:
   enabled: false
-  eval_every_turn: true
 termination:
   max_turns: 5
   judge_stop: false
@@ -1195,7 +1165,6 @@ seed:
 judge:
   enabled: true
   rubric: 'Score agents.'
-  eval_every_turn: true
 termination:
   max_turns: 5
   judge_stop: true
@@ -1232,7 +1201,6 @@ seed:
 judge:
   enabled: true
   client_id: judge-tab
-  eval_every_turn: true
 termination:
   max_turns: 5
   judge_stop: true
@@ -1244,43 +1212,6 @@ termination:
             cleanup();
         });
 
-        it('requires eval_every_turn to be true', async () => {
-            const configPath = createTestConfig(
-                'judge-no-eval.yml',
-                `
-version: 1
-server:
-  url: 'http://localhost:8765'
-agents:
-  A:
-    client_id: agent-a
-    system: 'You are A.'
-  B:
-    client_id: agent-b
-    system: 'You are B.'
-workflow:
-  type: round_robin
-  order: [A, B]
-delivery:
-  type: next_speaker
-seed:
-  from: user
-  content: 'Test.'
-judge:
-  enabled: true
-  client_id: judge-tab
-  rubric: 'Score agents.'
-  eval_every_turn: false
-termination:
-  max_turns: 5
-  judge_stop: true
-`
-            );
-
-            await expect(loadConfig(configPath)).rejects.toThrow(/eval_every_turn.*true/i);
-
-            cleanup();
-        });
     });
 
     // Termination validation
@@ -1309,7 +1240,6 @@ seed:
   content: 'Test.'
 judge:
   enabled: false
-  eval_every_turn: true
 termination:
   max_turns: 0
   judge_stop: false
@@ -1345,7 +1275,6 @@ seed:
   content: 'Test.'
 judge:
   enabled: false
-  eval_every_turn: true
 termination:
   max_turns: 1001
   judge_stop: false
@@ -1381,7 +1310,6 @@ seed:
   content: 'Test.'
 judge:
   enabled: false
-  eval_every_turn: true
 termination:
   max_turns: 5.5
   judge_stop: false
@@ -1417,7 +1345,6 @@ seed:
   content: 'Test.'
 judge:
   enabled: false
-  eval_every_turn: true
 termination:
   max_turns: 5
   judge_stop: true
@@ -1456,7 +1383,6 @@ seed:
   content: 'Test.'
 judge:
   enabled: false
-  eval_every_turn: true
 termination:
   max_turns: 5
   judge_stop: false
@@ -1494,7 +1420,6 @@ seed:
   content: 'Test.'
 judge:
   enabled: false
-  eval_every_turn: true
 termination:
   max_turns: 5
   judge_stop: false

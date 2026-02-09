@@ -204,10 +204,9 @@ run full round
 ## Documentation Updates Required
 
 - `orchestrator/AGENTS.md`
-    - Replace “judge evaluates after turns” with “after rounds”
+    - Replace "judge evaluates after turns" with "after rounds"
 - `orchestrator/QUICKSTART.md`
     - Update judge output examples and comments
-- Deprecate or redefine any config option implying per‑turn evaluation (e.g. `eval_every_turn`)
 
 ---
 

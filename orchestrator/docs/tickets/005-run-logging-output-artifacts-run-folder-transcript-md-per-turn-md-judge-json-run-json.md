@@ -232,8 +232,7 @@ Write once at end of run:
   "delivery": { "type": "next_speaker" },
   "judge": {
     "enabled": <boolean>,
-    "client_id": "<client_id-or-empty>",
-    "eval_every_turn": true
+    "client_id": "<client_id-or-empty>"
   },
   "termination": {
     "max_turns": <number>,

@@ -63,7 +63,7 @@ describe('runConversation', () => {
             },
             delivery: {type: 'next_speaker'},
             seed: {from: 'user', content: 'Start here'},
-            judge: {enabled: false, eval_every_turn: true},
+            judge: {enabled: false},
             termination: {max_turns: 4, judge_stop: false},
         };
 
@@ -136,7 +136,7 @@ describe('runConversation', () => {
             },
             delivery: {type: 'next_speaker'},
             seed: {from: 'user', content: 'Start'},
-            judge: {enabled: false, eval_every_turn: true},
+            judge: {enabled: false},
             termination: {max_turns: 6, judge_stop: false},
         };
 
@@ -209,7 +209,7 @@ describe('runConversation', () => {
             },
             delivery: {type: 'next_speaker'},
             seed: {from: 'user', content: 'Start'},
-            judge: {enabled: true, eval_every_turn: true},
+            judge: {enabled: true},
             termination: {max_turns: 10, judge_stop: true},
         };
 
@@ -260,7 +260,7 @@ describe('runConversation', () => {
             },
             delivery: {type: 'next_speaker'},
             seed: {from: 'user', content: 'Start'},
-            judge: {enabled: true, eval_every_turn: true},
+            judge: {enabled: true},
             termination: {max_turns: 5, judge_stop: false},
         };
 
@@ -299,7 +299,7 @@ describe('runConversation', () => {
             workflow: {type: 'round_robin', order: ['A', 'B'], start: 'A'},
             delivery: {type: 'next_speaker'},
             seed: {from: 'user', content: 'Start'},
-            judge: {enabled: true, eval_every_turn: true},
+            judge: {enabled: true},
             termination: {max_turns: 3, judge_stop: false},
         };
 
@@ -342,7 +342,7 @@ describe('runConversation', () => {
             workflow: {type: 'round_robin', order: ['A', 'B'], start: 'A'},
             delivery: {type: 'next_speaker'},
             seed: {from: 'user', content: 'Start'},
-            judge: {enabled: true, eval_every_turn: true},
+            judge: {enabled: true},
             termination: {max_turns: 10, judge_stop: false},
         };
 
@@ -380,7 +380,7 @@ describe('runConversation', () => {
             },
             delivery: {type: 'next_speaker'},
             seed: {from: 'user', content: 'Start'},
-            judge: {enabled: true, eval_every_turn: true}, // Enabled but no dependency
+            judge: {enabled: true}, // Enabled but no dependency
             termination: {max_turns: 10, judge_stop: false},
         };
 
@@ -427,7 +427,7 @@ describe('runConversation', () => {
             },
             delivery: {type: 'next_speaker'},
             seed: {from: 'user', content: 'Start'},
-            judge: {enabled: false, eval_every_turn: true},
+            judge: {enabled: false},
             termination: {max_turns: 10, judge_stop: false},
         };
 

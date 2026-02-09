@@ -28,7 +28,6 @@ describe('buildJudgePrompt', () => {
             enabled: true,
             client_id: 'judge-client',
             rubric: 'Score based on helpfulness (0-10)',
-            eval_every_turn: true,
         },
         termination: {max_turns: 5, judge_stop: true},
     };

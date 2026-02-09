@@ -49,7 +49,6 @@ const judgeSchema = z
         enabled: z.boolean(),
         client_id: z.string().optional(),
         rubric: z.string().optional(),
-        eval_every_turn: z.literal(true),
     })
     .strict()
     .superRefine((judge, ctx) => {

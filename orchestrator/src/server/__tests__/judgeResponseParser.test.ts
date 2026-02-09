@@ -27,7 +27,6 @@ describe('judgeResponseParser', () => {
             enabled: true,
             client_id: 'judge-client',
             rubric: 'Score based on helpfulness',
-            eval_every_turn: true,
         },
         termination: {max_turns: 5, judge_stop: true},
     };

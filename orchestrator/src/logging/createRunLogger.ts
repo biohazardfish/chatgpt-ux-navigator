@@ -16,6 +16,7 @@ import {
     generateTranscriptHeading,
     formatTurnNumber,
 } from './RunLogger';
+import {createJSONLogger} from './jsonLogger';
 
 /**
  * Create a RunLogger instance for a new run
@@ -30,7 +31,7 @@ import {
  * @throws Error if run folder already exists or if directory creation fails
  */
 export async function createRunLogger(params: CreateRunLoggerParams): Promise<RunLogger> {
-    const {configPath, configText, config, started_at} = params;
+    const {configPath, configText, config, started_at, debugMode = false} = params;
 
     // Generate run folder name
     const runFolderName = generateRunFolderName(started_at, config.run.id);
@@ -68,9 +69,21 @@ export async function createRunLogger(params: CreateRunLoggerParams): Promise<Ru
     const configFilePath = join(runDir, 'config.yml');
     await writeFile(configFilePath, configText, 'utf-8');
 
+    // Create JSON logger
+    const jsonLogger = createJSONLogger(runDir, debugMode);
+
+    // Log initialization
+    await jsonLogger.info('logger', 'run_init', {
+        run_id: config.run.id,
+        run_dir: runDir,
+        started_at,
+        debug_mode: debugMode,
+    });
+
     // Create and return the RunLogger instance
     const logger: RunLogger = {
         runDir,
+        jsonLogger,
 
         async writeTurn(msg: AgentMessage, received_turns: number[]): Promise<void> {
             const speaker = config.agents[msg.speaker];
@@ -200,7 +213,6 @@ export async function createRunLogger(params: CreateRunLoggerParams): Promise<Ru
                  judge: {
                      enabled: config.judge.enabled,
                      client_id: config.judge.client_id || '',
-                     eval_every_turn: config.judge.eval_every_turn ?? false,
                  },
                 termination: {
                     max_turns: config.termination.max_turns,

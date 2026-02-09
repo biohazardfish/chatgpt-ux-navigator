@@ -253,7 +253,6 @@ seed:
 
 judge:
     enabled: false
-    eval_every_turn: true
 
 termination:
     max_turns: 4

@@ -46,7 +46,6 @@ seed:
 
 judge:
     enabled: false
-    eval_every_turn: true
 
 termination:
     max_turns: 4
@@ -119,7 +118,6 @@ seed:
           "scores": {"planner": X, "critic": Y},
           "reason": "Brief explanation"
         }
-    # Judge evaluation is per-round; eval_every_turn is deprecated
 
 termination:
     max_turns: 10

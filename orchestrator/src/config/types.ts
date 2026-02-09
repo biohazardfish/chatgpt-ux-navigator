@@ -35,11 +35,6 @@ export type AppConfig = {
         enabled: boolean;
         client_id?: string;
         rubric?: string;
-        /**
-         * @deprecated v1.x
-         * Judge evaluation is always per-round. This flag is ignored.
-         */
-        eval_every_turn?: boolean;
     };
     termination: {
         max_turns: number;

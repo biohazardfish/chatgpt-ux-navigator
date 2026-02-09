@@ -5,6 +5,7 @@
 
 import type {AppConfig} from '../config/types';
 import type {AgentMessage, JudgeDecision} from '../runner/types';
+import type {JSONLogger} from './jsonLogger';
 
 /**
  * The RunLogger interface manages all file writes for a run execution
@@ -14,6 +15,11 @@ export type RunLogger = {
      * Absolute or normalized path to the run folder
      */
     runDir: string;
+
+    /**
+     * JSON logger for structured logging to logs.jsonl
+     */
+    jsonLogger: JSONLogger;
 
     /**
      * Write a turn message to messages/<NNNN>_<speaker>.md and append to transcript.md
@@ -65,6 +71,11 @@ export type CreateRunLoggerParams = {
      * ISO timestamp at run start (deps.nowISO())
      */
     started_at: string;
+
+    /**
+     * Enable debug mode (prints logs to console)
+     */
+    debugMode?: boolean;
 };
 
 /**
@@ -94,7 +105,6 @@ export type RunMetadata = {
     judge: {
         enabled: boolean;
         client_id: string;
-        eval_every_turn: boolean;
     };
     termination: {
         max_turns: number;
