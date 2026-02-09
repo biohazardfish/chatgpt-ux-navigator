@@ -35,7 +35,7 @@ export type RunLogger = {
      * @param result - Run completion result including stop reason and timestamps
      */
     finalize: (result: {
-        stop_reason: 'max_turns' | 'judge_stop';
+        stop_reason: 'max_turns' | 'judge_stop' | 'agent_failure';
         total_turns: number;
         started_at: string;
         ended_at: string;
@@ -74,7 +74,7 @@ export type RunMetadata = {
     run_id: string;
     started_at: string;
     ended_at: string;
-    stop_reason: 'max_turns' | 'judge_stop';
+    stop_reason: 'max_turns' | 'judge_stop' | 'agent_failure';
     total_turns: number;
     server: {
         url: string;
@@ -94,7 +94,7 @@ export type RunMetadata = {
     judge: {
         enabled: boolean;
         client_id: string;
-        eval_every_turn: true;
+        eval_every_turn: boolean;
     };
     termination: {
         max_turns: number;

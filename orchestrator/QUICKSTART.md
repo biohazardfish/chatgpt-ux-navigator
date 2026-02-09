@@ -95,9 +95,9 @@ seed:
         Task: Design a system to reduce food waste in urban areas.
         Planner, propose your initial solution.
 
-judge:
-    enabled: true
-    client_id: YOUR_CLIENT_ID_3 # IMPORTANT: Need a 3rd browser tab for judge
+    judge:
+        enabled: true
+        client_id: YOUR_CLIENT_ID_3 # IMPORTANT: Need a 3rd browser tab for judge
     rubric: |
         Evaluate this planner-critic conversation on:
         1. Quality of the proposed solution (planner)
@@ -117,7 +117,7 @@ judge:
           "scores": {"planner": X, "critic": Y},
           "reason": "Brief explanation"
         }
-    eval_every_turn: true
+    # Judge evaluation is per-round; eval_every_turn is deprecated
 
 termination:
     max_turns: 10
@@ -178,10 +178,8 @@ runs/2026-02-08T15-45-20Z_my-judged-run/
 │   ├── 0003_planner.md
 │   └── 0004_critic.md
 └── judge/
-    ├── 0001.json  # Evaluation after turn 1
-    ├── 0002.json  # Evaluation after turn 2
-    ├── 0003.json  # Evaluation after turn 3
-    └── 0004.json  # Evaluation after turn 4
+    ├── 0001.json  # Evaluation after round 1
+    ├── 0002.json  # Evaluation after round 2
 ```
 
 ## Example Commands

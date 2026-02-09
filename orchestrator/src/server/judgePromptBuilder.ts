@@ -73,6 +73,9 @@ export function buildJudgePrompt(
         }
     });
 
+    // Explicit round boundary marker (per Ticket 006)
+    prompt += `\n\n=== END OF ROUND ===`;
+
     // Add correction prompt if this is a retry
     if (isRetry) {
         prompt += JUDGE_CORRECTION_PROMPT;

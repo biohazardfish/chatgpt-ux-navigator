@@ -33,9 +33,13 @@ export async function runConversation(config: AppConfig, deps: RunnerDeps): Prom
     // Initialize runtime state
     const state = initializeState(config);
 
-    // Main execution loop
+    const agentsPerRound = config.workflow.order.length;
+    let turnsInRound = 0;
+    let round = 1;
+    let abortAfterRound = false;
+
+    // Main execution loop (round-based)
     while (true) {
-        // Get current speaker
         const speaker = config.workflow.order[state.speaker_idx];
 
         // Deliver inbox to current speaker
@@ -43,13 +47,21 @@ export async function runConversation(config: AppConfig, deps: RunnerDeps): Prom
         state.pending[speaker] = [];
 
         // Call agent with current turn and inbox
-        const client_id = config.agents[speaker].client_id;
-        const agentOutput = await deps.callAgent({
-            agent_id: speaker,
-            client_id,
-            turn: state.turn,
-            inbox,
-        });
+        let agentOutput;
+        try {
+            const client_id = config.agents[speaker].client_id;
+            agentOutput = await deps.callAgent({
+                agent_id: speaker,
+                client_id,
+                turn: state.turn,
+                inbox,
+            });
+        } catch (error) {
+            // Agent failure: abort after current round completes
+            abortAfterRound = true;
+            turnsInRound = agentsPerRound;
+            continue;
+        }
 
         // Validate agent output
         const content = agentOutput.content.trim();
@@ -75,32 +87,50 @@ export async function runConversation(config: AppConfig, deps: RunnerDeps): Prom
             content: agentOutput.content,
         });
 
-        // Judge evaluation (if enabled)
-        if (config.judge.enabled && deps.callJudge) {
-            const decision = await deps.callJudge({
-                turn: state.turn,
-                transcript: state.transcript,
-            });
+        turnsInRound++;
 
-            const record: JudgeRecord = {
-                turn: state.turn,
-                decision,
-                created_at: deps.nowISO(),
-            };
-            state.judge_records.push(record);
+        // End-of-round processing
+        if (turnsInRound >= agentsPerRound) {
+            // Invoke judge exactly once per completed round
+            if (config.judge.enabled && deps.callJudge) {
+                const decision = await deps.callJudge({
+                    turn: round,
+                    transcript: state.transcript,
+                });
 
-            // Check if judge stops the run
-            if (config.termination.judge_stop && decision.should_stop) {
+                const record: JudgeRecord = {
+                    turn: round,
+                    decision,
+                    created_at: deps.nowISO(),
+                };
+                state.judge_records.push(record);
+
+                if (config.termination.judge_stop && decision.should_stop) {
+                    return {
+                        transcript: state.transcript,
+                        judge: state.judge_records,
+                        stop_reason: 'judge_stop',
+                        total_turns: state.transcript.length,
+                    };
+                }
+            }
+
+            if (abortAfterRound) {
                 return {
                     transcript: state.transcript,
                     judge: state.judge_records,
-                    stop_reason: 'judge_stop',
+                    stop_reason: 'agent_failure',
                     total_turns: state.transcript.length,
                 };
             }
+
+            // Continue to next round
+
+            turnsInRound = 0;
+            round++;
         }
 
-        // Check max turns termination
+        // Check max turns termination (can stop mid-round; no judge invocation)
         if (state.turn >= config.termination.max_turns) {
             return {
                 transcript: state.transcript,

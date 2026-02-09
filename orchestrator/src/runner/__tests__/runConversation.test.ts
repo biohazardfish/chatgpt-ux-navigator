@@ -168,13 +168,12 @@ describe('runConversation', () => {
     });
 
     /**
-     * Test 3: Judge stop
-     * Verifies: judge is called after each turn
-     *           runner stops when judge returns should_stop: true
-     *           stop_reason is 'judge_stop'
+     * Test 3: Judge stop (per-round)
+     * Verifies: judge is called once per round
+     *           runner stops only at round boundary
      */
-    it('test 3: judge stop', async () => {
-        const judge_calls: {turn: number; transcript_len: number}[] = [];
+    it('test 3: judge stop per round', async () => {
+        const judge_calls: {round: number; transcript_len: number}[] = [];
 
         const deps: RunnerDeps = {
             callAgent: async (input: AgentCallInput) => {
@@ -182,14 +181,14 @@ describe('runConversation', () => {
             },
             callJudge: async (input: JudgeInput) => {
                 judge_calls.push({
-                    turn: input.turn,
+                    round: input.turn,
                     transcript_len: input.transcript.length,
                 });
-                // Stop at turn 3
+                // Stop after round 2
                 return {
-                    should_stop: input.turn >= 3,
-                    scores: {A: 0.8, B: 0.7},
-                    reason: 'Stopping at turn 3',
+                    should_stop: input.turn >= 2,
+                    scores: {A: 80, B: 70},
+                    reason: 'Stopping after round 2',
                 };
             },
             nowISO: () => '2026-02-08T12:00:00Z',
@@ -216,22 +215,22 @@ describe('runConversation', () => {
 
         const result = await runConversation(config, deps);
 
-        expect(result.total_turns).toBe(3);
+        // 2 agents => 2 turns per round, stop after round 2 => 4 turns total
+        expect(result.total_turns).toBe(4);
         expect(result.stop_reason).toBe('judge_stop');
-        expect(judge_calls.length).toBe(3);
-        expect(judge_calls[0].turn).toBe(1);
-        expect(judge_calls[1].turn).toBe(2);
-        expect(judge_calls[2].turn).toBe(3);
-        expect(result.judge.length).toBe(3);
-        expect(result.judge[2].decision.should_stop).toBe(true);
+        expect(judge_calls.length).toBe(2);
+        expect(judge_calls[0].round).toBe(1);
+        expect(judge_calls[1].round).toBe(2);
+        expect(result.judge.length).toBe(2);
+        expect(result.judge[1].decision.should_stop).toBe(true);
     });
 
     /**
-     * Test 4: Max turns stop
-     * Verifies: runner stops at max_turns even with judge enabled
-     *           judge is called for each turn
+     * Test 4: Max turns stop (per-round judge)
+     * Verifies: runner stops at max_turns
+     *           judge is called once per completed round
      */
-    it('test 4: max turns stop', async () => {
+    it('test 4: max turns stop per round', async () => {
         const deps: RunnerDeps = {
             callAgent: async (input: AgentCallInput) => {
                 return {content: 'Response'};
@@ -270,7 +269,88 @@ describe('runConversation', () => {
         expect(result.total_turns).toBe(5);
         expect(result.stop_reason).toBe('max_turns');
         expect(result.transcript.length).toBe(5);
-        expect(result.judge.length).toBe(5);
+        // 2 agents => floor(5 / 2) = 2 completed rounds
+        expect(result.judge.length).toBe(2);
+    });
+
+    /**
+     * Test 7: Judge not called mid-round
+     */
+    it('test 7: judge not called mid-round', async () => {
+        let judgeCalls = 0;
+
+        const deps: RunnerDeps = {
+            callAgent: async () => ({content: 'Response'}),
+            callJudge: async () => {
+                judgeCalls++;
+                return {should_stop: false, scores: {A: 50, B: 50}, reason: 'Continue'};
+            },
+            nowISO: () => '2026-02-08T12:00:00Z',
+        };
+
+        const config: AppConfig = {
+            version: 1,
+            server: {url: 'http://localhost:8080'},
+            run: {id: 'run_007', out_dir: '/tmp/run_007'},
+            agents: {
+                A: {client_id: 'client_a', system: 'Agent A'},
+                B: {client_id: 'client_b', system: 'Agent B'},
+            },
+            workflow: {type: 'round_robin', order: ['A', 'B'], start: 'A'},
+            delivery: {type: 'next_speaker'},
+            seed: {from: 'user', content: 'Start'},
+            judge: {enabled: true, eval_every_turn: true},
+            termination: {max_turns: 3, judge_stop: false},
+        };
+
+        await runConversation(config, deps);
+
+        // Only one full round completed
+        expect(judgeCalls).toBe(1);
+    });
+
+    /**
+     * Test 8: Agent failure aborts after round and still judges
+     */
+    it('test 8: agent failure abort after round', async () => {
+        let agentCalls = 0;
+        let judgeCalls = 0;
+
+        const deps: RunnerDeps = {
+            callAgent: async () => {
+                agentCalls++;
+                if (agentCalls === 2) {
+                    throw new Error('Agent crashed');
+                }
+                return {content: 'OK'};
+            },
+            callJudge: async () => {
+                judgeCalls++;
+                return {should_stop: false, scores: {A: 0, B: 0}, reason: 'Scored'};
+            },
+            nowISO: () => '2026-02-08T12:00:00Z',
+        };
+
+        const config: AppConfig = {
+            version: 1,
+            server: {url: 'http://localhost:8080'},
+            run: {id: 'run_008', out_dir: '/tmp/run_008'},
+            agents: {
+                A: {client_id: 'client_a', system: 'Agent A'},
+                B: {client_id: 'client_b', system: 'Agent B'},
+            },
+            workflow: {type: 'round_robin', order: ['A', 'B'], start: 'A'},
+            delivery: {type: 'next_speaker'},
+            seed: {from: 'user', content: 'Start'},
+            judge: {enabled: true, eval_every_turn: true},
+            termination: {max_turns: 10, judge_stop: false},
+        };
+
+        const result = await runConversation(config, deps);
+
+        expect(result.stop_reason).toBe('agent_failure');
+        expect(judgeCalls).toBe(1);
+        expect(result.judge.length).toBe(1);
     });
 
     /**
