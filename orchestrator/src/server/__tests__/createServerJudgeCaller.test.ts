@@ -127,7 +127,7 @@ describe('createServerJudgeCaller', () => {
     });
 
     describe('Successful execution', () => {
-        it('test 4: parses valid SSE response with code block', async () => {
+        it('test 4: parses valid JSON response with code block', async () => {
             const judgeOutput = JSON.stringify({
                 should_stop: false,
                 scores: {agent_a: 7, agent_b: 8},
@@ -135,20 +135,16 @@ describe('createServerJudgeCaller', () => {
             });
 
             const responseObj = {
-                response: {
-                    output_text: `Evaluation:\n\`\`\`json\n${judgeOutput}\n\`\`\``,
-                },
+                id: 'resp_001',
+                status: 'completed',
+                output_text: `Evaluation:\n\`\`\`json\n${judgeOutput}\n\`\`\``,
             };
 
             fetchMocks.push({
                 response: {
                     status: 200,
-                    headers: {'Content-Type': 'text/event-stream'},
-                    body: `event: response.completed
-data: ${JSON.stringify(responseObj)}
-
-event: [DONE]
-`,
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(responseObj),
                 },
             });
 
@@ -169,9 +165,9 @@ event: [DONE]
             });
 
             const responseObj = {
-                response: {
-                    output_text: `Evaluation:\n\`\`\`json\n${judgeOutput}\n\`\`\``,
-                },
+                id: 'resp_002',
+                status: 'completed',
+                output_text: `Evaluation:\n\`\`\`json\n${judgeOutput}\n\`\`\``,
             };
 
             fetchMocks.push({
@@ -238,15 +234,17 @@ event: [DONE]
     describe('Retry logic', () => {
         it('test 8: retries on parse failure', async () => {
             // First call: invalid (no code block)
+            const invalidResponseObj = {
+                id: 'resp_003',
+                status: 'completed',
+                output_text: 'No code block here',
+            };
+
             fetchMocks.push({
                 response: {
                     status: 200,
-                    headers: {'Content-Type': 'text/event-stream'},
-                    body: `event: response.output_text.done
-data: {"text": "No code block here"}
-
-event: [DONE]
-`,
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(invalidResponseObj),
                 },
             });
 
@@ -258,20 +256,16 @@ event: [DONE]
             });
 
             const responseObj = {
-                response: {
-                    output_text: `Evaluation:\n\`\`\`json\n${judgeOutput}\n\`\`\``,
-                },
+                id: 'resp_004',
+                status: 'completed',
+                output_text: `Evaluation:\n\`\`\`json\n${judgeOutput}\n\`\`\``,
             };
 
             fetchMocks.push({
                 response: {
                     status: 200,
-                    headers: {'Content-Type': 'text/event-stream'},
-                    body: `event: response.completed
-data: ${JSON.stringify(responseObj)}
-
-event: [DONE]
-`,
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(responseObj),
                 },
             });
 
@@ -284,27 +278,31 @@ event: [DONE]
 
         it('test 9: throws after retry also fails', async () => {
             // Both calls return invalid responses
+            const invalidResponseObj1 = {
+                id: 'resp_005',
+                status: 'completed',
+                output_text: 'Invalid',
+            };
+
             fetchMocks.push({
                 response: {
                     status: 200,
-                    headers: {'Content-Type': 'text/event-stream'},
-                    body: `event: response.output_text.done
-data: {"text": "Invalid"}
-
-event: [DONE]
-`,
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(invalidResponseObj1),
                 },
             });
 
+            const invalidResponseObj2 = {
+                id: 'resp_006',
+                status: 'completed',
+                output_text: 'Still invalid',
+            };
+
             fetchMocks.push({
                 response: {
                     status: 200,
-                    headers: {'Content-Type': 'text/event-stream'},
-                    body: `event: response.output_text.done
-data: {"text": "Still invalid"}
-
-event: [DONE]
-`,
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(invalidResponseObj2),
                 },
             });
 
@@ -329,20 +327,16 @@ event: [DONE]
             });
 
             const invalidResponseObj = {
-                response: {
-                    output_text: `Evaluation:\n\`\`\`json\n${invalidResponse}\n\`\`\``,
-                },
+                id: 'resp_007',
+                status: 'completed',
+                output_text: `Evaluation:\n\`\`\`json\n${invalidResponse}\n\`\`\``,
             };
 
             fetchMocks.push({
                 response: {
                     status: 200,
-                    headers: {'Content-Type': 'text/event-stream'},
-                    body: `event: response.completed
-data: ${JSON.stringify(invalidResponseObj)}
-
-event: [DONE]
-`,
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(invalidResponseObj),
                 },
             });
 
@@ -354,20 +348,16 @@ event: [DONE]
             });
 
             const validResponseObj = {
-                response: {
-                    output_text: `Evaluation:\n\`\`\`json\n${validResponse}\n\`\`\``,
-                },
+                id: 'resp_008',
+                status: 'completed',
+                output_text: `Evaluation:\n\`\`\`json\n${validResponse}\n\`\`\``,
             };
 
             fetchMocks.push({
                 response: {
                     status: 200,
-                    headers: {'Content-Type': 'text/event-stream'},
-                    body: `event: response.completed
-data: ${JSON.stringify(validResponseObj)}
-
-event: [DONE]
-`,
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(validResponseObj),
                 },
             });
 
@@ -389,20 +379,16 @@ event: [DONE]
             });
 
             const responseObj = {
-                response: {
-                    output_text: `Evaluation:\n\`\`\`json\n${validResponse}\n\`\`\``,
-                },
+                id: 'resp_009',
+                status: 'completed',
+                output_text: `Evaluation:\n\`\`\`json\n${validResponse}\n\`\`\``,
             };
 
             fetchMocks.push({
                 response: {
                     status: 200,
-                    headers: {'Content-Type': 'text/event-stream'},
-                    body: `event: response.completed
-data: ${JSON.stringify(responseObj)}
-
-event: [DONE]
-`,
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(responseObj),
                 },
             });
 

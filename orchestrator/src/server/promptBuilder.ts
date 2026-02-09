@@ -12,7 +12,6 @@ import type {InboxItem} from '../runner/types';
  */
 const DEVELOPER_PREAMBLE = `You are an AI agent participating in a multi-agent conversation run.
 Follow these rules:
-- Respond in Markdown.
 - Do not mention any judge, scoring, or termination logic.
 - Only use the messages you received to decide your response.
 - Be concise but complete.`;

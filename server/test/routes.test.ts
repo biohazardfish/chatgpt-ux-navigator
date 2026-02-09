@@ -9,10 +9,12 @@ const PROMPTS_ROOT = join(TEST_ROOT, 'prompts');
 const FILES_ROOT = join(TEST_ROOT, 'files');
 
 const config: AppConfig = {
+    port: 0,
     promptsDir: PROMPTS_ROOT,
     filesRoot: FILES_ROOT,
-    port: 0, // Unused for these tests
     noStream: false,
+    debugEvents: false,
+    requestTimeout: 360,
 };
 
 describe('Prompt Routes', () => {

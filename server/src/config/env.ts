@@ -62,5 +62,12 @@ export function parseEnv(): Partial<AppConfig> {
     config.noStream = parseBooleanEnv(process.env.NO_STREAM, false);
     config.debugEvents = parseBooleanEnv(process.env.DEBUG_EVENTS, false);
 
+    if (process.env.REQUEST_TIMEOUT) {
+        const timeout = parseInt(process.env.REQUEST_TIMEOUT, 10);
+        if (!isNaN(timeout) && timeout > 0) {
+            config.requestTimeout = timeout;
+        }
+    }
+
     return config;
 }

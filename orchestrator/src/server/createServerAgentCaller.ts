@@ -8,7 +8,7 @@ import type {AppConfig} from '../config/types';
 import type {AgentCallInput, AgentCallOutput} from '../runner/types';
 import type {JSONLogger} from '../logging/jsonLogger';
 import {buildPrompt} from './promptBuilder';
-import {parseSSEStream, parseJSONResponse} from './sseParser';
+import {parseJSONResponse} from './sseParser';
 
 /**
  * Creates an agent caller bound to the provided config
@@ -61,7 +61,7 @@ export function createServerAgentCaller(
             const url = `${config.server.url}/responses/${client_id}${useNewChat ? '/new' : ''}`;
             const requestBody = {
                 input: prompt,
-                stream: true,
+                stream: false,
             };
 
             await jsonLogger?.debug('agent_caller', 'http_request', {
@@ -73,9 +73,10 @@ export function createServerAgentCaller(
                 prompt_length: prompt.length,
             });
 
-            // Create abort controller for 120-second timeout
+            // Create abort controller with configurable timeout (default 360 seconds)
+            const timeoutSeconds = config.server.request_timeout ?? 360;
             const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 120 * 1000);
+            const timeoutId = setTimeout(() => controller.abort(), timeoutSeconds * 1000);
 
             const requestStartTime = Date.now();
 
@@ -132,10 +133,8 @@ export function createServerAgentCaller(
                     }
                 }
 
-                // Parse response based on content type
+                // Parse response as JSON only (no SSE)
                 const contentType = response.headers.get('Content-Type') || '';
-                let content: string;
-
                 const responseBody = await response.text();
 
                 await jsonLogger?.debug('agent_caller', 'response_body_received', {
@@ -145,21 +144,7 @@ export function createServerAgentCaller(
                     content_type: contentType,
                 });
 
-                if (contentType.includes('text/event-stream')) {
-                    // SSE streaming mode
-                    content = parseSSEStream(responseBody, agent_id, turn);
-                } else if (contentType.includes('application/json')) {
-                    // JSON fallback mode
-                    content = parseJSONResponse(responseBody, agent_id, turn);
-                } else {
-                    // Unknown content type, try JSON first then SSE
-                    try {
-                        content = parseJSONResponse(responseBody, agent_id, turn);
-                    } catch {
-                        // Fall back to SSE parsing
-                        content = parseSSEStream(responseBody, agent_id, turn);
-                    }
-                }
+                const content = parseJSONResponse(responseBody, agent_id, turn);
 
                 await jsonLogger?.info('agent_caller', 'call_success', {
                     agent_id,
@@ -199,13 +184,14 @@ export function createServerAgentCaller(
 
                 // Handle abort (timeout)
                 if (err instanceof Error && err.name === 'AbortError') {
+                    const timeoutSeconds = config.server.request_timeout ?? 360;
                     await jsonLogger?.error('agent_caller', 'timeout', {
                         agent_id,
                         client_id,
                         turn,
-                        timeout_ms: 120000,
+                        timeout_ms: timeoutSeconds * 1000,
                         elapsed_ms: responseTime,
-                    }, 'Request timed out after 120 seconds');
+                    }, `Request timed out after ${timeoutSeconds} seconds`);
 
                     throw new Error(`Server request timeout for ${agent_id} turn ${turn}`);
                 }

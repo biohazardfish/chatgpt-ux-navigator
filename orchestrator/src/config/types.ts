@@ -13,6 +13,11 @@ export type AppConfig = {
          * Optional in config; defaults to true.
          */
         agents_new_chat?: boolean;
+        /**
+         * Request timeout in seconds for agent and judge calls.
+         * Optional; defaults to 360 (6 minutes).
+         */
+        request_timeout?: number;
     };
     run: {
         id: string;
