@@ -47,8 +47,8 @@ export type AgentCallOutput = {
  * Input passed to callJudge dependency (if enabled)
  */
 export type JudgeInput = {
-    turn: number; // the turn just completed
-    transcript: AgentMessage[]; // full transcript so far
+    turn: number; // round number just completed
+    transcript: AgentMessage[]; // full transcript up to end of round
 };
 
 /**
@@ -85,7 +85,7 @@ export type JudgeRecord = {
 export type RunResult = {
     transcript: AgentMessage[];
     judge: JudgeRecord[]; // empty if judge disabled
-    stop_reason: 'max_turns' | 'judge_stop';
+    stop_reason: 'max_turns' | 'judge_stop' | 'agent_failure';
     total_turns: number; // transcript.length
 };
 

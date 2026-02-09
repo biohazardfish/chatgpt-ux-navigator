@@ -131,7 +131,7 @@ If an agent's inbox is empty:
 
 ### Role
 
-- The judge evaluates the conversation after turns.
+- The judge evaluates the conversation after **completed rounds only**.
 - The judge **never sends messages to agents**.
 - Judge output is for the runtime only.
 - The judge uses `POST /responses/:clientId/new` to start a **new temporary chat** for each evaluation, ensuring no context contamination.
@@ -177,6 +177,7 @@ Required fields:
     - if it fails again, terminate the run with an error
 
 - Judge outputs are stored separately and never delivered to agents.
+- Judge evaluation occurs **exactly once per completed round**, never mid-round.
 
 ---
 
