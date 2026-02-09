@@ -10,6 +10,7 @@ import {createServerAgentCaller} from './server/createServerAgentCaller';
 import {createServerJudgeCaller} from './server/createServerJudgeCaller';
 import {createRunLogger} from './logging/createRunLogger';
 import type {RunnerDeps} from './runner/types';
+import {preflightCheckClients} from './server/preflight';
 
 const USAGE = `
 Nexus - Multi-Agent Conversation Orchestrator
@@ -84,6 +85,19 @@ async function main() {
         console.log(`\n⚖️  Judge: ${config.judge.client_id}`);
     }
     console.log('\n' + '─'.repeat(60) + '\n');
+
+    // Fail fast if any configured clients are not connected
+    console.log('🔎 Checking connected clients...');
+    try {
+        const {connected, required} = await preflightCheckClients(config, {timeoutMs: 3000});
+        console.log(
+            `✅ Clients OK (${required.length} required, ${connected.length} connected on server)\n`
+        );
+    } catch (error) {
+        console.error('❌ Client preflight failed:');
+        console.error(error instanceof Error ? error.message : String(error));
+        process.exit(1);
+    }
 
     // Read config file text for logging
     let configText: string;

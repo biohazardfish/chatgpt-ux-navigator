@@ -4,7 +4,7 @@
 
 - Local server running: `bun dev` (from project root)
 - ChatGPT browser tabs open with extension installed
-- Note client IDs from server console output
+- Note client IDs from server console output (or call `GET /clients`)
 
 ## 2. Create a Config File
 
@@ -17,6 +17,7 @@ version: 1
 
 server:
     url: http://localhost:8765
+    agents_new_chat: true
 
 run:
     id: my-first-run
@@ -61,6 +62,7 @@ version: 1
 
 server:
     url: http://localhost:8765
+    agents_new_chat: true
 
 run:
     id: my-judged-run
@@ -139,6 +141,8 @@ bun start my-run.yml
 # With judge
 bun start my-judged-run.yml
 ```
+
+If any configured `client_id` is not currently connected, Nexus will fail fast before starting the run.
 
 ## 4. Check Output
 

@@ -207,6 +207,12 @@ This starts the `@repo/server` on `http://localhost:8765` (or the port specified
     WebSocket client connected: client-ghi789
     ```
 
+You can also list currently connected clients at any time:
+
+```bash
+curl -s http://localhost:8765/clients
+```
+
 ### 3. Create a Config File
 
 Create a YAML config file defining your agents and workflow. See `examples/` for templates.
@@ -218,6 +224,7 @@ version: 1
 
 server:
     url: http://localhost:8765
+    agents_new_chat: true
 
 run:
     id: my-run
@@ -403,6 +410,8 @@ bun start examples/simple.yml
     3. Refresh the ChatGPT tab to reconnect
     4. Update your config with the correct `client_id`
 
+Note: Nexus also performs a startup preflight check (`GET /clients`) and will fail fast if any configured client is missing.
+
 ### "Client already has an inflight request" (409)
 
 - **Cause**: The browser tab is already processing a request
@@ -442,6 +451,7 @@ See the YAML schema and validation in `src/config/schema.ts` for the complete sp
 - `run.out_dir`: Defaults to `"runs"`
 - `workflow.start`: Defaults to first agent in `order`
 - `judge.enabled`: Defaults to `false`
+- `server.agents_new_chat`: Defaults to `true` (use `/responses/:clientId/new` for agent calls)
 
 ---
 

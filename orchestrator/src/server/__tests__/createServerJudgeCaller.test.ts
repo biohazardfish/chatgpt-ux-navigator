@@ -48,7 +48,7 @@ describe('createServerJudgeCaller', () => {
 
     const baseConfig: AppConfig = {
         version: 1,
-        server: {url: 'http://localhost:8765'},
+        server: {url: 'http://localhost:8765', agents_new_chat: true},
         run: {id: 'test-run', out_dir: '/tmp'},
         agents: {
             agent_a: {client_id: 'client-a', system: 'You are A'},

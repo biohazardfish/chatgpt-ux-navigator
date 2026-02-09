@@ -28,6 +28,7 @@ function normalizeConfig(config: any): AppConfig {
         ...config,
         server: {
             url: config.server.url.trim(),
+            agents_new_chat: config.server.agents_new_chat ?? true,
         },
         agents: Object.fromEntries(
             Object.entries(config.agents).map(([id, agent]: [string, any]) => [
@@ -141,6 +142,11 @@ export async function loadConfig(configPath: string): Promise<AppConfig> {
     // Apply defaults
     config = {
         ...config,
+        server: {
+            ...config.server,
+            // Default to true to avoid cross-run context contamination in agent tabs
+            agents_new_chat: config.server.agents_new_chat ?? true,
+        },
         run: {
             // Default out_dir to "runs"
             out_dir: config.run?.out_dir || 'runs',

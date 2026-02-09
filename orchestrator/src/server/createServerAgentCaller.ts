@@ -33,7 +33,8 @@ export function createServerAgentCaller(config: AppConfig): {
             const prompt = buildPrompt(agentConfig.system, inbox);
 
             // Prepare the request
-            const url = `${config.server.url}/responses/${client_id}`;
+            const useNewChat = config.server.agents_new_chat ?? true;
+            const url = `${config.server.url}/responses/${client_id}${useNewChat ? '/new' : ''}`;
             const requestBody = {
                 input: prompt,
                 stream: true,

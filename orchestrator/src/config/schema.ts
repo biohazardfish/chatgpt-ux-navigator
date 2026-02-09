@@ -86,6 +86,7 @@ const rawConfigSchema = z
                     });
                 }
             }),
+            agents_new_chat: z.boolean().optional(),
         }),
         run: z
             .object({

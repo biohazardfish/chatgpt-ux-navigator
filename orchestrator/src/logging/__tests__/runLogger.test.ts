@@ -26,6 +26,7 @@ function createTestConfig(overrides?: Partial<AppConfig>): AppConfig {
         version: 1,
         server: {
             url: 'http://localhost:8765',
+            agents_new_chat: true,
             ...overrides?.server,
         },
         run: {
@@ -399,7 +400,7 @@ describe('RunLogger', () => {
             // Verify judge file does NOT exist
             try {
                 await readFile(join(logger.runDir, 'judge', '0001.json'), 'utf-8');
-                expect.fail('Judge file should not exist when judge is disabled');
+                throw new Error('Judge file should not exist when judge is disabled');
             } catch (error) {
                 // Expected to fail (file doesn't exist)
                 expect((error as Error).message).toContain('ENOENT');

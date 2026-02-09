@@ -45,7 +45,7 @@ data: [DONE]
 
         mockFetchImpl = mock(async (url: string, options: any) => {
             // Verify request structure
-            expect(url).toBe('http://localhost:8080/responses/client_a');
+            expect(url).toBe('http://localhost:8080/responses/client_a/new');
             expect(options.method).toBe('POST');
             expect(options.headers['Content-Type']).toBe('application/json');
 
@@ -75,7 +75,7 @@ data: [DONE]
 
         const config: AppConfig = {
             version: 1,
-            server: {url: 'http://localhost:8080'},
+            server: {url: 'http://localhost:8080', agents_new_chat: true},
             run: {id: 'run_001', out_dir: '/tmp/run_001'},
             agents: {
                 agent_a: {client_id: 'client_a', system: 'You are agent A'},
@@ -118,7 +118,7 @@ data: [DONE]
 
         const config: AppConfig = {
             version: 1,
-            server: {url: 'http://localhost:8080'},
+            server: {url: 'http://localhost:8080', agents_new_chat: true},
             run: {id: 'run_002', out_dir: '/tmp/run_002'},
             agents: {
                 agent_b: {client_id: 'client_missing', system: 'You are agent B'},
@@ -166,7 +166,7 @@ data: [DONE]
 
         const config: AppConfig = {
             version: 1,
-            server: {url: 'http://localhost:8080'},
+            server: {url: 'http://localhost:8080', agents_new_chat: true},
             run: {id: 'run_003', out_dir: '/tmp/run_003'},
             agents: {
                 agent_c: {client_id: 'client_busy', system: 'You are agent C'},
@@ -214,7 +214,7 @@ data: [DONE]
 
         const config: AppConfig = {
             version: 1,
-            server: {url: 'http://localhost:8080'},
+            server: {url: 'http://localhost:8080', agents_new_chat: true},
             run: {id: 'run_004', out_dir: '/tmp/run_004'},
             agents: {
                 agent_d: {client_id: 'client_d', system: 'You are agent D'},
@@ -261,7 +261,7 @@ data: [DONE]
 
         const config: AppConfig = {
             version: 1,
-            server: {url: 'http://localhost:8080'},
+            server: {url: 'http://localhost:8080', agents_new_chat: true},
             run: {id: 'run_005', out_dir: '/tmp/run_005'},
             agents: {
                 agent_e: {client_id: 'client_e', system: 'You are agent E'},
@@ -299,7 +299,7 @@ data: [DONE]
     it('test 6: agent config not found throws error', async () => {
         const config: AppConfig = {
             version: 1,
-            server: {url: 'http://localhost:8080'},
+            server: {url: 'http://localhost:8080', agents_new_chat: true},
             run: {id: 'run_006', out_dir: '/tmp/run_006'},
             agents: {
                 agent_exists: {client_id: 'client_x', system: 'I exist'},
@@ -360,7 +360,7 @@ data: [DONE]
 
         const config: AppConfig = {
             version: 1,
-            server: {url: 'http://localhost:8080'},
+            server: {url: 'http://localhost:8080', agents_new_chat: true},
             run: {id: 'run_007a', out_dir: '/tmp/run_007a'},
             agents: {
                 agent_f: {client_id: 'client_f', system: 'You are agent F'},
@@ -429,7 +429,7 @@ data: [DONE]
 
         const config: AppConfig = {
             version: 1,
-            server: {url: 'http://localhost:8080'},
+            server: {url: 'http://localhost:8080', agents_new_chat: true},
             run: {id: 'run_008', out_dir: '/tmp/run_008'},
             agents: {
                 agent_g: {client_id: 'client_g', system: 'You are agent G'},
