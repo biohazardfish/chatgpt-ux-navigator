@@ -13,7 +13,7 @@ const JUDGE_SYSTEM_PREAMBLE = `You are a judge for a multi-agent AI conversation
 
 You must output ONLY a JSON object inside a fenced code block (\`\`\`json ... \`\`\`).
 Do not include any other text outside the code block.
-The JSON must include: should_stop (boolean), scores (object), reason (string).`;
+The JSON must include: should_stop (boolean), scores (object with scores 0-100), reason (string).`;
 
 /**
  * Correction prompt appended on retry (exact per spec)
@@ -24,7 +24,7 @@ Output ONLY a valid JSON object inside a fenced \`\`\`json code block.
 Do not include any other text.
 Follow the required schema exactly:
 - should_stop: boolean
-- scores: object with keys for each agent (0-10 range)
+- scores: object with keys for each agent (0-100 range)
 - reason: string`;
 
 /**

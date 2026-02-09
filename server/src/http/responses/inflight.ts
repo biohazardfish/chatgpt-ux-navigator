@@ -496,9 +496,12 @@ export function emitResponseCompleted(clientIdOrStatus?: string, statusOrExtra?:
         inflight.response.completed_at = Math.floor(Date.now() / 1000);
     }
 
-    if (typeof inflight.lastText === 'string') {
+    if (typeof inflight.lastText === 'string' && inflight.lastText.trim().length > 0) {
         const {text: cleanText} = parseToolCallsFromText(inflight.lastText);
-        inflight.response.output_text = sanitizeAssistantText(cleanText);
+        const sanitized = sanitizeAssistantText(cleanText);
+        if (sanitized.length > 0) {
+            inflight.response.output_text = sanitized;
+        }
     }
 
     if (extraData) {

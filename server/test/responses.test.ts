@@ -329,6 +329,61 @@ describe('POST /responses/:id', () => {
         expect(body.status).toBe('completed');
         expect(body.output_text).toBe('The final answer');
     });
+
+    it('should not overwrite output_text when lastText is empty', async () => {
+        const mockSend = mock((msg: string) => {
+            const current = getInflight(CLIENT_ID);
+            if (current) {
+                // Simulate a scenario where output_text was already set (e.g., from earlier SSE events)
+                // but lastText is empty when emitResponseCompleted is called
+                current.response.output_text = 'Valid response content';
+                current.lastText = ''; // Empty lastText
+                emitResponseCompleted(CLIENT_ID, 'completed');
+                inflightTerminate(CLIENT_ID, null, null);
+            }
+        });
+
+        setClient(CLIENT_ID, {send: mockSend} as any);
+
+        const req = new Request(`http://localhost/responses/${CLIENT_ID}`, {
+            method: 'POST',
+            body: JSON.stringify({input: 'Test empty lastText'}),
+        });
+
+        const res = await handlePostResponsesById(req, config, new URL(req.url));
+        const body = (await res.json()) as any;
+
+        expect(body.status).toBe('completed');
+        // output_text should NOT be overwritten with empty string
+        expect(body.output_text).toBe('Valid response content');
+    });
+
+    it('should not set output_text to empty when lastText is whitespace-only', async () => {
+        const mockSend = mock((msg: string) => {
+            const current = getInflight(CLIENT_ID);
+            if (current) {
+                // Simulate a scenario where lastText is whitespace-only
+                current.lastText = '   \n\t   ';
+                emitResponseCompleted(CLIENT_ID, 'completed');
+                inflightTerminate(CLIENT_ID, null, null);
+            }
+        });
+
+        setClient(CLIENT_ID, {send: mockSend} as any);
+
+        const req = new Request(`http://localhost/responses/${CLIENT_ID}`, {
+            method: 'POST',
+            body: JSON.stringify({input: 'Test whitespace lastText'}),
+        });
+
+        const res = await handlePostResponsesById(req, config, new URL(req.url));
+        const body = (await res.json()) as any;
+
+        expect(body.status).toBe('completed');
+        // output_text should remain as initial empty string (not overwritten with sanitized empty)
+        // The key fix is that we don't overwrite previously set content with empty
+        expect(body.output_text).toBe('');
+    });
 });
 
 // --- Multi-client tests ---
