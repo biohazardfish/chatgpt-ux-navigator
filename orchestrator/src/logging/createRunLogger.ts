@@ -237,7 +237,11 @@ export async function createRunLogger(params: CreateRunLoggerParams): Promise<Ru
  * For transcript.md append-only pattern, allowOverwrite is true to support multiple appends.
  * For message/judge/run files, allowOverwrite is false to enforce single-write semantics.
  */
-async function renameAtomic(tmpPath: string, targetPath: string, allowOverwrite: boolean = false): Promise<void> {
+async function renameAtomic(
+    tmpPath: string,
+    targetPath: string,
+    allowOverwrite: boolean = false
+): Promise<void> {
     // Check if target file already exists
     try {
         await stat(targetPath);

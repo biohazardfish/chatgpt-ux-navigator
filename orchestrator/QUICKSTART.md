@@ -16,40 +16,40 @@ Create `my-run.yml`:
 version: 1
 
 server:
-  url: http://localhost:8765
+    url: http://localhost:8765
 
 run:
-  id: my-first-run
-  out_dir: runs
+    id: my-first-run
+    out_dir: runs
 
 agents:
-  agent1:
-    client_id: YOUR_CLIENT_ID_HERE  # Get from server console
-    system: "You are a helpful assistant named Agent 1."
-  
-  agent2:
-    client_id: YOUR_CLIENT_ID_HERE  # Get from server console
-    system: "You are a helpful assistant named Agent 2."
+    agent1:
+        client_id: YOUR_CLIENT_ID_HERE # Get from server console
+        system: 'You are a helpful assistant named Agent 1.'
+
+    agent2:
+        client_id: YOUR_CLIENT_ID_HERE # Get from server console
+        system: 'You are a helpful assistant named Agent 2.'
 
 workflow:
-  type: round_robin
-  order: [agent1, agent2]
-  start: agent1
+    type: round_robin
+    order: [agent1, agent2]
+    start: agent1
 
 delivery:
-  type: next_speaker
+    type: next_speaker
 
 seed:
-  from: user
-  content: "Hello! Let's have a conversation. Agent 1, introduce yourself."
+    from: user
+    content: "Hello! Let's have a conversation. Agent 1, introduce yourself."
 
 judge:
-  enabled: false
-  eval_every_turn: true
+    enabled: false
+    eval_every_turn: true
 
 termination:
-  max_turns: 4
-  judge_stop: false
+    max_turns: 4
+    judge_stop: false
 ```
 
 ### Option B: With Judge (Recommended)
@@ -60,73 +60,74 @@ Create `my-judged-run.yml`:
 version: 1
 
 server:
-  url: http://localhost:8765
+    url: http://localhost:8765
 
 run:
-  id: my-judged-run
-  out_dir: runs
+    id: my-judged-run
+    out_dir: runs
 
 agents:
-  planner:
-    client_id: YOUR_CLIENT_ID_1  # Get from server console
-    system: |
-      You are a creative planner who proposes innovative solutions.
-      Think outside the box and suggest bold ideas.
-      Keep responses concise (2-3 paragraphs).
-  
-  critic:
-    client_id: YOUR_CLIENT_ID_2  # Get from server console
-    system: |
-      You are a thoughtful critic who evaluates ideas critically.
-      Point out potential flaws and suggest improvements.
-      Be constructive but rigorous. Keep responses concise (2-3 paragraphs).
+    planner:
+        client_id: YOUR_CLIENT_ID_1 # Get from server console
+        system: |
+            You are a creative planner who proposes innovative solutions.
+            Think outside the box and suggest bold ideas.
+            Keep responses concise (2-3 paragraphs).
+
+    critic:
+        client_id: YOUR_CLIENT_ID_2 # Get from server console
+        system: |
+            You are a thoughtful critic who evaluates ideas critically.
+            Point out potential flaws and suggest improvements.
+            Be constructive but rigorous. Keep responses concise (2-3 paragraphs).
 
 workflow:
-  type: round_robin
-  order: [planner, critic]
-  start: planner
+    type: round_robin
+    order: [planner, critic]
+    start: planner
 
 delivery:
-  type: next_speaker
+    type: next_speaker
 
 seed:
-  from: user
-  content: |
-    Task: Design a system to reduce food waste in urban areas.
-    Planner, propose your initial solution.
+    from: user
+    content: |
+        Task: Design a system to reduce food waste in urban areas.
+        Planner, propose your initial solution.
 
 judge:
-  enabled: true
-  client_id: YOUR_CLIENT_ID_3  # IMPORTANT: Need a 3rd browser tab for judge
-  rubric: |
-    Evaluate this planner-critic conversation on:
-    1. Quality of the proposed solution (planner)
-    2. Depth of critical analysis (critic)
-    3. Overall progress toward a viable solution
-    
-    Score each agent from 0-100.
-    
-    Stop the conversation when:
-    - A refined, viable solution has been reached
-    - The conversation becomes repetitive
-    - At least 4 turns have passed and good progress has been made
-    
-    Return your evaluation as JSON:
-    {
-      "should_stop": true/false,
-      "scores": {"planner": X, "critic": Y},
-      "reason": "Brief explanation"
-    }
-  eval_every_turn: true
+    enabled: true
+    client_id: YOUR_CLIENT_ID_3 # IMPORTANT: Need a 3rd browser tab for judge
+    rubric: |
+        Evaluate this planner-critic conversation on:
+        1. Quality of the proposed solution (planner)
+        2. Depth of critical analysis (critic)
+        3. Overall progress toward a viable solution
+
+        Score each agent from 0-100.
+
+        Stop the conversation when:
+        - A refined, viable solution has been reached
+        - The conversation becomes repetitive
+        - At least 4 turns have passed and good progress has been made
+
+        Return your evaluation as JSON:
+        {
+          "should_stop": true/false,
+          "scores": {"planner": X, "critic": Y},
+          "reason": "Brief explanation"
+        }
+    eval_every_turn: true
 
 termination:
-  max_turns: 10
-  judge_stop: true  # Judge can stop early if solution is reached
+    max_turns: 10
+    judge_stop: true # Judge can stop early if solution is reached
 ```
 
 **Note**: With judge enabled, you need **3 browser tabs**:
+
 - Tab 1: Planner agent
-- Tab 2: Critic agent  
+- Tab 2: Critic agent
 - Tab 3: Judge (evaluates but doesn't participate)
 
 ## 3. Run It
@@ -142,6 +143,7 @@ bun start my-judged-run.yml
 ## 4. Check Output
 
 Look in `runs/` for a timestamped folder with:
+
 - `transcript.md` - Full conversation
 - `messages/` - Individual turn files with frontmatter
 - `run.json` - Metadata and stop reason
@@ -150,6 +152,7 @@ Look in `runs/` for a timestamped folder with:
 ### Example Output Structure
 
 **Without Judge:**
+
 ```
 runs/2026-02-08T14-32-10Z_my-first-run/
 ├── config.yml
@@ -163,6 +166,7 @@ runs/2026-02-08T14-32-10Z_my-first-run/
 ```
 
 **With Judge:**
+
 ```
 runs/2026-02-08T15-45-20Z_my-judged-run/
 ├── config.yml

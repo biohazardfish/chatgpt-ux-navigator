@@ -3,14 +3,14 @@
     const {C, dom, store, model, scroll, prompts, clipboard, markdown, chatInput, newChat} =
         window.CGPT_NAV;
 
-     // --- DOM caches for sidebar rendering
-     /** @type {Map<string, HTMLElement>} */
-     const domItemById = new Map(); // entryId -> sidebar item element
-     let selectedFilename = null;
-     let activeId = null;
-     let selectedCodeId = null;
-     let isWsEnabled = false;
-     let clientId = ''; // WebSocket client ID state
+    // --- DOM caches for sidebar rendering
+    /** @type {Map<string, HTMLElement>} */
+    const domItemById = new Map(); // entryId -> sidebar item element
+    let selectedFilename = null;
+    let activeId = null;
+    let selectedCodeId = null;
+    let isWsEnabled = false;
+    let clientId = ''; // WebSocket client ID state
 
     // --- Prompt section state
     /** @type {{filename:string, at:number, threadMessages:{role:'user'|'assistant', content:string}[]} | null} */
@@ -242,7 +242,7 @@
         const root = document.createElement('div');
         root.id = C.EXT_ID;
 
-         root.innerHTML = `
+        root.innerHTML = `
 <header>
      <div class="header-row">
          <div class="title">Navigator</div>
@@ -364,32 +364,32 @@
         });
 
         select?.addEventListener('change', () => {
-             selectedFilename = select.value || null;
-             clearThreadCache();
+            selectedFilename = select.value || null;
+            clearThreadCache();
 
-             if (!selectedFilename) {
-                 renderPromptMessages([]);
-                 return;
-             }
-             if (promptsOpen) ensureThreadLoaded(true);
-         });
+            if (!selectedFilename) {
+                renderPromptMessages([]);
+                return;
+            }
+            if (promptsOpen) ensureThreadLoaded(true);
+        });
 
-         // Client ID input handler
-         function updateClientIdState() {
-             const input = dom.$('#cgpt-nav-ws-client-id');
-             if (!input) return;
+        // Client ID input handler
+        function updateClientIdState() {
+            const input = dom.$('#cgpt-nav-ws-client-id');
+            if (!input) return;
 
-             clientId = input.value.trim();
-             const hasClientId = clientId.length > 0;
-             const wsBtn = dom.$('#cgpt-nav-ws-toggle');
-             if (wsBtn) {
-                 wsBtn.disabled = !hasClientId;
-             }
-         }
+            clientId = input.value.trim();
+            const hasClientId = clientId.length > 0;
+            const wsBtn = dom.$('#cgpt-nav-ws-toggle');
+            if (wsBtn) {
+                wsBtn.disabled = !hasClientId;
+            }
+        }
 
-         const clientIdInput = dom.$('#cgpt-nav-ws-client-id');
-         clientIdInput?.addEventListener('input', updateClientIdState);
-         clientIdInput?.addEventListener('change', updateClientIdState);
+        const clientIdInput = dom.$('#cgpt-nav-ws-client-id');
+        clientIdInput?.addEventListener('input', updateClientIdState);
+        clientIdInput?.addEventListener('change', updateClientIdState);
 
         // Hide sidebar
         dom.$('#cgpt-nav-hide')?.addEventListener('click', () => {
@@ -501,23 +501,23 @@
                 : 'WebSocket mode is OFF (no local WS connection)';
         }
 
-         dom.$('#cgpt-nav-ws-toggle')?.addEventListener('click', () => {
-             const btn = document.getElementById('cgpt-nav-ws-toggle');
-             if (btn?.disabled || !clientId) {
-                 return;
-             }
+        dom.$('#cgpt-nav-ws-toggle')?.addEventListener('click', () => {
+            const btn = document.getElementById('cgpt-nav-ws-toggle');
+            if (btn?.disabled || !clientId) {
+                return;
+            }
 
-             isWsEnabled = !isWsEnabled;
+            isWsEnabled = !isWsEnabled;
 
-             // Apply immediately in this tab
-             try {
-                 if (isWsEnabled) window.CGPT_NAV.streamTap?.enable?.(clientId);
-                 else window.CGPT_NAV.streamTap?.disable?.();
-             } catch (_) {}
+            // Apply immediately in this tab
+            try {
+                if (isWsEnabled) window.CGPT_NAV.streamTap?.enable?.(clientId);
+                else window.CGPT_NAV.streamTap?.disable?.();
+            } catch (_) {}
 
-             syncWsToggleButton(isWsEnabled);
-             updateWsUiState(isWsEnabled);
-         });
+            syncWsToggleButton(isWsEnabled);
+            updateWsUiState(isWsEnabled);
+        });
 
         // Save last assistant response
         dom.$('#cgpt-nav-save-response')?.addEventListener('click', async () => {
@@ -892,17 +892,17 @@
         renderAll(true);
     }
 
-     window.CGPT_NAV.sidebar = {
-         ensureShowButton,
-         createSidebar,
-         hideSidebar,
-         showSidebar,
-         renderAll,
-         renderFromModelIncremental,
-         applyFiltersToRenderedItems,
-         renumberIndices,
-         setActiveId,
-         resetList,
-         getClientId: () => clientId,
-     };
+    window.CGPT_NAV.sidebar = {
+        ensureShowButton,
+        createSidebar,
+        hideSidebar,
+        showSidebar,
+        renderAll,
+        renderFromModelIncremental,
+        applyFiltersToRenderedItems,
+        renumberIndices,
+        setActiveId,
+        resetList,
+        getClientId: () => clientId,
+    };
 })();

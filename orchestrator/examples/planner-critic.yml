@@ -5,99 +5,99 @@
 version: 1
 
 server:
-  url: http://localhost:8765
+    url: http://localhost:8765
 
 run:
-  id: planner-critic
-  out_dir: runs
+    id: planner-critic
+    out_dir: runs
 
 # Two agents with complementary roles
 agents:
-  planner:
-    client_id: client-1  # Replace with actual client ID
-    system: |
-      You are a creative planner who proposes innovative solutions.
-      Think outside the box and suggest bold, actionable ideas.
-      When the critic provides feedback, refine your proposal accordingly.
-      Keep responses concise (2-3 paragraphs max).
-      
-  critic:
-    client_id: client-2  # Replace with actual client ID
-    system: |
-      You are a thoughtful critic who evaluates proposals rigorously.
-      Point out potential flaws, risks, and implementation challenges.
-      Suggest specific improvements and ask clarifying questions.
-      Be constructive but don't hold back on valid concerns.
-      Keep responses concise (2-3 paragraphs max).
+    planner:
+        client_id: client-1 # Replace with actual client ID
+        system: |
+            You are a creative planner who proposes innovative solutions.
+            Think outside the box and suggest bold, actionable ideas.
+            When the critic provides feedback, refine your proposal accordingly.
+            Keep responses concise (2-3 paragraphs max).
+
+    critic:
+        client_id: client-2 # Replace with actual client ID
+        system: |
+            You are a thoughtful critic who evaluates proposals rigorously.
+            Point out potential flaws, risks, and implementation challenges.
+            Suggest specific improvements and ask clarifying questions.
+            Be constructive but don't hold back on valid concerns.
+            Keep responses concise (2-3 paragraphs max).
 
 workflow:
-  type: round_robin
-  order:
-    - planner
-    - critic
-  start: planner
+    type: round_robin
+    order:
+        - planner
+        - critic
+    start: planner
 
 delivery:
-  type: next_speaker
+    type: next_speaker
 
 seed:
-  from: user
-  content: |
-    Task: Design a system to reduce food waste in urban areas.
-    
-    Consider:
-    - Connecting restaurants/grocery stores with consumers
-    - Incentive structures
-    - Logistics and scalability
-    - Environmental impact
-    
-    Planner, propose your initial solution.
+    from: user
+    content: |
+        Task: Design a system to reduce food waste in urban areas.
+
+        Consider:
+        - Connecting restaurants/grocery stores with consumers
+        - Incentive structures
+        - Logistics and scalability
+        - Environmental impact
+
+        Planner, propose your initial solution.
 
 # Judge evaluates and can stop when solution is good enough
 judge:
-  enabled: true
-  client_id: client-3  # Replace with actual client ID
-  rubric: |
-    Evaluate this planner-critic conversation on three dimensions:
-    
-    1. **Planner Quality** (0-100):
-       - Creativity and innovation
-       - Practicality and feasibility
-       - Responsiveness to feedback
-    
-    2. **Critic Quality** (0-100):
-       - Depth of analysis
-       - Constructiveness of feedback
-       - Identification of real risks/issues
-    
-    3. **Overall Progress**:
-       - Has a viable, refined solution emerged?
-       - Are they making progress or going in circles?
-    
-    **Stop Criteria** - Return should_stop: true when ANY of:
-    - A refined, implementable solution has been reached
-    - The conversation becomes repetitive (same points repeated)
-    - At least 6 turns have passed and good progress has been made
-    - The solution cannot be improved further through this format
-    
-    **Continue** if:
-    - Major flaws remain unaddressed
-    - The solution is still too vague
-    - Important questions are unanswered
-    
-    Return evaluation as JSON in a fenced code block:
-    ```json
-    {
-      "should_stop": true,
-      "scores": {
-        "planner": 85,
-        "critic": 82
-      },
-      "reason": "A viable solution has emerged with logistics, incentives, and scalability addressed. Further refinement would require implementation details beyond this scope."
-    }
-    ```
-  eval_every_turn: true
+    enabled: true
+    client_id: client-3 # Replace with actual client ID
+    rubric: |
+        Evaluate this planner-critic conversation on three dimensions:
+
+        1. **Planner Quality** (0-100):
+           - Creativity and innovation
+           - Practicality and feasibility
+           - Responsiveness to feedback
+
+        2. **Critic Quality** (0-100):
+           - Depth of analysis
+           - Constructiveness of feedback
+           - Identification of real risks/issues
+
+        3. **Overall Progress**:
+           - Has a viable, refined solution emerged?
+           - Are they making progress or going in circles?
+
+        **Stop Criteria** - Return should_stop: true when ANY of:
+        - A refined, implementable solution has been reached
+        - The conversation becomes repetitive (same points repeated)
+        - At least 6 turns have passed and good progress has been made
+        - The solution cannot be improved further through this format
+
+        **Continue** if:
+        - Major flaws remain unaddressed
+        - The solution is still too vague
+        - Important questions are unanswered
+
+        Return evaluation as JSON in a fenced code block:
+        ```json
+        {
+          "should_stop": true,
+          "scores": {
+            "planner": 85,
+            "critic": 82
+          },
+          "reason": "A viable solution has emerged with logistics, incentives, and scalability addressed. Further refinement would require implementation details beyond this scope."
+        }
+        ```
+    eval_every_turn: true
 
 termination:
-  max_turns: 12
-  judge_stop: true
+    max_turns: 12
+    judge_stop: true

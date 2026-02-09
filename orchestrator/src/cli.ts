@@ -114,9 +114,7 @@ async function main() {
 
     // Create dependencies
     const agentCaller = createServerAgentCaller(config);
-    const judgeCaller = config.judge.enabled
-        ? createServerJudgeCaller(config)
-        : undefined;
+    const judgeCaller = config.judge.enabled ? createServerJudgeCaller(config) : undefined;
 
     const deps: RunnerDeps = {
         callAgent: agentCaller.callAgent,
@@ -126,13 +124,13 @@ async function main() {
 
     // Run conversation with live logging
     console.log('🎬 Starting conversation...\n');
-    
+
     try {
         const result = await runConversation(config, deps);
-        
+
         // Write run artifacts
         console.log('\n💾 Writing artifacts...');
-        
+
         // Write each turn
         for (const msg of result.transcript) {
             // Calculate which turns this agent received
@@ -145,7 +143,7 @@ async function main() {
             await logger.writeTurn(msg, received_turns);
             console.log(`   Turn ${msg.turn} (${msg.speaker})`);
         }
-        
+
         // Write judge records
         if (result.judge) {
             for (const record of result.judge) {
@@ -153,7 +151,7 @@ async function main() {
             }
             console.log(`   ${result.judge.length} judge evaluation(s)`);
         }
-        
+
         // Finalize run metadata
         const ended_at = new Date().toISOString();
         await logger.finalize({
@@ -162,18 +160,19 @@ async function main() {
             started_at,
             ended_at,
         });
-        
+
         console.log('\n✅ Run completed successfully!\n');
         console.log('📊 Summary:');
         console.log(`   Total turns: ${result.total_turns}`);
         console.log(`   Stop reason: ${result.stop_reason}`);
-        console.log(`   Duration: ${((new Date(ended_at).getTime() - new Date(started_at).getTime()) / 1000).toFixed(1)}s`);
+        console.log(
+            `   Duration: ${((new Date(ended_at).getTime() - new Date(started_at).getTime()) / 1000).toFixed(1)}s`
+        );
         console.log(`\n📁 Artifacts saved to: ${logger.runDir}`);
-        
     } catch (error) {
         console.error('\n❌ Run failed:');
         console.error(error instanceof Error ? error.message : String(error));
-        
+
         // Try to write partial results if logger was created
         try {
             const ended_at = new Date().toISOString();
@@ -187,7 +186,7 @@ async function main() {
         } catch {
             // Ignore finalization errors
         }
-        
+
         process.exit(1);
     }
 }
