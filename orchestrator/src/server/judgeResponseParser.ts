@@ -67,7 +67,7 @@ function validateScores(scores: unknown, agentIds: string[]): ParseError | null 
         }
     }
 
-    // Validate each score is in range [0, 10]
+    // Validate each score is in range [0, 100]
     for (const agentId of agentIds) {
         const score = scoresObj[agentId];
         if (typeof score !== 'number' || !Number.isFinite(score)) {
@@ -76,10 +76,10 @@ function validateScores(scores: unknown, agentIds: string[]): ParseError | null 
                 details: `score for ${agentId} must be a finite number`,
             };
         }
-        if (score < 0 || score > 10) {
+        if (score < 0 || score > 100) {
             return {
                 type: 'validation_error',
-                details: `score for ${agentId} out of range [0, 10]: ${score}`,
+                details: `score for ${agentId} out of range [0, 100]: ${score}`,
             };
         }
     }

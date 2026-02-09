@@ -49,7 +49,7 @@ describe('buildJudgePrompt', () => {
         expect(result).toContain('You must output ONLY a JSON object inside a fenced code block');
         expect(result).toContain('Do not include any other text outside the code block.');
         expect(result).toContain('The JSON must include: should_stop (boolean)');
-        expect(result).toContain('scores (object)');
+        expect(result).toContain('scores (object with scores 0-100)');
         expect(result).toContain('reason (string)');
     });
 

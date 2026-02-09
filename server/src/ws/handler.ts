@@ -86,6 +86,15 @@ export function createWebSocketHandlers(cfg: AppConfig) {
                 } else if (t === 'closed') {
                     const full = typeof inflight.lastText === 'string' ? inflight.lastText : '';
                     const sanitized = sanitizeAssistantText(full);
+                    
+                    // If we receive a 'closed' event immediately after creating the inflight (within 2 seconds)
+                    // and there's no content yet, this is likely a race condition from page navigation.
+                    // Don't complete the request - let it timeout or wait for actual content.
+                    const inflightAge = Date.now() / 1000 - inflight.createdAt;
+                    if (sanitized.length === 0 && inflightAge < 2) {
+                        return;
+                    }
+                    
                     inflight.response.output_text = sanitized;
                     emitOutputTextDone(clientId, sanitized);
                     emitContentPartDone(clientId, sanitized);

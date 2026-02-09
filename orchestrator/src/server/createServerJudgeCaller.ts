@@ -50,14 +50,18 @@ export function createServerJudgeCaller(config: AppConfig): {
                 );
             }
 
-            // First attempt
-            let judgeResponse = await callJudgeOnce(config, clientId, prompt, turn);
+            // First attempt - use /new to start fresh temporary chat
+            let judgeResponse = await callJudgeOnce(config, clientId, prompt, turn, true);
             let parsed = parseJudgeResponse(judgeResponse, config);
 
             // If parse/validation failed, retry once with correction prompt
             if (isParseError(parsed)) {
+                // Wait a bit for any page navigation to settle
+                await new Promise(resolve => setTimeout(resolve, 2000));
+                
                 const retryPrompt = buildJudgePrompt(config, transcript, true);
-                const retryResponse = await callJudgeOnce(config, clientId, retryPrompt, turn);
+                // Retry WITHOUT starting a new chat - reuse the existing temporary chat
+                const retryResponse = await callJudgeOnce(config, clientId, retryPrompt, turn, false);
                 parsed = parseJudgeResponse(retryResponse, config);
 
                 // Check if retry also failed
@@ -82,9 +86,12 @@ async function callJudgeOnce(
     config: AppConfig,
     clientId: string,
     prompt: string,
-    turn: number
+    turn: number,
+    useNewChat: boolean = true
 ): Promise<string> {
-    const url = `${config.server.url}/responses/${clientId}/new`;
+    const url = useNewChat 
+        ? `${config.server.url}/responses/${clientId}/new`
+        : `${config.server.url}/responses/${clientId}`;
     const requestBody = {
         input: prompt,
         stream: true,

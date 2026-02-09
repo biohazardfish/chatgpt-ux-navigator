@@ -259,11 +259,11 @@ And here's another (should be ignored):
             expect(error.details).toContain('agent_a');
         });
 
-        it('test 13: fails when score is out of range [0, 10]', () => {
+        it('test 13: fails when score is out of range [0, 100]', () => {
             const responseText = `\`\`\`json
 {
   "should_stop": false,
-  "scores": {"agent_a": 11, "agent_b": 8},
+  "scores": {"agent_a": 101, "agent_b": 80},
   "reason": "Score out of range"
 }
 \`\`\``;
@@ -280,7 +280,7 @@ And here's another (should be ignored):
             const responseText = `\`\`\`json
 {
   "should_stop": false,
-  "scores": {"agent_a": -1, "agent_b": 8},
+  "scores": {"agent_a": -1, "agent_b": 80},
   "reason": "Negative score"
 }
 \`\`\``;
