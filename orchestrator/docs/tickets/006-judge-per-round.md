@@ -250,14 +250,16 @@ This change alters **when** the judge is invoked. Tests must assert timing, not 
 ### Integration Tests (Happy Path)
 
 **3 agents, 2 rounds, no early stop**
+
 - Total agent messages: 6
 - Total judge invocations: 2
 - Each judge input includes:
-  - Full transcript up to that round
-  - Explicit round marker (`=== END OF ROUND X ===`)
+    - Full transcript up to that round
+    - Explicit round marker (`=== END OF ROUND X ===`)
 - Scores contain exactly one entry per agent
 
 **Early stop after round 1**
+
 - Judge round 1 returns `should_stop: true`
 - No turns executed for round 2
 - Exactly one judge output written
@@ -266,6 +268,7 @@ This change alters **when** the judge is invoked. Tests must assert timing, not 
 ### Integration Tests (Failure Scenarios)
 
 **Agent failure mid‑round**
+
 - Failure occurs after one or more agents have spoken
 - Remaining agent turns in the round are skipped
 - Judge invoked exactly once for that round
@@ -273,6 +276,7 @@ This change alters **when** the judge is invoked. Tests must assert timing, not 
 - Judge scores round using available messages only
 
 **Agent failure on first turn of round**
+
 - Round completes immediately
 - Judge still invoked once
 - Output schema remains valid (scores may be partial)
@@ -282,8 +286,8 @@ This change alters **when** the judge is invoked. Tests must assert timing, not 
 - Assert judge is not called mid‑turn under any condition
 - Judge JSON schema remains unchanged and parseable
 - Reordering agent configuration does not change:
-  - Judge invocation count
-  - Score key set (agent IDs)
+    - Judge invocation count
+    - Score key set (agent IDs)
 
 ### Artifact Validation
 
@@ -321,10 +325,10 @@ for each round:
 
 - Always use `POST /responses/:clientId/new`
 - Judge prompt must include:
-  - Full transcript to date
-  - Rubric
-  - Agent ID list
-  - Explicit round boundary marker
+    - Full transcript to date
+    - Rubric
+    - Agent ID list
+    - Explicit round boundary marker
 - Judge outputs must never be delivered to agents
 
 ### Early Stop Handling
@@ -336,10 +340,10 @@ for each round:
 ### Agent Failure Handling
 
 - On agent failure:
-  - Mark agent as failed
-  - Skip remaining agent turns in the round
-  - Invoke judge exactly once
-  - Terminate run after judge output
+    - Mark agent as failed
+    - Skip remaining agent turns in the round
+    - Invoke judge exactly once
+    - Terminate run after judge output
 
 ### Artifacts & Logging
 
