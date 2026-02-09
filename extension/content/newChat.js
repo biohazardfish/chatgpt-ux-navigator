@@ -62,7 +62,7 @@
         if (!openSidebarBtn) {
             // No open sidebar button found - likely desktop layout where sidebar is always visible
             console.log('[newChat] No open-sidebar-button found - using desktop layout');
-            return {opened: false, hasToggle: false};
+            return true;
         }
 
         // Check if button indicates sidebar is closed (aria-expanded="false")
@@ -76,26 +76,11 @@
 
             // Wait for sidebar to animate open and render
             await sleep(400);
-            return {opened: true, hasToggle: true};
+            return true;
         }
 
         // Sidebar already open
         console.log('[newChat] Sidebar already open');
-        return {opened: false, hasToggle: true};
-    }
-
-    /**
-     * Close the sidebar drawer on small screens (if it exists and is open).
-     * @returns {Promise<boolean>} true if sidebar was closed or already closed
-     */
-    async function ensureSidebarClosed() {
-        const closeSidebarBtn = document.querySelector('[data-testid="close-sidebar-button"]');
-        if (closeSidebarBtn instanceof HTMLElement) {
-            closeSidebarBtn.click();
-            await sleep(300);
-            return true;
-        }
-
         return true;
     }
 
@@ -104,50 +89,36 @@
      * Handles both desktop layout and small screen layout where the button is inside a drawer.
      * @returns {Promise<boolean>}
      */
-    function findVisibleNewChatButton() {
+    async function clickNewChatButton() {
+        // First, ensure sidebar is open (important for small screens)
+        await ensureSidebarOpen();
+
         // Common selectors across chatgpt.com variants
         const candidates = [
             '[data-testid="create-new-chat-button"]',
-            '[data-testid="new-chat-button"]',
-            '[data-testid="new-chat"]',
-            '[data-testid="sidebar-new-chat"]',
             'button[aria-label="New chat"]',
             'a[aria-label="New chat"]',
             'button[aria-label*="New chat"]',
             'a[aria-label*="New chat"]',
         ];
 
+        console.log('[newChat] Searching for New chat button...');
         for (const sel of candidates) {
             const el = document.querySelector(sel);
-            if (el instanceof HTMLElement && isElementVisible(el)) {
-                return el;
+            if (el instanceof HTMLElement) {
+                const visible = isElementVisible(el);
+                console.log(`[newChat] Found element with selector "${sel}", visible:`, visible);
+
+                if (visible) {
+                    console.log('[newChat] Clicking New chat button');
+                    el.click();
+                    return true;
+                }
             }
         }
 
-        return null;
-    }
-
-    function findAnyNewChatButton() {
-        const candidates = [
-            '[data-testid="create-new-chat-button"]',
-            '[data-testid="new-chat-button"]',
-            '[data-testid="new-chat"]',
-            '[data-testid="sidebar-new-chat"]',
-            'button[aria-label="New chat"]',
-            'a[aria-label="New chat"]',
-            'button[aria-label*="New chat"]',
-            'a[aria-label*="New chat"]',
-        ];
-
-        for (const sel of candidates) {
-            const el = document.querySelector(sel);
-            if (el instanceof HTMLElement) return el;
-        }
-
-        return null;
-    }
-
-    function findVisibleNewChatButtonByText() {
+        // Fallback: scan clickable elements for visible text
+        console.log('[newChat] Trying fallback text search...');
         const clickables = Array.from(document.querySelectorAll('button, a, [role="button"]'));
         for (const el of clickables) {
             if (!(el instanceof HTMLElement)) continue;
@@ -155,40 +126,14 @@
 
             const t = (el.innerText || el.textContent || '').trim().toLowerCase();
             if (t === 'new chat' || t === 'new') {
-                return el;
+                console.log('[newChat] Found New chat button via text search:', t);
+                el.click();
+                return true;
             }
-        }
-
-        return null;
-    }
-
-    async function clickNewChatButton() {
-        // First, ensure sidebar is open (important for small screens)
-        const sidebarState = await ensureSidebarOpen();
-
-        console.log('[newChat] Searching for New chat button...');
-
-        const btn = await waitFor(
-            () =>
-                findVisibleNewChatButton() ||
-                findVisibleNewChatButtonByText() ||
-                findAnyNewChatButton(),
-            {timeoutMs: 4000, intervalMs: 120}
-        );
-
-        if (btn instanceof HTMLElement) {
-            if (!isElementVisible(btn)) {
-                try {
-                    btn.scrollIntoView({block: 'center', inline: 'nearest'});
-                } catch (_) {}
-            }
-            console.log('[newChat] Clicking New chat button');
-            btn.click();
-            return {ok: true};
         }
 
         console.error('[newChat] Could not find New chat button');
-        return {ok: false};
+        return false;
     }
 
     /**
@@ -349,11 +294,10 @@
     async function startNewTemporaryChat() {
         console.log('[newChat] Starting new temporary chat...');
 
-        const clickResult = await clickNewChatButton();
-        console.log('[newChat] New chat button clicked:', clickResult.ok);
+        const clicked = await clickNewChatButton();
+        console.log('[newChat] New chat button clicked:', clicked);
 
-        if (!clickResult.ok) {
-            await ensureSidebarClosed();
+        if (!clicked) {
             return {ok: false, temp: false, error: 'Could not find the "New chat" button.'};
         }
 
@@ -364,9 +308,6 @@
 
         const tempOk = await ensureTemporaryChatEnabled();
         console.log('[newChat] Temporary chat enabled:', tempOk);
-
-        // On small screens, close the ChatGPT sidebar drawer after the new chat starts.
-        await ensureSidebarClosed();
 
         return {ok: true, temp: tempOk};
     }

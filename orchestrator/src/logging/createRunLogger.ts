@@ -197,11 +197,11 @@ export async function createRunLogger(params: CreateRunLoggerParams): Promise<Ru
                 delivery: {
                     type: 'next_speaker',
                 },
-                judge: {
-                    enabled: config.judge.enabled,
-                    client_id: config.judge.client_id || '',
-                    eval_every_turn: config.judge.eval_every_turn ?? false,
-                },
+                 judge: {
+                     enabled: config.judge.enabled,
+                     client_id: config.judge.client_id || '',
+                     eval_every_turn: config.judge.eval_every_turn ?? false,
+                 },
                 termination: {
                     max_turns: config.termination.max_turns,
                     judge_stop: config.termination.judge_stop,
