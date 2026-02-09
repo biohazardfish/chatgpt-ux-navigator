@@ -150,13 +150,14 @@ describe('buildJudgePrompt', () => {
             },
         ];
 
-        const retryResult = buildJudgePrompt(baseConfig, transcript, true);
+        const retryResult = buildJudgePrompt(baseConfig, transcript, true, 'scores missing required agent key: agent_b');
         const nonRetryResult = buildJudgePrompt(baseConfig, transcript, false);
 
         // Retry should have correction section
         expect(retryResult).toContain('YOUR PREVIOUS OUTPUT WAS INVALID');
         expect(retryResult).toContain('Output ONLY a valid JSON object');
         expect(retryResult).toContain('Follow the required schema exactly:');
+        expect(retryResult).toContain('Validation error: scores missing required agent key: agent_b');
 
         // Non-retry should not have correction section
         expect(nonRetryResult).not.toContain('YOUR PREVIOUS OUTPUT WAS INVALID');

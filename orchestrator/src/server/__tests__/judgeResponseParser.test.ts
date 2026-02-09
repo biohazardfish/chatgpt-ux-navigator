@@ -242,6 +242,25 @@ And here's another (should be ignored):
             expect(error.details).toContain('extra');
         });
 
+        it('test 11b: fails when extra top-level key present', () => {
+            const responseText = `\`\`\`json
+{
+  "should_stop": false,
+  "scores": {"agent_a": 7, "agent_b": 8},
+  "reason": "Extra top-level field",
+  "overall_progress": 76
+}
+\`\`\``;
+
+            const result = parseJudgeResponse(responseText, baseConfig);
+
+            expect(isParseError(result)).toBe(true);
+            const error = result as any;
+            expect(error.type).toBe('validation_error');
+            expect(error.details).toContain('overall_progress');
+            expect(error.details).toContain('extra');
+        });
+
         it('test 12: fails when score is not a number', () => {
             const responseText = `\`\`\`json
 {
