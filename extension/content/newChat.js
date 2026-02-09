@@ -30,38 +30,109 @@
     }
 
     /**
-     * Find and click the "New chat" control (best-effort).
+     * Check if an element is visible (not hidden by CSS).
+     * @param {HTMLElement} el
      * @returns {boolean}
      */
-    function clickNewChatButton() {
+    function isElementVisible(el) {
+        if (!el) return false;
+        const style = window.getComputedStyle(el);
+        const rect = el.getBoundingClientRect();
+
+        // Check basic CSS visibility
+        const isCssVisible =
+            style.display !== 'none' &&
+            style.visibility !== 'hidden' &&
+            parseFloat(style.opacity) > 0;
+
+        // Check if element has dimensions (for elements that might be in a drawer/popover)
+        const hasDimensions = rect.width > 0 && rect.height > 0;
+
+        return isCssVisible && hasDimensions;
+    }
+
+    /**
+     * Open the sidebar drawer on small screens (if it exists and is closed).
+     * @returns {Promise<boolean>} true if sidebar was opened or already open
+     */
+    async function ensureSidebarOpen() {
+        // Look for the "Open sidebar" button (only present on small screens)
+        const openSidebarBtn = document.querySelector('[data-testid="open-sidebar-button"]');
+
+        if (!openSidebarBtn) {
+            // No open sidebar button found - likely desktop layout where sidebar is always visible
+            console.log('[newChat] No open-sidebar-button found - using desktop layout');
+            return true;
+        }
+
+        // Check if button indicates sidebar is closed (aria-expanded="false")
+        const isExpanded = openSidebarBtn.getAttribute('aria-expanded') === 'true';
+        console.log('[newChat] Sidebar button found, aria-expanded:', isExpanded);
+
+        if (!isExpanded && openSidebarBtn instanceof HTMLElement) {
+            // Sidebar is closed, click to open it
+            console.log('[newChat] Opening sidebar drawer...');
+            openSidebarBtn.click();
+
+            // Wait for sidebar to animate open and render
+            await sleep(400);
+            return true;
+        }
+
+        // Sidebar already open
+        console.log('[newChat] Sidebar already open');
+        return true;
+    }
+
+    /**
+     * Find and click the "New chat" control (best-effort).
+     * Handles both desktop layout and small screen layout where the button is inside a drawer.
+     * @returns {Promise<boolean>}
+     */
+    async function clickNewChatButton() {
+        // First, ensure sidebar is open (important for small screens)
+        await ensureSidebarOpen();
+
         // Common selectors across chatgpt.com variants
         const candidates = [
-            '[data-testid="create-new-chat-button"',
+            '[data-testid="create-new-chat-button"]',
             'button[aria-label="New chat"]',
             'a[aria-label="New chat"]',
             'button[aria-label*="New chat"]',
             'a[aria-label*="New chat"]',
         ];
 
+        console.log('[newChat] Searching for New chat button...');
         for (const sel of candidates) {
             const el = document.querySelector(sel);
             if (el instanceof HTMLElement) {
-                el.click();
-                return true;
+                const visible = isElementVisible(el);
+                console.log(`[newChat] Found element with selector "${sel}", visible:`, visible);
+
+                if (visible) {
+                    console.log('[newChat] Clicking New chat button');
+                    el.click();
+                    return true;
+                }
             }
         }
 
         // Fallback: scan clickable elements for visible text
+        console.log('[newChat] Trying fallback text search...');
         const clickables = Array.from(document.querySelectorAll('button, a, [role="button"]'));
         for (const el of clickables) {
             if (!(el instanceof HTMLElement)) continue;
+            if (!isElementVisible(el)) continue;
+
             const t = (el.innerText || el.textContent || '').trim().toLowerCase();
             if (t === 'new chat' || t === 'new') {
+                console.log('[newChat] Found New chat button via text search:', t);
                 el.click();
                 return true;
             }
         }
 
+        console.error('[newChat] Could not find New chat button');
         return false;
     }
 
@@ -221,9 +292,13 @@
      * @returns {Promise<{ok:boolean, temp:boolean, error?:string}>}
      */
     async function startNewTemporaryChat() {
-        const clicked = clickNewChatButton();
+        console.log('[newChat] Starting new temporary chat...');
+
+        const clicked = await clickNewChatButton();
+        console.log('[newChat] New chat button clicked:', clicked);
+
         if (!clicked) {
-            return {ok: false, temp: false, error: 'Could not find the “New chat” button.'};
+            return {ok: false, temp: false, error: 'Could not find the "New chat" button.'};
         }
 
         window.CGPT_NAV.sidebar?.resetList?.();
@@ -232,6 +307,8 @@
         await sleep(1500);
 
         const tempOk = await ensureTemporaryChatEnabled();
+        console.log('[newChat] Temporary chat enabled:', tempOk);
+
         return {ok: true, temp: tempOk};
     }
 
