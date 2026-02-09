@@ -95,6 +95,7 @@
 
         // Common selectors across chatgpt.com variants
         const candidates = [
+			'#stage-popover-sidebar > nav > aside > a:nth-child(1)',
             '[data-testid="create-new-chat-button"]',
             'button[aria-label="New chat"]',
             'a[aria-label="New chat"]',
