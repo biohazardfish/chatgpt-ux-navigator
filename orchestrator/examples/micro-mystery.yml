@@ -9,7 +9,7 @@ run:
 
 agents:
     agent1:
-        client_id: agent1
+        client_id: client-1
         system: >
             You are Agent 1, the detective narrator.
             You describe scenes, atmosphere, and concrete clues.
@@ -17,7 +17,7 @@ agents:
             Do not solve the case yourself.
 
     agent2:
-        client_id: agent2
+        client_id: client-2
         system: >
             You are Agent 2, the partner detective.
             You analyze clues, propose theories, and reason explicitly.

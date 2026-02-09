@@ -201,11 +201,11 @@ This starts the `@repo/server` on `http://localhost:8765` (or the port specified
 2. Load the Chrome extension (see main README for installation)
 3. The extension will automatically connect to the local server via WebSocket
 4. Note the **client IDs** displayed in the server console:
-   ```
-   WebSocket client connected: client-abc123
-   WebSocket client connected: client-def456
-   WebSocket client connected: client-ghi789
-   ```
+    ```
+    WebSocket client connected: client-abc123
+    WebSocket client connected: client-def456
+    WebSocket client connected: client-ghi789
+    ```
 
 ### 3. Create a Config File
 
@@ -217,40 +217,40 @@ Create a YAML config file defining your agents and workflow. See `examples/` for
 version: 1
 
 server:
-  url: http://localhost:8765
+    url: http://localhost:8765
 
 run:
-  id: my-run
-  out_dir: runs
+    id: my-run
+    out_dir: runs
 
 agents:
-  alice:
-    client_id: client-abc123  # Replace with your actual client ID
-    system: "You are Alice, a helpful assistant."
-  
-  bob:
-    client_id: client-def456  # Replace with your actual client ID
-    system: "You are Bob, a thoughtful analyst."
+    alice:
+        client_id: client-abc123 # Replace with your actual client ID
+        system: 'You are Alice, a helpful assistant.'
+
+    bob:
+        client_id: client-def456 # Replace with your actual client ID
+        system: 'You are Bob, a thoughtful analyst.'
 
 workflow:
-  type: round_robin
-  order: [alice, bob]
-  start: alice
+    type: round_robin
+    order: [alice, bob]
+    start: alice
 
 delivery:
-  type: next_speaker
+    type: next_speaker
 
 seed:
-  from: user
-  content: "Let's discuss the future of AI. Alice, what are your thoughts?"
+    from: user
+    content: "Let's discuss the future of AI. Alice, what are your thoughts?"
 
 judge:
-  enabled: false
-  eval_every_turn: true
+    enabled: false
+    eval_every_turn: true
 
 termination:
-  max_turns: 4
-  judge_stop: false
+    max_turns: 4
+    judge_stop: false
 ```
 
 **Important**: Replace `client_id` values with the actual client IDs from your connected browser tabs.
@@ -303,6 +303,7 @@ runs/2026-02-08T14-32-10Z_my-run/
 ### File Formats
 
 **Message files** (`messages/0001_alice.md`):
+
 ```markdown
 ---
 turn: 1
@@ -316,20 +317,22 @@ Alice's response content here...
 ```
 
 **Judge files** (`judge/0001.json`):
+
 ```json
 {
-  "turn": 1,
-  "created_at": "2026-02-08T14:32:16.456Z",
-  "should_stop": false,
-  "scores": {
-    "alice": 85,
-    "bob": 82
-  },
-  "reason": "Both agents provided strong arguments..."
+    "turn": 1,
+    "created_at": "2026-02-08T14:32:16.456Z",
+    "should_stop": false,
+    "scores": {
+        "alice": 85,
+        "bob": 82
+    },
+    "reason": "Both agents provided strong arguments..."
 }
 ```
 
 **Run metadata** (`run.json`):
+
 ```json
 {
   "run_id": "my-run",
@@ -353,6 +356,7 @@ Alice's response content here...
 ### Two-Agent Debate (with Judge)
 
 See `examples/debate.yml` for a complete example of:
+
 - Two agents (pro/con) debating a topic
 - Judge evaluating each turn
 - Judge stopping the run when a winner emerges
@@ -364,6 +368,7 @@ bun start examples/debate.yml
 ### Planner-Critic Loop (with Judge)
 
 See `examples/planner-critic.yml` for:
+
 - Planner proposes solutions, critic refines them
 - Judge evaluates progress and solution quality
 - Judge stops when a viable solution is reached
@@ -376,6 +381,7 @@ bun start examples/planner-critic.yml
 ### Simple Conversation (no Judge)
 
 See `examples/simple.yml` for:
+
 - Two collaborative agents
 - Fixed number of turns (no judge)
 - Brainstorming session
@@ -391,11 +397,11 @@ bun start examples/simple.yml
 ### "Client not connected" error
 
 - **Cause**: The specified `client_id` is not connected to the server
-- **Solution**: 
-  1. Check the server console for active client IDs
-  2. Ensure the ChatGPT tab with that client ID is still open
-  3. Refresh the ChatGPT tab to reconnect
-  4. Update your config with the correct `client_id`
+- **Solution**:
+    1. Check the server console for active client IDs
+    2. Ensure the ChatGPT tab with that client ID is still open
+    3. Refresh the ChatGPT tab to reconnect
+    4. Update your config with the correct `client_id`
 
 ### "Client already has an inflight request" (409)
 
@@ -405,10 +411,10 @@ bun start examples/simple.yml
 ### "Judge output invalid after retry"
 
 - **Cause**: The judge failed to return valid JSON in the required format
-- **Solution**: 
-  1. Simplify the judge `rubric` prompt
-  2. Ensure the judge client is using a capable model (e.g., GPT-4)
-  3. Check `judge/*.json` files for error details
+- **Solution**:
+    1. Simplify the judge `rubric` prompt
+    2. Ensure the judge client is using a capable model (e.g., GPT-4)
+    3. Check `judge/*.json` files for error details
 
 ### Run folder already exists
 
@@ -481,8 +487,8 @@ Change `run.out_dir` in your config:
 
 ```yaml
 run:
-  id: experiment-1
-  out_dir: ./experiments
+    id: experiment-1
+    out_dir: ./experiments
 ```
 
 ### Long-Running Conversations
@@ -491,7 +497,7 @@ Increase `termination.max_turns` for extended exchanges:
 
 ```yaml
 termination:
-  max_turns: 50  # 25 turns per agent in a 2-agent setup
+    max_turns: 50 # 25 turns per agent in a 2-agent setup
 ```
 
 ---

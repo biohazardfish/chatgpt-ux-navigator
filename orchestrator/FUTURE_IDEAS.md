@@ -1,6 +1,6 @@
 # FUTURE_IDEAS.md
 
-This document captures **ideas explicitly deferred beyond v1** of AgentTalk.
+This document captures **ideas explicitly deferred beyond v1** of Nexus.
 
 Nothing in this file is part of the current spec.  
 Items here must not influence implementation unless promoted into tickets and updated in `README.md` and `AGENTS.md`.
