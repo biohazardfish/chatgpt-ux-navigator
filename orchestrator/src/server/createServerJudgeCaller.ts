@@ -8,7 +8,9 @@ import type {AppConfig} from '../config/types';
 import type {JudgeInput, JudgeDecision} from '../runner/types';
 import type {JSONLogger} from '../logging/jsonLogger';
 import {buildJudgePrompt} from './judgePromptBuilder';
+import {buildJudgeSummaryPrompt} from './judgeSummaryPromptBuilder';
 import {parseJudgeResponse, isParseError} from './judgeResponseParser';
+import {parseJudgeSummaryResponse, isSummaryParseError} from './judgeSummaryResponseParser';
 import {parseJSONResponse} from './sseParser';
 
 /**
@@ -26,6 +28,8 @@ export function createServerJudgeCaller(
 ): {
     callJudge: (input: JudgeInput) => Promise<JudgeDecision>;
 } {
+    let rollingSummary = '';
+
     // Validate judge is enabled
     if (!config.judge.enabled) {
         throw new Error('Judge is disabled in config');
@@ -40,21 +44,103 @@ export function createServerJudgeCaller(
         throw new Error('Judge rubric is required when judge is enabled');
     }
 
+    if (config.judge.summary?.enabled && !config.judge.summary.prompt) {
+        throw new Error('Judge summary prompt is required when summary is enabled');
+    }
+
     return {
         callJudge: async (input: JudgeInput): Promise<JudgeDecision> => {
-            const {turn, transcript} = input;
+            const {turn, transcript, round_transcript} = input;
             const clientId = config.judge.client_id!;
 
             await jsonLogger?.debug('judge_caller', 'call_start', {
                 round: turn,
                 transcript_length: transcript.length,
+                round_transcript_length: round_transcript.length,
                 client_id: clientId,
             });
+
+            if (config.judge.summary?.enabled) {
+                const summaryWindow = config.judge.summary.window?.type ?? 'last_round';
+                const summaryTranscript =
+                    summaryWindow === 'last_n_turns'
+                        ? transcript.slice(-((config.judge.summary.window?.n ?? 1)))
+                        : round_transcript;
+
+                const summaryPrompt = buildJudgeSummaryPrompt({
+                    config,
+                    roundIndex: turn,
+                    rollingSummary,
+                    roundTranscript: summaryTranscript,
+                });
+
+                await jsonLogger?.debug('judge_caller', 'summary_prompt_built', {
+                    round: turn,
+                    prompt_length: summaryPrompt.length,
+                });
+
+                let summaryResponse = await callJudgeOnce(
+                    config,
+                    clientId,
+                    summaryPrompt,
+                    turn,
+                    true,
+                    jsonLogger
+                );
+
+                let summaryParsed = parseJudgeSummaryResponse(summaryResponse);
+
+                if (isSummaryParseError(summaryParsed)) {
+                    const errorDetails = 'details' in summaryParsed ? summaryParsed.details : 'Invalid summary output';
+
+                    await jsonLogger?.warn('judge_caller', 'summary_parse_failed_retrying', {
+                        round: turn,
+                        error: errorDetails,
+                    });
+
+                    await new Promise(resolve => setTimeout(resolve, 2000));
+
+                    const retryPrompt = `${summaryPrompt}\n\nYOUR PREVIOUS OUTPUT WAS INVALID.\nOutput ONLY a JSON object inside a fenced \`\`\`json code block.\nThe JSON must contain only: rolling_summary (string).`;
+
+                    summaryResponse = await callJudgeOnce(
+                        config,
+                        clientId,
+                        retryPrompt,
+                        turn,
+                        true,
+                        jsonLogger
+                    );
+
+                    summaryParsed = parseJudgeSummaryResponse(summaryResponse);
+
+                    if (isSummaryParseError(summaryParsed)) {
+                        const retryError = 'details' in summaryParsed ? summaryParsed.details : 'Invalid summary output';
+                        await jsonLogger?.error('judge_caller', 'summary_parse_failed_after_retry', {
+                            round: turn,
+                            error: retryError,
+                        });
+                        throw new Error('Judge summary output invalid after retry');
+                    }
+
+                    await jsonLogger?.info('judge_caller', 'summary_retry_succeeded', {
+                        round: turn,
+                    });
+                }
+
+                const maxChars = config.judge.summary.max_chars ?? 8000;
+                const summaryValue = (summaryParsed as {rolling_summary: string}).rolling_summary;
+                rollingSummary = summaryValue.slice(0, maxChars).trim();
+
+                await jsonLogger?.info('judge_caller', 'summary_updated', {
+                    round: turn,
+                    summary_length: rollingSummary.length,
+                });
+            }
 
             // Build judge prompt (first attempt)
             let prompt: string;
             try {
-                prompt = buildJudgePrompt(config, transcript, false);
+                prompt = buildJudgePrompt(config, round_transcript, rollingSummary, turn, false);
                 await jsonLogger?.debug('judge_caller', 'prompt_built', {
                     round: turn,
                     prompt_length: prompt.length,
@@ -88,7 +174,14 @@ export function createServerJudgeCaller(
                 // Wait a bit for any page navigation to settle
                 await new Promise(resolve => setTimeout(resolve, 2000));
 
-                const retryPrompt = buildJudgePrompt(config, transcript, true, errorDetails);
+                const retryPrompt = buildJudgePrompt(
+                    config,
+                    round_transcript,
+                    rollingSummary,
+                    turn,
+                    true,
+                    errorDetails
+                );
                 await jsonLogger?.debug('judge_caller', 'retry_prompt_built', {
                     round: turn,
                     retry_prompt_length: retryPrompt.length,

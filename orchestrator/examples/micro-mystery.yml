@@ -34,16 +34,22 @@ delivery:
 seed:
     from: user
     content: >
-        Run a 4-turn micro-mystery.
+        Run a 10-turn micro-mystery.
         Turn 1 (Agent 1): Describe a crime scene and one clear clue.
         Turn 2 (Agent 2): Propose two plausible theories based on the clue.
         Turn 3 (Agent 1): Reveal a second clue that invalidates one theory.
-        Turn 4 (Agent 2): Identify the culprit, explain the reasoning,
+        Turn 4 (Agent 2): Narrow to one primary theory and list open questions.
+        Turn 5 (Agent 1): Provide a witness detail or alibi wrinkle.
+        Turn 6 (Agent 2): Update the theory and identify the most likely suspect.
+        Turn 7 (Agent 1): Reveal a motive or timeline detail that adds pressure.
+        Turn 8 (Agent 2): Explain the full chain of reasoning so far.
+        Turn 9 (Agent 1): Deliver a final clue that confirms the culprit.
+        Turn 10 (Agent 2): Identify the culprit, explain the reasoning,
         and tease a follow-up case in one sentence.
 
 judge:
     enabled: false
 
 termination:
-    max_turns: 4
+    max_turns: 10
     judge_stop: false

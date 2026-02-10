@@ -292,8 +292,9 @@ describe('runConversation', () => {
 
         const deps: RunnerDeps = {
             callAgent: async () => ({content: 'Response'}),
-            callJudge: async () => {
+            callJudge: async (input: JudgeInput) => {
                 judgeCalls++;
+                expect(input.round_transcript.length).toBeGreaterThan(0);
                 return {should_stop: false, scores: {A: 50, B: 50}, reason: 'Continue'};
             },
             nowISO: () => '2026-02-08T12:00:00Z',
@@ -335,8 +336,9 @@ describe('runConversation', () => {
                 }
                 return {content: 'OK'};
             },
-            callJudge: async () => {
+            callJudge: async (input: JudgeInput) => {
                 judgeCalls++;
+                expect(input.round_transcript.length).toBeGreaterThan(0);
                 return {should_stop: false, scores: {A: 0, B: 0}, reason: 'Scored'};
             },
             nowISO: () => '2026-02-08T12:00:00Z',

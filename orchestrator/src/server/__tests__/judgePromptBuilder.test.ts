@@ -42,7 +42,7 @@ describe('buildJudgePrompt', () => {
             },
         ];
 
-        const result = buildJudgePrompt(baseConfig, transcript, false);
+        const result = buildJudgePrompt(baseConfig, transcript, '', 1, false);
 
         expect(result).toContain('You are a judge for a multi-agent AI conversation.');
         expect(result).toContain('You must output ONLY a JSON object inside a fenced code block');
@@ -62,7 +62,7 @@ describe('buildJudgePrompt', () => {
             },
         ];
 
-        const result = buildJudgePrompt(baseConfig, transcript, false);
+        const result = buildJudgePrompt(baseConfig, transcript, '', 1, false);
 
         expect(result).toContain('\nRUBRIC:\n');
         expect(result).toContain('Score based on helpfulness (0-10)');
@@ -83,7 +83,7 @@ describe('buildJudgePrompt', () => {
             },
         ];
 
-        const result = buildJudgePrompt(baseConfig, transcript, false);
+        const result = buildJudgePrompt(baseConfig, transcript, '', 1, false);
 
         expect(result).toContain('\nAGENTS:\n');
         expect(result).toContain('agent_a, agent_b');
@@ -118,25 +118,28 @@ describe('buildJudgePrompt', () => {
             },
         ];
 
-        const result = buildJudgePrompt(baseConfig, transcript, false);
+        const result = buildJudgePrompt(baseConfig, transcript, 'Summary so far', 2, false);
 
-        expect(result).toContain('TRANSCRIPT (most recent last):');
+        expect(result).toContain('ROLLING SUMMARY (previous rounds):');
+        expect(result).toContain('Summary so far');
+        expect(result).toContain('THIS ROUND TRANSCRIPT (most recent last):');
         expect(result).toContain('[1] agent_a: First message');
         expect(result).toContain('[2] agent_b: Second message');
         expect(result).toContain('[3] agent_a: Third message');
+        expect(result).toContain('=== END OF ROUND 2 ===');
 
         // Verify transcript comes after agents section
         const agentsIdx = result.indexOf('AGENTS:');
-        const transcriptIdx = result.indexOf('TRANSCRIPT');
+        const transcriptIdx = result.indexOf('THIS ROUND TRANSCRIPT');
         expect(transcriptIdx > agentsIdx).toBe(true);
     });
 
-    it('test 5: throws on empty transcript', () => {
+    it('test 5: renders empty transcript marker', () => {
         const emptyTranscript: AgentMessage[] = [];
 
-        expect(() => {
-            buildJudgePrompt(baseConfig, emptyTranscript, false);
-        }).toThrow('empty transcript');
+        const result = buildJudgePrompt(baseConfig, emptyTranscript, '', 1, false);
+        expect(result).toContain('THIS ROUND TRANSCRIPT (most recent last):');
+        expect(result).toContain('<<EMPTY>>');
     });
 
     it('test 6: appends correction section on retry', () => {
@@ -149,8 +152,15 @@ describe('buildJudgePrompt', () => {
             },
         ];
 
-        const retryResult = buildJudgePrompt(baseConfig, transcript, true, 'scores missing required agent key: agent_b');
-        const nonRetryResult = buildJudgePrompt(baseConfig, transcript, false);
+        const retryResult = buildJudgePrompt(
+            baseConfig,
+            transcript,
+            '',
+            1,
+            true,
+            'scores missing required agent key: agent_b'
+        );
+        const nonRetryResult = buildJudgePrompt(baseConfig, transcript, '', 1, false);
 
         // Retry should have correction section
         expect(retryResult).toContain('YOUR PREVIOUS OUTPUT WAS INVALID');
@@ -188,7 +198,7 @@ describe('buildJudgePrompt', () => {
             },
         ];
 
-        const result = buildJudgePrompt(multiAgentConfig, transcript, false);
+        const result = buildJudgePrompt(multiAgentConfig, transcript, '', 1, false);
 
         expect(result).toContain('AGENTS:\n');
         expect(result).toContain('agent_c, agent_a, agent_b');
@@ -210,7 +220,7 @@ describe('buildJudgePrompt', () => {
             },
         ];
 
-        const result = buildJudgePrompt(baseConfig, transcript, false);
+        const result = buildJudgePrompt(baseConfig, transcript, '', 1, false);
 
         expect(result).toContain('[1] agent_a: Line 1\nLine 2\nLine 3');
     });

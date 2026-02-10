@@ -50,6 +50,7 @@ export type AgentCallOutput = {
 export type JudgeInput = {
     turn: number; // round number just completed
     transcript: AgentMessage[]; // full transcript up to end of round
+    round_transcript: AgentMessage[]; // messages from the just-completed round
 };
 
 /**

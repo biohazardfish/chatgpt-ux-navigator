@@ -451,9 +451,47 @@ See the YAML schema and validation in `src/config/schema.ts` for the complete sp
 - `run.out_dir`: Defaults to `"runs"`
 - `workflow.start`: Defaults to first agent in `order`
 - `judge.enabled`: Defaults to `false`
+- `judge.summary.enabled`: Defaults to `false` (summary runs before each judge decision)
+- `judge.summary.prompt`: Required when summary is enabled
+- `judge.summary.max_chars`: Defaults to `8000`
+- `judge.summary.window.type`: `last_round` (default) or `last_n_turns`
+- `judge.summary.window.n`: Required when `last_n_turns`
 - `agents.<agent_id>.new_chat`: Defaults to `false` (continue in the current chat). Set to `true` to use `/responses/:clientId/new` for this agent's calls to create a fresh chat each turn.
 
 ---
+
+### Judge Rolling Summary
+
+Enable a per-round summary step to keep the judge context concise while preserving the current round verbatim.
+
+```yaml
+judge:
+    enabled: true
+    client_id: YOUR_JUDGE_CLIENT_ID
+    rubric: |
+        Evaluate quality and progress.
+
+    summary:
+        enabled: true
+        max_chars: 8000
+        window:
+            type: last_round
+        prompt: |
+            You are maintaining a rolling summary for a multi-agent run.
+
+            Previous summary:
+            {{ROLLING_SUMMARY}}
+
+            This round transcript:
+            {{THIS_ROUND_TRANSCRIPT}}
+
+            Update the rolling summary. Keep only durable, decision-relevant facts.
+
+            Output ONLY a JSON object:
+            ```json
+            { "rolling_summary": "..." }
+            ```
+```
 
 ## Development
 

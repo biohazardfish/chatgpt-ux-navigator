@@ -55,7 +55,7 @@ termination:
 
 Create `my-judged-run.yml`:
 
-```yaml
+````yaml
 version: 1
 
 server:
@@ -94,9 +94,9 @@ seed:
         Task: Design a system to reduce food waste in urban areas.
         Planner, propose your initial solution.
 
-    judge:
-        enabled: true
-        client_id: YOUR_CLIENT_ID_3 # IMPORTANT: Need a 3rd browser tab for judge
+judge:
+    enabled: true
+    client_id: YOUR_CLIENT_ID_3 # IMPORTANT: Need a 3rd browser tab for judge
     rubric: |
         Evaluate this planner-critic conversation on:
         1. Quality of the proposed solution (planner)
@@ -117,10 +117,31 @@ seed:
           "reason": "Brief explanation"
         }
 
+    summary:
+        enabled: true
+        max_chars: 8000
+        window:
+            type: last_round
+        prompt: |
+            You are maintaining a rolling summary for a multi-agent run.
+
+            Previous summary:
+            {{ROLLING_SUMMARY}}
+
+            This round transcript:
+            {{THIS_ROUND_TRANSCRIPT}}
+
+            Update the rolling summary. Keep only durable, decision-relevant facts.
+
+            Output ONLY a JSON object:
+            ```json
+            { "rolling_summary": "..." }
+            ```
+
 termination:
     max_turns: 10
     judge_stop: true # Judge can stop early if solution is reached
-```
+````
 
 **Note**: With judge enabled, you need **3 browser tabs**:
 

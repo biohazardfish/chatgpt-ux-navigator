@@ -68,6 +68,28 @@ judge:
         - A clear winner emerges
         - At least 4 turns have passed
 
+    summary:
+        enabled: true
+        max_chars: 8000
+        window:
+            type: last_round
+        prompt: |
+            You are maintaining a rolling summary for a multi-agent run.
+
+            Previous summary:
+            {{ROLLING_SUMMARY}}
+
+            This round transcript:
+            {{THIS_ROUND_TRANSCRIPT}}
+
+            Update the rolling summary. Keep only durable, decision-relevant facts.
+            Use bullets when possible.
+
+            Output ONLY a JSON object:
+            ```json
+            { "rolling_summary": "..." }
+            ```
+
 # Termination conditions
 termination:
     max_turns: 10

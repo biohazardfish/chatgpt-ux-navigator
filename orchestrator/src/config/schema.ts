@@ -50,6 +50,20 @@ const judgeSchema = z
         enabled: z.boolean(),
         client_id: z.string().optional(),
         rubric: z.string().optional(),
+        summary: z
+            .object({
+                enabled: z.boolean(),
+                prompt: z.string().optional(),
+                max_chars: z.number().int().min(1).optional(),
+                window: z
+                    .object({
+                        type: z.enum(['last_round', 'last_n_turns']),
+                        n: z.number().int().min(1).optional(),
+                    })
+                    .optional(),
+            })
+            .strict()
+            .optional(),
     })
     .strict()
     .superRefine((judge, ctx) => {
@@ -67,6 +81,32 @@ const judgeSchema = z
                     path: ['rubric'],
                     message: 'required when judge.enabled is true',
                 });
+            }
+        } else if (judge.summary?.enabled) {
+            ctx.addIssue({
+                code: z.ZodIssueCode.custom,
+                path: ['summary', 'enabled'],
+                message: 'cannot be true when judge.enabled is false',
+            });
+        }
+
+        if (judge.summary?.enabled) {
+            if (!judge.summary.prompt || judge.summary.prompt.trim().length === 0) {
+                ctx.addIssue({
+                    code: z.ZodIssueCode.custom,
+                    path: ['summary', 'prompt'],
+                    message: 'required when judge.summary.enabled is true',
+                });
+            }
+
+            if (judge.summary.window?.type === 'last_n_turns') {
+                if (!judge.summary.window.n || judge.summary.window.n < 1) {
+                    ctx.addIssue({
+                        code: z.ZodIssueCode.custom,
+                        path: ['summary', 'window', 'n'],
+                        message: 'required when summary.window.type is last_n_turns',
+                    });
+                }
             }
         }
     });

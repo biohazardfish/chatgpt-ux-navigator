@@ -64,25 +64,24 @@ Example format:
  * 1. System preamble
  * 2. Rubric section
  * 3. Agent list
- * 4. Transcript section
+ * 4. Rolling summary section
+ * 5. Transcript section (current round)
  *
  * @param config - Validated app configuration
- * @param transcript - Full transcript of agent messages so far
+ * @param roundTranscript - Transcript entries for the just-completed round
+ * @param rollingSummary - Rolling summary from previous rounds (or empty)
+ * @param roundIndex - Completed round number (1-based)
  * @param isRetry - Whether this is a retry with correction prompt
  * @returns Complete judge prompt string
- * @throws Error if transcript is empty (per spec: should not happen in normal operation)
  */
 export function buildJudgePrompt(
     config: AppConfig,
-    transcript: AgentMessage[],
+    roundTranscript: AgentMessage[],
+    rollingSummary: string,
+    roundIndex: number,
     isRetry: boolean = false,
     errorDetails?: string
 ): string {
-    // Throw error on empty transcript (should not happen in normal operation)
-    if (transcript.length === 0) {
-        throw new Error('Judge prompt builder: empty transcript (should not happen)');
-    }
-
     let prompt = JUDGE_SYSTEM_PREAMBLE;
 
     // Rubric section
@@ -93,21 +92,33 @@ export function buildJudgePrompt(
     prompt += '\n\nAGENTS:\n';
     prompt += config.workflow.order.join(', ');
 
+    // Rolling summary section
+    prompt += '\n\nROLLING SUMMARY (previous rounds):\n';
+    if (rollingSummary && rollingSummary.trim().length > 0) {
+        prompt += rollingSummary.trim();
+    } else {
+        prompt += '<<NONE>>';
+    }
+
     // Transcript section
-    prompt += '\n\nTRANSCRIPT (most recent last):';
+    prompt += '\n\nTHIS ROUND TRANSCRIPT (most recent last):';
 
     // Format each transcript entry with 1-based indexing
-    transcript.forEach((msg, index) => {
-        const entryNumber = index + 1;
-        prompt += `\n[${entryNumber}] ${msg.speaker}: ${msg.content}`;
-        // Add blank line after each entry except the last
-        if (index < transcript.length - 1) {
-            prompt += '\n';
-        }
-    });
+    if (roundTranscript.length === 0) {
+        prompt += '\n<<EMPTY>>';
+    } else {
+        roundTranscript.forEach((msg, index) => {
+            const entryNumber = index + 1;
+            prompt += `\n[${entryNumber}] ${msg.speaker}: ${msg.content}`;
+            // Add blank line after each entry except the last
+            if (index < roundTranscript.length - 1) {
+                prompt += '\n';
+            }
+        });
+    }
 
-    // Explicit round boundary marker (per Ticket 006)
-    prompt += `\n\n=== END OF ROUND ===`;
+    // Explicit round boundary marker
+    prompt += `\n\n=== END OF ROUND ${roundIndex} ===`;
 
     // Add correction prompt if this is a retry
     if (isRetry) {

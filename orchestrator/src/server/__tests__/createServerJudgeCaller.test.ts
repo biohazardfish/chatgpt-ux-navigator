@@ -79,6 +79,14 @@ describe('createServerJudgeCaller', () => {
                 created_at: '2025-02-08T00:00:00Z',
             },
         ],
+        round_transcript: [
+            {
+                turn: 1,
+                speaker: 'agent_a',
+                content: 'Hello world',
+                created_at: '2025-02-08T00:00:00Z',
+            },
+        ],
     };
 
     describe('Configuration validation', () => {

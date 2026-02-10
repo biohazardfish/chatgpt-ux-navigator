@@ -53,6 +53,12 @@ function normalizeConfig(config: any): AppConfig {
             ...config.judge,
             client_id: config.judge.client_id?.trim(),
             rubric: config.judge.rubric?.trim(),
+            summary: config.judge.summary
+                ? {
+                      ...config.judge.summary,
+                      prompt: config.judge.summary.prompt?.trim(),
+                  }
+                : undefined,
         },
         workflow: {
             ...config.workflow,
@@ -155,6 +161,16 @@ export async function loadConfig(configPath: string): Promise<AppConfig> {
             out_dir: config.run?.out_dir || 'runs',
             // Default id to derived filename
             id: config.run?.id || deriveRunId(configPath),
+        },
+        judge: {
+            ...config.judge,
+            summary: config.judge.summary
+                ? {
+                      ...config.judge.summary,
+                      max_chars: config.judge.summary.max_chars ?? 8000,
+                      window: config.judge.summary.window ?? {type: 'last_round'},
+                  }
+                : undefined,
         },
         // Default workflow.start to first agent in order
         workflow: {

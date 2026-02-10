@@ -34,6 +34,15 @@ export type AppConfig = {
         enabled: boolean;
         client_id?: string;
         rubric?: string;
+        summary?: {
+            enabled: boolean;
+            prompt?: string;
+            max_chars?: number;
+            window?: {
+                type: 'last_round' | 'last_n_turns';
+                n?: number;
+            };
+        };
     };
     termination: {
         max_turns: number;

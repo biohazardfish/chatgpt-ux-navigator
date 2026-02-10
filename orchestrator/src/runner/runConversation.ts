@@ -51,6 +51,7 @@ export async function runConversation(config: AppConfig, deps: RunnerDeps): Prom
     let turnsInRound = 0;
     let round = 1;
     let abortAfterRound = false;
+    let roundStartIndex = 0;
 
     // Main execution loop (round-based)
     while (true) {
@@ -242,14 +243,18 @@ export async function runConversation(config: AppConfig, deps: RunnerDeps): Prom
 
             // Invoke judge exactly once per completed round
             if (config.judge.enabled && deps.callJudge) {
+                const roundTranscript = state.transcript.slice(roundStartIndex);
+
                 await logger?.debug('runner', 'judge_call_start', {
                     round,
                     transcript_length: state.transcript.length,
+                    round_transcript_length: roundTranscript.length,
                 });
 
                 const decision = await deps.callJudge({
                     turn: round,
                     transcript: state.transcript,
+                    round_transcript: roundTranscript,
                 });
 
                 await logger?.info('runner', 'judge_call_success', {
@@ -312,6 +317,7 @@ export async function runConversation(config: AppConfig, deps: RunnerDeps): Prom
 
             turnsInRound = 0;
             round++;
+            roundStartIndex = state.transcript.length;
 
             await logger?.debug('runner', 'round_start', {
                 round,
