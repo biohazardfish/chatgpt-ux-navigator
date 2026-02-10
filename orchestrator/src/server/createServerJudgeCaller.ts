@@ -91,7 +91,12 @@ export function createServerJudgeCaller(
                 let summaryParsed = parseJudgeSummaryResponse(summaryResponse);
 
                 if (isSummaryParseError(summaryParsed)) {
-                    const errorDetails = 'details' in summaryParsed ? summaryParsed.details : 'Invalid summary output';
+                    const errorDetails =
+                        'details' in summaryParsed
+                            ? summaryParsed.details
+                            : summaryParsed.type === 'empty_response'
+                                ? 'Summary output was empty'
+                                : 'Invalid summary output';
 
                     await jsonLogger?.warn('judge_caller', 'summary_parse_failed_retrying', {
                         round: turn,
@@ -100,7 +105,7 @@ export function createServerJudgeCaller(
 
                     await new Promise(resolve => setTimeout(resolve, 2000));
 
-                    const retryPrompt = `${summaryPrompt}\n\nYOUR PREVIOUS OUTPUT WAS INVALID.\nOutput ONLY a JSON object inside a fenced \`\`\`json code block.\nThe JSON must contain only: rolling_summary (string).`;
+                    const retryPrompt = `${summaryPrompt}\n\nYOUR PREVIOUS OUTPUT WAS INVALID.\nReturn only the rolling summary text with no extra wrappers.`;
 
                     summaryResponse = await callJudgeOnce(
                         config,
@@ -114,7 +119,12 @@ export function createServerJudgeCaller(
                     summaryParsed = parseJudgeSummaryResponse(summaryResponse);
 
                     if (isSummaryParseError(summaryParsed)) {
-                        const retryError = 'details' in summaryParsed ? summaryParsed.details : 'Invalid summary output';
+                        const retryError =
+                            'details' in summaryParsed
+                                ? summaryParsed.details
+                                : summaryParsed.type === 'empty_response'
+                                    ? 'Summary output was empty'
+                                    : 'Invalid summary output';
                         await jsonLogger?.error('judge_caller', 'summary_parse_failed_after_retry', {
                             round: turn,
                             error: retryError,

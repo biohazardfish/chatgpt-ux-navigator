@@ -487,10 +487,7 @@ judge:
 
             Update the rolling summary. Keep only durable, decision-relevant facts.
 
-            Output ONLY a JSON object:
-            ```json
-            { "rolling_summary": "..." }
-            ```
+            Output ONLY the rolling summary text.
 ```
 
 ## Development
