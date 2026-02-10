@@ -43,11 +43,11 @@ export function buildPrompt(systemPrompt: string, inbox: InboxItem[]): string {
         // Format each inbox item
         inbox.forEach((item, index) => {
             const itemNumber = index + 1;
-            prompt += `\n[${itemNumber}] From: ${item.from} (turn ${item.turn})\n`;
+            prompt += `\n\n[${itemNumber}] From: ${item.from} (turn ${item.turn})\n\n`;
             prompt += item.content;
         });
 
-        prompt += '\n\nNow write your response.';
+        prompt += '\n\n---\n\n Now write your response.';
     } else {
         // Empty inbox case
         prompt +=

@@ -167,10 +167,8 @@ describe('buildPrompt', () => {
 
         const result = buildPrompt(systemPrompt, inbox);
 
-        // Verify the exact structure: system + \n\n---\n\n + preamble + inbox
-        const parts = result.split('\n\n---\n\n');
-        expect(parts.length).toBe(2);
-        expect(parts[0]).toBe('System');
-        expect(parts[1]).toContain('You are an AI agent');
+        // Verify the prompt starts with: system + separator + developer preamble
+        expect(result.startsWith('System\n\n---\n\n')).toBe(true);
+        expect(result).toContain('You are an AI agent');
     });
 });

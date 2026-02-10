@@ -150,6 +150,8 @@ async function main() {
         callJudge: judgeCaller?.callJudge,
         nowISO: () => new Date().toISOString(),
         jsonLogger: logger.jsonLogger,
+        writeTurn: logger.writeTurn.bind(logger),
+        writeJudge: logger.writeJudge.bind(logger),
     };
 
     // Run conversation with live logging
@@ -158,31 +160,10 @@ async function main() {
     try {
         const result = await runConversation(config, deps);
 
-        // Write run artifacts
-        console.log('\n💾 Writing artifacts...');
+        // Messages and judge records are already written incrementally during the run
+        // Just finalize run metadata
+        console.log('\n💾 Finalizing run metadata...');
 
-        // Write each turn
-        for (const msg of result.transcript) {
-            // Calculate which turns this agent received
-            const received_turns: number[] = [];
-            for (let i = 0; i < result.transcript.length; i++) {
-                if (result.transcript[i].turn < msg.turn) {
-                    received_turns.push(result.transcript[i].turn);
-                }
-            }
-            await logger.writeTurn(msg, received_turns);
-            console.log(`   Turn ${msg.turn} (${msg.speaker})`);
-        }
-
-        // Write judge records
-        if (result.judge) {
-            for (const record of result.judge) {
-                await logger.writeJudge(record.turn, record.decision, record.created_at);
-            }
-            console.log(`   ${result.judge.length} judge evaluation(s)`);
-        }
-
-        // Finalize run metadata
         const ended_at = new Date().toISOString();
         await logger.finalize({
             stop_reason: result.stop_reason,
