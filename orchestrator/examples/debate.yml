@@ -85,10 +85,7 @@ judge:
             Update the rolling summary. Keep only durable, decision-relevant facts.
             Use bullets when possible.
 
-            Output ONLY a JSON object:
-            ```json
-            { "rolling_summary": "..." }
-            ```
+            Output ONLY the rolling summary text.
 
 # Termination conditions
 termination:

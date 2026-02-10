@@ -1,10 +1,10 @@
 /**
  * Judge summary response parser and validator
- * Extracts rolling_summary from a JSON code block
+ * Extracts rolling_summary from a JSON code block or plain text
  */
 
 export type SummaryParseError =
-    | {type: 'no_code_block'}
+    | {type: 'empty_response'}
     | {type: 'json_parse_error'; details: string}
     | {type: 'validation_error'; details: string};
 
@@ -41,34 +41,34 @@ export function parseJudgeSummaryResponse(
     responseText: string
 ): SummaryResult | SummaryParseError {
     if (!responseText || responseText.trim().length === 0) {
-        return {type: 'no_code_block'};
+        return {type: 'empty_response'};
     }
 
     const codeBlockContent = extractCodeBlock(responseText);
-    if (codeBlockContent === null) {
-        return {type: 'no_code_block'};
+    if (codeBlockContent !== null) {
+        if (codeBlockContent.length === 0) {
+            return {type: 'json_parse_error', details: 'Code block is empty'};
+        }
+
+        let parsed: unknown;
+        try {
+            parsed = JSON.parse(codeBlockContent);
+        } catch (err) {
+            return {
+                type: 'json_parse_error',
+                details: err instanceof Error ? err.message : String(err),
+            };
+        }
+
+        const validationError = validateSummary(parsed);
+        if (validationError) {
+            return validationError;
+        }
+
+        return {rolling_summary: (parsed as SummaryResult).rolling_summary};
     }
 
-    if (codeBlockContent.length === 0) {
-        return {type: 'json_parse_error', details: 'Code block is empty'};
-    }
-
-    let parsed: unknown;
-    try {
-        parsed = JSON.parse(codeBlockContent);
-    } catch (err) {
-        return {
-            type: 'json_parse_error',
-            details: err instanceof Error ? err.message : String(err),
-        };
-    }
-
-    const validationError = validateSummary(parsed);
-    if (validationError) {
-        return validationError;
-    }
-
-    return {rolling_summary: (parsed as SummaryResult).rolling_summary};
+    return {rolling_summary: responseText.trim()};
 }
 
 export function isSummaryParseError(
