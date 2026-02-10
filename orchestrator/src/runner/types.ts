@@ -19,7 +19,7 @@ export type AgentMessage = {
 
 /**
  * A pending message in an agent's inbox
- * Delivered to next speaker only
+ * Delivered to agents who have not yet consumed it (since last spoke)
  */
 export type InboxItem = {
     turn: number; // originating turn number (0 for seed)
@@ -69,6 +69,8 @@ export type RunnerDeps = {
     callJudge?: (input: JudgeInput) => Promise<JudgeDecision>; // only used if judge.enabled=true
     nowISO: () => string; // deterministic time injection for tests
     jsonLogger?: JSONLogger; // optional JSON logger for debugging
+    writeTurn?: (msg: AgentMessage, received_turns: number[]) => Promise<void>; // optional incremental turn writer
+    writeJudge?: (turn: number, decision: JudgeDecision, created_at: string) => Promise<void>; // optional incremental judge writer
 };
 
 /**

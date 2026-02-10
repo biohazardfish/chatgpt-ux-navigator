@@ -8,12 +8,6 @@ export type AppConfig = {
     server: {
         url: string;
         /**
-         * If true, agent prompts are sent via POST /responses/:clientId/new to force a fresh chat.
-         * If false, agent prompts are sent via POST /responses/:clientId (continue current chat).
-         * Optional in config; defaults to true.
-         */
-        agents_new_chat?: boolean;
-        /**
          * Request timeout in seconds for agent and judge calls.
          * Optional; defaults to 360 (6 minutes).
          */
@@ -50,4 +44,10 @@ export type AppConfig = {
 export type AgentConfig = {
     client_id: string;
     system: string;
+    /**
+     * If true, this agent's prompts are sent via POST /responses/:clientId/new to force a fresh chat.
+     * If false, this agent's prompts are sent via POST /responses/:clientId (continue current chat).
+     * Optional; defaults to false.
+     */
+    new_chat?: boolean;
 };

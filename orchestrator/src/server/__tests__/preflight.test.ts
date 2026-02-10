@@ -4,7 +4,7 @@ import {preflightCheckClients} from '../preflight';
 function makeConfig(overrides?: Partial<any>) {
     return {
         version: 1,
-        server: {url: 'http://localhost:8765', agents_new_chat: true},
+        server: {url: 'http://localhost:8765'},
         run: {id: 'x', out_dir: 'runs'},
         agents: {
             a: {client_id: 'c1', system: 's1'},

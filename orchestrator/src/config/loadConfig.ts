@@ -28,7 +28,6 @@ function normalizeConfig(config: any): AppConfig {
         ...config,
         server: {
             url: config.server.url.trim(),
-            agents_new_chat: config.server.agents_new_chat ?? true,
             request_timeout: config.server.request_timeout ?? 360,
         },
         agents: Object.fromEntries(
@@ -37,6 +36,7 @@ function normalizeConfig(config: any): AppConfig {
                 {
                     client_id: agent.client_id.trim(),
                     system: agent.system.trim(),
+                    new_chat: agent.new_chat ?? false,
                 },
             ])
         ),
@@ -145,8 +145,6 @@ export async function loadConfig(configPath: string): Promise<AppConfig> {
         ...config,
         server: {
             ...config.server,
-            // Default to true to avoid cross-run context contamination in agent tabs
-            agents_new_chat: config.server.agents_new_chat ?? true,
             // Override from environment variable if present
             request_timeout: process.env.REQUEST_TIMEOUT
                 ? parseInt(process.env.REQUEST_TIMEOUT, 10)

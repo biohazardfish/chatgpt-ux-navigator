@@ -17,7 +17,6 @@ version: 1
 
 server:
     url: http://localhost:8765
-    agents_new_chat: true
 
 run:
     id: my-first-run
@@ -61,7 +60,6 @@ version: 1
 
 server:
     url: http://localhost:8765
-    agents_new_chat: true
 
 run:
     id: my-judged-run

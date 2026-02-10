@@ -26,7 +26,6 @@ function createTestConfig(overrides?: Partial<AppConfig>): AppConfig {
         version: 1,
         server: {
             url: 'http://localhost:8765',
-            agents_new_chat: true,
             ...overrides?.server,
         },
         run: {

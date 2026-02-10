@@ -77,6 +77,7 @@ export async function runConversation(config: AppConfig, deps: RunnerDeps): Prom
 
         // Call agent with current turn and inbox
         let agentOutput;
+        let agentFailed = false;
         try {
             const client_id = config.agents[speaker].client_id;
 
@@ -142,60 +143,93 @@ export async function runConversation(config: AppConfig, deps: RunnerDeps): Prom
                 });
             }
 
-            // Agent failure: abort after current round completes
+            // Agent failure: mark for abort after round completes
+            agentFailed = true;
             abortAfterRound = true;
-            turnsInRound = agentsPerRound;
-
+            
             await logger?.warn('runner', 'abort_after_round_scheduled', {
                 turn: state.turn,
                 round,
                 reason: 'agent_failure',
             });
-
-            continue;
         }
 
-        // Validate agent output
-        const content = agentOutput.content.trim();
-        if (!content || content.length === 0) {
-            await logger?.error('runner', 'agent_output_invalid', {
-                turn: state.turn,
-                agent_id: speaker,
-            }, 'Agent returned empty content');
-
-            throw new Error(`Agent output invalid: ${speaker} turn ${state.turn}`);
-        }
-
-        // Append to transcript
-        const message: AgentMessage = {
-            turn: state.turn,
-            speaker,
-            content: agentOutput.content,
-            created_at: deps.nowISO(),
-        };
-        state.transcript.push(message);
-
-        await logger?.debug('runner', 'message_added_to_transcript', {
-            turn: state.turn,
-            speaker,
-            transcript_length: state.transcript.length,
-        });
-
-        // Deliver to next speaker only
+        // Calculate next speaker index (needed for message delivery and state advancement)
         const next_idx = (state.speaker_idx + 1) % config.workflow.order.length;
-        const next_speaker = config.workflow.order[next_idx];
-        state.pending[next_speaker].push({
-            turn: state.turn,
-            from: speaker,
-            content: agentOutput.content,
-        });
 
-        await logger?.debug('runner', 'message_queued_for_next', {
-            turn: state.turn,
-            from: speaker,
-            to: next_speaker,
-            next_inbox_size: state.pending[next_speaker].length,
-        });
+        // Only process agent output if call succeeded
+        if (!agentFailed) {
+            // Validate agent output
+            const content = agentOutput!.content.trim();
+            if (!content || content.length === 0) {
+                await logger?.error('runner', 'agent_output_invalid', {
+                    turn: state.turn,
+                    agent_id: speaker,
+                }, 'Agent returned empty content');
+
+                throw new Error(`Agent output invalid: ${speaker} turn ${state.turn}`);
+            }
+
+            // Append to transcript
+            const message: AgentMessage = {
+                turn: state.turn,
+                speaker,
+                content: agentOutput!.content,
+                created_at: deps.nowISO(),
+            };
+            state.transcript.push(message);
+
+            await logger?.debug('runner', 'message_added_to_transcript', {
+                turn: state.turn,
+                speaker,
+                transcript_length: state.transcript.length,
+            });
+
+            // Write turn to disk immediately if writer is provided
+            if (deps.writeTurn) {
+                // Calculate which turns this agent received
+                const received_turns: number[] = [];
+                for (const item of inbox) {
+                    if (item.turn > 0) { // Skip seed prompt (turn 0)
+                        received_turns.push(item.turn);
+                    }
+                }
+
+                await logger?.debug('runner', 'writing_turn_to_disk', {
+                    turn: state.turn,
+                    speaker,
+                    received_turns,
+                });
+
+                await deps.writeTurn(message, received_turns);
+
+                await logger?.debug('runner', 'turn_written_to_disk', {
+                    turn: state.turn,
+                    speaker,
+                });
+            }
+
+            // Queue this message for all other agents.
+            // This ensures that when an agent speaks, they receive all messages that arrived
+            // since they last spoke (chronological), not just the immediately previous speaker.
+            const recipients: string[] = [];
+            for (const agentId of config.workflow.order) {
+                if (agentId === speaker) continue;
+                state.pending[agentId].push({
+                    turn: state.turn,
+                    from: speaker,
+                    content: agentOutput!.content,
+                });
+                recipients.push(agentId);
+            }
+
+            await logger?.debug('runner', 'message_queued_for_recipients', {
+                turn: state.turn,
+                from: speaker,
+                recipients,
+                recipient_inbox_sizes: Object.fromEntries(recipients.map(id => [id, state.pending[id].length])),
+            });
+        }
 
         turnsInRound++;
 
@@ -230,6 +264,19 @@ export async function runConversation(config: AppConfig, deps: RunnerDeps): Prom
                     created_at: deps.nowISO(),
                 };
                 state.judge_records.push(record);
+
+                // Write judge record to disk immediately if writer is provided
+                if (deps.writeJudge) {
+                    await logger?.debug('runner', 'writing_judge_to_disk', {
+                        round,
+                    });
+
+                    await deps.writeJudge(record.turn, record.decision, record.created_at);
+
+                    await logger?.debug('runner', 'judge_written_to_disk', {
+                        round,
+                    });
+                }
 
                 if (config.termination.judge_stop && decision.should_stop) {
                     await logger?.info('runner', 'run_stopped_by_judge', {
@@ -311,13 +358,19 @@ function initializeState(config: AppConfig): RunState {
         pending[agent] = [];
     }
 
-    // Find start agent and inject seed prompt
+    // Inject seed prompt into every agent's inbox.
+    // Rationale: an agent's first turn should include the initial user goal/context,
+    // i.e. all messages they've received since they last spoke (for first turn: since run start).
+    for (const agent of config.workflow.order) {
+        pending[agent].push({
+            turn: 0,
+            from: 'user',
+            content: config.seed.content,
+        });
+    }
+
+    // Find start agent for initial speaker index
     const startAgent = config.workflow.start;
-    pending[startAgent].push({
-        turn: 0,
-        from: 'user',
-        content: config.seed.content,
-    });
 
     return {
         turn: 1,

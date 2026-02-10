@@ -80,10 +80,11 @@ describe('runConversation', () => {
         // A turn 1: seed only
         expect(mockCalls[0].inbox).toEqual([{turn: 0, from: 'user', content: 'Start here'}]);
 
-        // B turn 2: A1 only
-        expect(mockCalls[1].inbox.length).toBe(1);
-        expect(mockCalls[1].inbox[0].from).toBe('A');
-        expect(mockCalls[1].inbox[0].turn).toBe(1);
+        // B turn 2: seed + A1 (B has not spoken before)
+        expect(mockCalls[1].inbox.length).toBe(2);
+        expect(mockCalls[1].inbox[0]).toEqual({turn: 0, from: 'user', content: 'Start here'});
+        expect(mockCalls[1].inbox[1].from).toBe('A');
+        expect(mockCalls[1].inbox[1].turn).toBe(1);
 
         // A turn 3: B2 only
         expect(mockCalls[2].inbox.length).toBe(1);
@@ -103,8 +104,8 @@ describe('runConversation', () => {
 
     /**
      * Test 2: 3-agent pending accumulation
-     * Verifies: next-speaker-only delivery (not broadcast)
-     *           pending queues are empty post-delivery
+     * Verifies: agents receive all messages since they last spoke
+     *           seed is delivered to each agent on their first turn
      */
     it('test 2: 3-agent pending accumulation', async () => {
         const mockCalls: {speaker: string; inbox: AgentCallInput['inbox']}[] = [];
@@ -142,26 +143,36 @@ describe('runConversation', () => {
 
         const result = await runConversation(config, deps);
 
-        // Verify each agent receives exactly one message when speaking (next-speaker-only delivery)
-        // Turn 1: A speaks, seed goes to B
+        // Turn 1: A speaks, receives seed
         expect(mockCalls[0].speaker).toBe('A');
         expect(mockCalls[0].inbox.length).toBe(1);
         expect(mockCalls[0].inbox[0].from).toBe('user');
 
-        // Turn 2: B speaks, A's message goes to C
+        // Turn 2: B speaks, receives seed + A1
         expect(mockCalls[1].speaker).toBe('B');
-        expect(mockCalls[1].inbox.length).toBe(1);
-        expect(mockCalls[1].inbox[0].from).toBe('A');
+        expect(mockCalls[1].inbox.length).toBe(2);
+        expect(mockCalls[1].inbox[0].from).toBe('user');
+        expect(mockCalls[1].inbox[0].turn).toBe(0);
+        expect(mockCalls[1].inbox[1].from).toBe('A');
+        expect(mockCalls[1].inbox[1].turn).toBe(1);
 
-        // Turn 3: C speaks, B's message goes to A
+        // Turn 3: C speaks, receives seed + A1 + B2
         expect(mockCalls[2].speaker).toBe('C');
-        expect(mockCalls[2].inbox.length).toBe(1);
-        expect(mockCalls[2].inbox[0].from).toBe('B');
+        expect(mockCalls[2].inbox.length).toBe(3);
+        expect(mockCalls[2].inbox[0].from).toBe('user');
+        expect(mockCalls[2].inbox[0].turn).toBe(0);
+        expect(mockCalls[2].inbox[1].from).toBe('A');
+        expect(mockCalls[2].inbox[1].turn).toBe(1);
+        expect(mockCalls[2].inbox[2].from).toBe('B');
+        expect(mockCalls[2].inbox[2].turn).toBe(2);
 
-        // Turn 4: A speaks again, C's message only (not accumulated with previous)
+        // Turn 4: A speaks again, receives B2 + C3
         expect(mockCalls[3].speaker).toBe('A');
-        expect(mockCalls[3].inbox.length).toBe(1);
-        expect(mockCalls[3].inbox[0].from).toBe('C');
+        expect(mockCalls[3].inbox.length).toBe(2);
+        expect(mockCalls[3].inbox[0].from).toBe('B');
+        expect(mockCalls[3].inbox[0].turn).toBe(2);
+        expect(mockCalls[3].inbox[1].from).toBe('C');
+        expect(mockCalls[3].inbox[1].turn).toBe(3);
 
         expect(result.transcript.length).toBe(6);
         expect(result.stop_reason).toBe('max_turns');
