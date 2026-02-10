@@ -64,8 +64,9 @@ termination:
             const config = await loadConfig(configPath);
             expect(config.version).toBe(1);
             expect(config.server.url).toBe('http://localhost:8765');
-            expect(config.server.agents_new_chat).toBe(true);
             expect(Object.keys(config.agents).length).toBe(2);
+            expect(config.agents.A.new_chat).toBe(false);
+            expect(config.agents.B.new_chat).toBe(false);
             expect(config.workflow.order).toEqual(['A', 'B']);
             expect(config.run.id).toBe('minimal');
             expect(config.run.out_dir).toBe('runs');
@@ -220,9 +221,9 @@ termination:
 
             const config = await loadConfig(configPath);
             expect(config.server.url).toBe('http://localhost:8765');
-            expect(config.server.agents_new_chat).toBe(true);
             expect(config.agents.A.client_id).toBe('agent-a');
             expect(config.agents.A.system).toBe('You are A.');
+            expect(config.agents.A.new_chat).toBe(false);
             expect(config.seed.content).toBe('Trimmed content.');
 
             cleanup();
@@ -304,10 +305,10 @@ termination:
         });
     });
 
-    describe('server.agents_new_chat', () => {
-        it('defaults to true when omitted', async () => {
+    describe('agent new_chat configuration', () => {
+        it('defaults to false when omitted', async () => {
             const configPath = createTestConfig(
-                'agents-new-chat-omitted.yml',
+                'agent-new-chat-omitted.yml',
                 `
 version: 1
 server:
@@ -336,26 +337,28 @@ termination:
             );
 
             const config = await loadConfig(configPath);
-            expect(config.server.agents_new_chat).toBe(true);
+            expect(config.agents.A.new_chat).toBe(false);
+            expect(config.agents.B.new_chat).toBe(false);
 
             cleanup();
         });
 
-        it('allows explicit agents_new_chat: true', async () => {
+        it('allows explicit new_chat: true per agent', async () => {
             const configPath = createTestConfig(
-                'agents-new-chat-true.yml',
+                'agent-new-chat-true.yml',
                 `
 version: 1
 server:
   url: 'http://localhost:8765'
-  agents_new_chat: true
 agents:
   A:
     client_id: agent-a
     system: 'You are A.'
+    new_chat: true
   B:
     client_id: agent-b
     system: 'You are B.'
+    new_chat: true
 workflow:
   type: round_robin
   order: [A, B]
@@ -373,26 +376,28 @@ termination:
             );
 
             const config = await loadConfig(configPath);
-            expect(config.server.agents_new_chat).toBe(true);
+            expect(config.agents.A.new_chat).toBe(true);
+            expect(config.agents.B.new_chat).toBe(true);
 
             cleanup();
         });
 
-        it('allows overriding agents_new_chat to false', async () => {
+        it('allows overriding new_chat to false per agent', async () => {
             const configPath = createTestConfig(
-                'agents-new-chat-false.yml',
+                'agent-new-chat-false.yml',
                 `
 version: 1
 server:
   url: 'http://localhost:8765'
-  agents_new_chat: false
 agents:
   A:
     client_id: agent-a
     system: 'You are A.'
+    new_chat: false
   B:
     client_id: agent-b
     system: 'You are B.'
+    new_chat: false
 workflow:
   type: round_robin
   order: [A, B]
@@ -410,7 +415,51 @@ termination:
             );
 
             const config = await loadConfig(configPath);
-            expect(config.server.agents_new_chat).toBe(false);
+            expect(config.agents.A.new_chat).toBe(false);
+            expect(config.agents.B.new_chat).toBe(false);
+
+            cleanup();
+        });
+
+        it('allows mixed new_chat settings across agents', async () => {
+            const configPath = createTestConfig(
+                'agent-new-chat-mixed.yml',
+                `
+version: 1
+server:
+  url: 'http://localhost:8765'
+agents:
+  A:
+    client_id: agent-a
+    system: 'You are A.'
+    new_chat: true
+  B:
+    client_id: agent-b
+    system: 'You are B.'
+    new_chat: false
+  C:
+    client_id: agent-c
+    system: 'You are C.'
+workflow:
+  type: round_robin
+  order: [A, B, C]
+delivery:
+  type: next_speaker
+seed:
+  from: user
+  content: 'Test.'
+judge:
+  enabled: false
+termination:
+  max_turns: 3
+  judge_stop: false
+`
+            );
+
+            const config = await loadConfig(configPath);
+            expect(config.agents.A.new_chat).toBe(true);
+            expect(config.agents.B.new_chat).toBe(false);
+            expect(config.agents.C.new_chat).toBe(false); // defaults to false
 
             cleanup();
         });

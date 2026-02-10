@@ -38,6 +38,7 @@ const agentConfigSchema = z
     .object({
         client_id: trimmedString,
         system: trimmedString,
+        new_chat: z.boolean().optional(),
     })
     .strict();
 
@@ -85,7 +86,7 @@ const rawConfigSchema = z
                     });
                 }
             }),
-            agents_new_chat: z.boolean().optional(),
+            request_timeout: z.number().optional(),
         }),
         run: z
             .object({

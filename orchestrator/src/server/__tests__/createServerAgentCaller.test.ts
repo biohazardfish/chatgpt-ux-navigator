@@ -63,10 +63,10 @@ describe('createServerAgentCaller integration tests', () => {
 
         const config: AppConfig = {
             version: 1,
-            server: {url: 'http://localhost:8080', agents_new_chat: true},
+            server: {url: 'http://localhost:8080'},
             run: {id: 'run_001', out_dir: '/tmp/run_001'},
             agents: {
-                agent_a: {client_id: 'client_a', system: 'You are agent A'},
+                agent_a: {client_id: 'client_a', system: 'You are agent A', new_chat: true},
             },
             workflow: {type: 'round_robin', order: ['agent_a'], start: 'agent_a'},
             delivery: {type: 'next_speaker'},
@@ -106,10 +106,10 @@ describe('createServerAgentCaller integration tests', () => {
 
         const config: AppConfig = {
             version: 1,
-            server: {url: 'http://localhost:8080', agents_new_chat: true},
+            server: {url: 'http://localhost:8080'},
             run: {id: 'run_002', out_dir: '/tmp/run_002'},
             agents: {
-                agent_b: {client_id: 'client_missing', system: 'You are agent B'},
+                agent_b: {client_id: 'client_missing', system: 'You are agent B', new_chat: true},
             },
             workflow: {type: 'round_robin', order: ['agent_b'], start: 'agent_b'},
             delivery: {type: 'next_speaker'},
@@ -154,10 +154,10 @@ describe('createServerAgentCaller integration tests', () => {
 
         const config: AppConfig = {
             version: 1,
-            server: {url: 'http://localhost:8080', agents_new_chat: true},
+            server: {url: 'http://localhost:8080'},
             run: {id: 'run_003', out_dir: '/tmp/run_003'},
             agents: {
-                agent_c: {client_id: 'client_busy', system: 'You are agent C'},
+                agent_c: {client_id: 'client_busy', system: 'You are agent C', new_chat: true},
             },
             workflow: {type: 'round_robin', order: ['agent_c'], start: 'agent_c'},
             delivery: {type: 'next_speaker'},
@@ -202,10 +202,10 @@ describe('createServerAgentCaller integration tests', () => {
 
         const config: AppConfig = {
             version: 1,
-            server: {url: 'http://localhost:8080', agents_new_chat: true},
+            server: {url: 'http://localhost:8080'},
             run: {id: 'run_004', out_dir: '/tmp/run_004'},
             agents: {
-                agent_d: {client_id: 'client_d', system: 'You are agent D'},
+                agent_d: {client_id: 'client_d', system: 'You are agent D', new_chat: true},
             },
             workflow: {type: 'round_robin', order: ['agent_d'], start: 'agent_d'},
             delivery: {type: 'next_speaker'},
@@ -249,10 +249,10 @@ describe('createServerAgentCaller integration tests', () => {
 
         const config: AppConfig = {
             version: 1,
-            server: {url: 'http://localhost:8080', agents_new_chat: true},
+            server: {url: 'http://localhost:8080'},
             run: {id: 'run_005', out_dir: '/tmp/run_005'},
             agents: {
-                agent_e: {client_id: 'client_e', system: 'You are agent E'},
+                agent_e: {client_id: 'client_e', system: 'You are agent E', new_chat: true},
             },
             workflow: {type: 'round_robin', order: ['agent_e'], start: 'agent_e'},
             delivery: {type: 'next_speaker'},
@@ -287,10 +287,10 @@ describe('createServerAgentCaller integration tests', () => {
     it('test 6: agent config not found throws error', async () => {
         const config: AppConfig = {
             version: 1,
-            server: {url: 'http://localhost:8080', agents_new_chat: true},
+            server: {url: 'http://localhost:8080'},
             run: {id: 'run_006', out_dir: '/tmp/run_006'},
             agents: {
-                agent_exists: {client_id: 'client_x', system: 'I exist'},
+                agent_exists: {client_id: 'client_x', system: 'I exist', new_chat: true},
             },
             workflow: {type: 'round_robin', order: ['agent_exists'], start: 'agent_exists'},
             delivery: {type: 'next_speaker'},
@@ -347,10 +347,10 @@ describe('createServerAgentCaller integration tests', () => {
 
         const config: AppConfig = {
             version: 1,
-            server: {url: 'http://localhost:8080', agents_new_chat: true},
+            server: {url: 'http://localhost:8080'},
             run: {id: 'run_007a', out_dir: '/tmp/run_007a'},
             agents: {
-                agent_f: {client_id: 'client_f', system: 'You are agent F'},
+                agent_f: {client_id: 'client_f', system: 'You are agent F', new_chat: true},
             },
             workflow: {type: 'round_robin', order: ['agent_f'], start: 'agent_f'},
             delivery: {type: 'next_speaker'},
@@ -390,10 +390,10 @@ describe('createServerAgentCaller integration tests', () => {
 
         const config: AppConfig = {
             version: 1,
-            server: {url: 'http://localhost:8080', agents_new_chat: true},
+            server: {url: 'http://localhost:8080'},
             run: {id: 'run_008', out_dir: '/tmp/run_008'},
             agents: {
-                agent_g: {client_id: 'client_g', system: 'You are agent G'},
+                agent_g: {client_id: 'client_g', system: 'You are agent G', new_chat: true},
             },
             workflow: {type: 'round_robin', order: ['agent_g'], start: 'agent_g'},
             delivery: {type: 'next_speaker'},

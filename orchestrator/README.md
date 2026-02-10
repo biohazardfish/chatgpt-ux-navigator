@@ -224,7 +224,6 @@ version: 1
 
 server:
     url: http://localhost:8765
-    agents_new_chat: true
 
 run:
     id: my-run
@@ -234,10 +233,12 @@ agents:
     alice:
         client_id: client-abc123 # Replace with your actual client ID
         system: 'You are Alice, a helpful assistant.'
+        # new_chat: true  # Optional: defaults to true (creates new chat per turn)
 
     bob:
         client_id: client-def456 # Replace with your actual client ID
         system: 'You are Bob, a thoughtful analyst.'
+        # new_chat: true  # Optional: defaults to true (creates new chat per turn)
 
 workflow:
     type: round_robin
@@ -450,7 +451,7 @@ See the YAML schema and validation in `src/config/schema.ts` for the complete sp
 - `run.out_dir`: Defaults to `"runs"`
 - `workflow.start`: Defaults to first agent in `order`
 - `judge.enabled`: Defaults to `false`
-- `server.agents_new_chat`: Defaults to `true` (use `/responses/:clientId/new` for agent calls)
+- `agents.<agent_id>.new_chat`: Defaults to `false` (continue in the current chat). Set to `true` to use `/responses/:clientId/new` for this agent's calls to create a fresh chat each turn.
 
 ---
 

@@ -57,7 +57,7 @@ export function createServerAgentCaller(
             });
 
             // Prepare the request
-            const useNewChat = config.server.agents_new_chat ?? true;
+            const useNewChat = agentConfig.new_chat ?? false;
             const url = `${config.server.url}/responses/${client_id}${useNewChat ? '/new' : ''}`;
             const requestBody = {
                 input: prompt,
