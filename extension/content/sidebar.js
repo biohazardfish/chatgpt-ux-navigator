@@ -481,14 +481,9 @@
             if (!root) return;
 
             const promptsEl = document.getElementById('cgpt-nav-prompts');
-            const filtersEl = root.querySelector('.filters');
-            const listEl = document.getElementById('cgpt-nav-list');
-
             const displayStyle = enabled ? 'none' : '';
 
             if (promptsEl) promptsEl.style.display = displayStyle;
-            if (filtersEl) filtersEl.style.display = displayStyle;
-            if (listEl) listEl.style.display = displayStyle;
         }
 
         function syncWsToggleButton(on) {
