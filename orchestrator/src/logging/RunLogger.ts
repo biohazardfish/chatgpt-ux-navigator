@@ -37,6 +37,14 @@ export type RunLogger = {
     writeJudge: (turn: number, decision: JudgeDecision, created_at: string) => Promise<void>;
 
     /**
+     * Write judge rolling summary to judge/<NNNN>_summary.yaml
+     * @param turn - The round number (1-based)
+     * @param summary - Rolling summary text
+     * @param created_at - ISO timestamp when summary was created
+     */
+    writeJudgeSummary: (turn: number, summary: string, created_at: string) => Promise<void>;
+
+    /**
      * Write final run metadata to run.json and close the logger
      * @param result - Run completion result including stop reason and timestamps
      */
@@ -175,6 +183,17 @@ export function generateMessageFilename(turn: number, speaker: string): string {
  */
 export function generateJudgeFilename(turn: number): string {
     return `${formatTurnNumber(turn)}.json`;
+}
+
+/**
+ * Generate judge summary filename
+ * Format: NNNN_summary.yaml
+ *
+ * @param turn - Round number (1-based)
+ * @returns filename string
+ */
+export function generateJudgeSummaryFilename(turn: number): string {
+    return `${formatTurnNumber(turn)}_summary.yaml`;
 }
 
 /**

@@ -24,11 +24,17 @@ import {parseJSONResponse} from './sseParser';
  */
 export function createServerJudgeCaller(
     config: AppConfig,
-    jsonLogger?: JSONLogger
+    jsonLogger?: JSONLogger,
+    options?: {
+        initialSummary?: string;
+        writeSummary?: (round: number, summary: string, created_at: string) => Promise<void>;
+        nowISO?: () => string;
+    }
 ): {
     callJudge: (input: JudgeInput) => Promise<JudgeDecision>;
 } {
-    let rollingSummary = '';
+    let rollingSummary = options?.initialSummary ?? '';
+    const nowISO = options?.nowISO ?? (() => new Date().toISOString());
 
     // Validate judge is enabled
     if (!config.judge.enabled) {
@@ -140,6 +146,10 @@ export function createServerJudgeCaller(
                 const maxChars = config.judge.summary.max_chars ?? 8000;
                 const summaryValue = (summaryParsed as {rolling_summary: string}).rolling_summary;
                 rollingSummary = summaryValue.slice(0, maxChars).trim();
+
+                if (options?.writeSummary) {
+                    await options.writeSummary(turn, rollingSummary, nowISO());
+                }
 
                 await jsonLogger?.info('judge_caller', 'summary_updated', {
                     round: turn,
