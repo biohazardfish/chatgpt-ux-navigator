@@ -14,6 +14,7 @@ import type {
     RunnerDeps,
     RunResult,
     RunState,
+    ResumeState,
 } from './types';
 
 /**
@@ -32,14 +33,12 @@ export async function runConversation(config: AppConfig, deps: RunnerDeps): Prom
 
     const logger = deps.jsonLogger;
 
-    // Log run start
     await logger?.info('runner', 'run_start', {
         max_turns: config.termination.max_turns,
         judge_enabled: config.judge.enabled,
         agents: config.workflow.order,
     });
 
-    // Initialize runtime state
     const state = initializeState(config);
 
     await logger?.debug('runner', 'state_initialized', {
@@ -47,13 +46,75 @@ export async function runConversation(config: AppConfig, deps: RunnerDeps): Prom
         agent_count: config.workflow.order.length,
     });
 
-    const agentsPerRound = config.workflow.order.length;
-    let turnsInRound = 0;
-    let round = 1;
-    let abortAfterRound = false;
-    let roundStartIndex = 0;
+    return runConversationInternal(config, deps, state, {
+        round: 1,
+        turnsInRound: 0,
+        roundStartIndex: 0,
+    });
+}
 
-    // Main execution loop (round-based)
+/**
+ * Resume a conversation run from an existing state
+ */
+export async function runConversationFromState(
+    config: AppConfig,
+    deps: RunnerDeps,
+    resume: ResumeState
+): Promise<RunResult> {
+    if (config.judge.enabled && !deps.callJudge) {
+        throw new Error('Missing dependency: callJudge');
+    }
+
+    const logger = deps.jsonLogger;
+
+    await logger?.info('runner', 'run_resume', {
+        turn: resume.state.turn,
+        round: resume.round,
+        turns_in_round: resume.turns_in_round,
+        transcript_length: resume.state.transcript.length,
+    });
+
+    if (resume.state.turn > config.termination.max_turns) {
+        await logger?.warn('runner', 'resume_already_completed', {
+            turn: resume.state.turn,
+            max_turns: config.termination.max_turns,
+        });
+
+        return {
+            transcript: resume.state.transcript,
+            judge: resume.state.judge_records,
+            stop_reason: 'max_turns',
+            total_turns: resume.state.transcript.length,
+        };
+    }
+
+    return runConversationInternal(config, deps, resume.state, {
+        round: resume.round,
+        turnsInRound: resume.turns_in_round,
+        roundStartIndex: resume.round_start_index,
+        fullContextInbox: resume.full_context_inbox,
+    });
+}
+
+async function runConversationInternal(
+    config: AppConfig,
+    deps: RunnerDeps,
+    state: RunState,
+    runtime: {
+        round: number;
+        turnsInRound: number;
+        roundStartIndex: number;
+        fullContextInbox?: InboxItem[];
+    }
+): Promise<RunResult> {
+    const logger = deps.jsonLogger;
+
+    const agentsPerRound = config.workflow.order.length;
+    let turnsInRound = runtime.turnsInRound;
+    let round = runtime.round;
+    let abortAfterRound = false;
+    let roundStartIndex = runtime.roundStartIndex;
+
     while (true) {
         const speaker = config.workflow.order[state.speaker_idx];
 
@@ -66,8 +127,18 @@ export async function runConversation(config: AppConfig, deps: RunnerDeps): Prom
         });
 
         // Deliver inbox to current speaker
-        const inbox = state.pending[speaker];
+        const fullContextInbox = runtime.fullContextInbox;
+        const inbox = fullContextInbox ?? state.pending[speaker];
         state.pending[speaker] = [];
+
+        if (fullContextInbox) {
+            runtime.fullContextInbox = undefined;
+            await logger?.info('runner', 'resume_full_context_used', {
+                turn: state.turn,
+                speaker,
+                inbox_size: inbox.length,
+            });
+        }
 
         await logger?.debug('runner', 'inbox_delivered', {
             turn: state.turn,

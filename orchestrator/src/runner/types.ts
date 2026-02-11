@@ -105,3 +105,14 @@ export type RunState = {
     transcript: AgentMessage[];
     judge_records: JudgeRecord[];
 };
+
+/**
+ * Resume state for continuing a run from disk
+ */
+export type ResumeState = {
+    state: RunState;
+    round: number;
+    turns_in_round: number;
+    round_start_index: number;
+    full_context_inbox?: InboxItem[];
+};

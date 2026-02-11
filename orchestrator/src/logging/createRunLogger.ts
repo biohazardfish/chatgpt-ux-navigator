@@ -12,6 +12,7 @@ import {
     generateRunFolderName,
     generateMessageFilename,
     generateJudgeFilename,
+    generateJudgeSummaryFilename,
     generateMessageFrontmatter,
     generateTranscriptHeading,
     formatTurnNumber,
@@ -180,6 +181,33 @@ export async function createRunLogger(params: CreateRunLoggerParams): Promise<Ru
             await renameAtomic(judgeTmpPath, judgePath, false);
         },
 
+        async writeJudgeSummary(turn: number, summary: string, created_at: string): Promise<void> {
+            if (!config.judge.enabled) {
+                return;
+            }
+
+            const summaryFilename = generateJudgeSummaryFilename(turn);
+            const summaryPath = join(runDir, 'judge', summaryFilename);
+            const summaryTmpPath = `${summaryPath}.tmp`;
+
+            const summaryLines = summary.split('\n');
+            const summaryContent =
+                `round: ${turn}\n` +
+                `created_at: ${created_at}\n` +
+                `rolling_summary: |\n` +
+                `${summaryLines.map(line => `  ${line}`).join('\n')}\n`;
+
+            try {
+                await readFile(summaryTmpPath);
+                await writeFile(summaryTmpPath, '', 'utf-8');
+            } catch {
+                // File doesn't exist
+            }
+
+            await writeFile(summaryTmpPath, summaryContent, 'utf-8');
+            await renameAtomic(summaryTmpPath, summaryPath, false);
+        },
+
         async finalize(result: {
             stop_reason: 'max_turns' | 'judge_stop' | 'agent_failure';
             total_turns: number;
@@ -235,6 +263,218 @@ export async function createRunLogger(params: CreateRunLoggerParams): Promise<Ru
 
             await writeFile(runJsonTmpPath, runJsonContent, 'utf-8');
             await renameAtomic(runJsonTmpPath, runJsonPath, false);
+        },
+    };
+
+    return logger;
+}
+
+/**
+ * Create a RunLogger instance for resuming an existing run
+ * Uses an existing runDir and does not rewrite config.yml
+ */
+export async function createResumeLogger(params: {
+    runDir: string;
+    config: AppConfig;
+    debugMode?: boolean;
+}): Promise<RunLogger> {
+    const {runDir, config, debugMode = false} = params;
+
+    // Ensure runDir exists
+    try {
+        const info = await stat(runDir);
+        if (!info.isDirectory()) {
+            throw new Error(`Run directory is not a folder: ${runDir}`);
+        }
+    } catch (error) {
+        if (error instanceof Error) {
+            throw new Error(`Run directory not found: ${runDir}`);
+        }
+        throw error;
+    }
+
+    const messagesDir = join(runDir, 'messages');
+    const judgeDir = join(runDir, 'judge');
+
+    await mkdir(messagesDir, {recursive: true});
+    await mkdir(judgeDir, {recursive: true});
+
+    // Create JSON logger (appends to logs.jsonl)
+    const jsonLogger = createJSONLogger(runDir, debugMode);
+
+    await jsonLogger.info('logger', 'run_resume', {
+        run_dir: runDir,
+        debug_mode: debugMode,
+    });
+
+    const logger: RunLogger = {
+        runDir,
+        jsonLogger,
+
+        async writeTurn(msg: AgentMessage, received_turns: number[]): Promise<void> {
+            const speaker = config.agents[msg.speaker];
+            if (!speaker) {
+                throw new Error(`Unknown agent: ${msg.speaker}`);
+            }
+
+            const messageFilename = generateMessageFilename(msg.turn, msg.speaker);
+            const messagePath = join(runDir, 'messages', messageFilename);
+            const messageTmpPath = `${messagePath}.tmp`;
+
+            const frontmatter = generateMessageFrontmatter({
+                turn: msg.turn,
+                speaker: msg.speaker,
+                client_id: speaker.client_id,
+                created_at: msg.created_at,
+                received_turns,
+            });
+
+            const messageContent = `${frontmatter}\n${msg.content}\n`;
+
+            try {
+                await readFile(messageTmpPath);
+                await writeFile(messageTmpPath, '', 'utf-8');
+            } catch {
+                // File doesn't exist
+            }
+
+            await writeFile(messageTmpPath, messageContent, 'utf-8');
+            await renameAtomic(messageTmpPath, messagePath, false);
+
+            const transcriptPath = join(runDir, 'transcript.md');
+            const transcriptHeading = generateTranscriptHeading(msg.turn, msg.speaker);
+
+            let transcriptContent = '';
+            try {
+                transcriptContent = await readFile(transcriptPath, 'utf-8');
+            } catch {
+                // File doesn't exist yet
+            }
+
+            const transcriptTmpPath = `${transcriptPath}.tmp`;
+            const newEntry = `${transcriptHeading}\n${msg.content}\n\n`;
+            const updatedTranscript = transcriptContent + newEntry;
+
+            try {
+                await readFile(transcriptTmpPath);
+                await writeFile(transcriptTmpPath, '', 'utf-8');
+            } catch {
+                // File doesn't exist
+            }
+
+            await writeFile(transcriptTmpPath, updatedTranscript, 'utf-8');
+            await renameAtomic(transcriptTmpPath, transcriptPath, true);
+        },
+
+        async writeJudge(turn: number, decision: JudgeDecision, created_at: string): Promise<void> {
+            if (!config.judge.enabled) {
+                return;
+            }
+
+            const judgeFilename = generateJudgeFilename(turn);
+            const judgePath = join(runDir, 'judge', judgeFilename);
+            const judgeTmpPath = `${judgePath}.tmp`;
+
+            const judgeData = {
+                turn,
+                created_at,
+                should_stop: decision.should_stop,
+                scores: decision.scores,
+                reason: decision.reason,
+            };
+
+            const judgeContent = JSON.stringify(judgeData, null, 2) + '\n';
+
+            try {
+                await readFile(judgeTmpPath);
+                await writeFile(judgeTmpPath, '', 'utf-8');
+            } catch {
+                // File doesn't exist
+            }
+
+            await writeFile(judgeTmpPath, judgeContent, 'utf-8');
+            await renameAtomic(judgeTmpPath, judgePath, false);
+        },
+
+        async writeJudgeSummary(turn: number, summary: string, created_at: string): Promise<void> {
+            if (!config.judge.enabled) {
+                return;
+            }
+
+            const summaryFilename = generateJudgeSummaryFilename(turn);
+            const summaryPath = join(runDir, 'judge', summaryFilename);
+            const summaryTmpPath = `${summaryPath}.tmp`;
+
+            const summaryLines = summary.split('\n');
+            const summaryContent =
+                `round: ${turn}\n` +
+                `created_at: ${created_at}\n` +
+                `rolling_summary: |\n` +
+                `${summaryLines.map(line => `  ${line}`).join('\n')}\n`;
+
+            try {
+                await readFile(summaryTmpPath);
+                await writeFile(summaryTmpPath, '', 'utf-8');
+            } catch {
+                // File doesn't exist
+            }
+
+            await writeFile(summaryTmpPath, summaryContent, 'utf-8');
+            await renameAtomic(summaryTmpPath, summaryPath, false);
+        },
+
+        async finalize(result: {
+            stop_reason: 'max_turns' | 'judge_stop' | 'agent_failure';
+            total_turns: number;
+            started_at: string;
+            ended_at: string;
+        }): Promise<void> {
+            const agents = config.workflow.order.map(agentId => ({
+                id: agentId,
+                client_id: config.agents[agentId].client_id,
+            }));
+
+            const runMetadata: RunMetadata = {
+                run_id: config.run.id,
+                started_at: result.started_at,
+                ended_at: result.ended_at,
+                stop_reason: result.stop_reason,
+                total_turns: result.total_turns,
+                server: {
+                    url: config.server.url,
+                },
+                agents,
+                workflow: {
+                    type: 'round_robin',
+                    order: config.workflow.order,
+                    start: config.workflow.start,
+                },
+                delivery: {
+                    type: 'next_speaker',
+                },
+                judge: {
+                    enabled: config.judge.enabled,
+                    client_id: config.judge.client_id || '',
+                },
+                termination: {
+                    max_turns: config.termination.max_turns,
+                    judge_stop: config.termination.judge_stop,
+                },
+            };
+
+            const runJsonPath = join(runDir, 'run.json');
+            const runJsonTmpPath = `${runJsonPath}.tmp`;
+            const runJsonContent = JSON.stringify(runMetadata, null, 2) + '\n';
+
+            try {
+                await readFile(runJsonTmpPath);
+                await writeFile(runJsonTmpPath, '', 'utf-8');
+            } catch {
+                // File doesn't exist
+            }
+
+            await writeFile(runJsonTmpPath, runJsonContent, 'utf-8');
+            await renameAtomic(runJsonTmpPath, runJsonPath, true);
         },
     };
 

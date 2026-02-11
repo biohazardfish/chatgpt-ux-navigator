@@ -442,6 +442,33 @@ describe('RunLogger', () => {
         });
     });
 
+    describe('writeJudgeSummary', () => {
+        it('writes judge summary YAML with padded filename', async () => {
+            const config = createTestConfig({judge: {enabled: true}});
+            const configText = 'version: 1\n';
+            const startedAt = '2026-02-08T14:32:10Z';
+
+            const logger = await createRunLogger({
+                configPath: '/path/to/config.yml',
+                configText,
+                config,
+                started_at: startedAt,
+            });
+
+            const summary = '- Point one\n- Point two';
+            await logger.writeJudgeSummary(2, summary, '2026-02-08T14:32:35Z');
+
+            const summaryPath = join(logger.runDir, 'judge', '0002_summary.yaml');
+            const summaryContent = await readFile(summaryPath, 'utf-8');
+
+            expect(summaryContent).toContain('round: 2');
+            expect(summaryContent).toContain('created_at: 2026-02-08T14:32:35Z');
+            expect(summaryContent).toContain('rolling_summary: |');
+            expect(summaryContent).toContain('  - Point one');
+            expect(summaryContent).toContain('  - Point two');
+        });
+    });
+
     describe('finalize', () => {
         it('writes run.json with exact schema and key order', async () => {
             const config = createTestConfig();

@@ -6,7 +6,7 @@
  */
 
 import {describe, it, expect} from 'bun:test';
-import {runConversation} from '../runConversation';
+import {runConversation, runConversationFromState} from '../runConversation';
 import type {AppConfig} from '../../config/types';
 import type {
     AgentCallInput,
@@ -451,5 +451,80 @@ describe('runConversation', () => {
             expect(error).toBeInstanceOf(Error);
             expect((error as Error).message).toContain('Agent output invalid: B turn 2');
         }
+    });
+});
+
+describe('runConversationFromState', () => {
+    it('uses full context inbox for first resumed turn only', async () => {
+        const inboxes: Array<{turn: number; agent_id: string; inbox: Array<{turn: number; from: string}>}> = [];
+
+        const deps: RunnerDeps = {
+            callAgent: async ({agent_id, turn, inbox}) => {
+                inboxes.push({
+                    turn,
+                    agent_id,
+                    inbox: inbox.map(item => ({turn: item.turn, from: item.from})),
+                });
+                return {content: `Message from ${agent_id} at turn ${turn}`};
+            },
+            nowISO: () => '2026-02-10T12:00:00Z',
+        };
+
+        const config: AppConfig = {
+            version: 1,
+            server: {url: 'http://localhost:8080'},
+            run: {id: 'run_resume_full_context', out_dir: '/tmp/run_resume_full_context'},
+            agents: {
+                A: {client_id: 'client_a', system: 'Agent A'},
+                B: {client_id: 'client_b', system: 'Agent B'},
+            },
+            workflow: {type: 'round_robin', order: ['A', 'B'], start: 'A'},
+            delivery: {type: 'next_speaker'},
+            seed: {from: 'user', content: 'Start'},
+            judge: {enabled: false},
+            termination: {max_turns: 4, judge_stop: false},
+        };
+
+        const resumeState = {
+            state: {
+                turn: 3,
+                speaker_idx: 0,
+                pending: {
+                    A: [{turn: 2, from: 'B', content: 'B2'}],
+                    B: [],
+                },
+                transcript: [
+                    {turn: 1, speaker: 'A', content: 'A1', created_at: '2026-02-10T12:00:00Z'},
+                    {turn: 2, speaker: 'B', content: 'B2', created_at: '2026-02-10T12:00:00Z'},
+                ],
+                judge_records: [],
+            },
+            round: 2,
+            turns_in_round: 0,
+            round_start_index: 2,
+            full_context_inbox: [
+                {turn: 0, from: 'user', content: 'Start'},
+                {turn: 1, from: 'A', content: 'A1'},
+                {turn: 2, from: 'B', content: 'B2'},
+            ],
+        };
+
+        await runConversationFromState(config, deps, resumeState);
+
+        expect(inboxes[0]).toEqual({
+            turn: 3,
+            agent_id: 'A',
+            inbox: [
+                {turn: 0, from: 'user'},
+                {turn: 1, from: 'A'},
+                {turn: 2, from: 'B'},
+            ],
+        });
+
+        expect(inboxes[1]).toEqual({
+            turn: 4,
+            agent_id: 'B',
+            inbox: [{turn: 3, from: 'A'}],
+        });
     });
 });

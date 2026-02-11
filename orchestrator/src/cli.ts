@@ -5,25 +5,29 @@
  */
 
 import {loadConfig} from './config';
-import {runConversation} from './runner/runConversation';
+import {runConversation, runConversationFromState} from './runner/runConversation';
 import {createServerAgentCaller} from './server/createServerAgentCaller';
 import {createServerJudgeCaller} from './server/createServerJudgeCaller';
-import {createRunLogger} from './logging/createRunLogger';
+import {createRunLogger, createResumeLogger} from './logging/createRunLogger';
 import type {RunnerDeps} from './runner/types';
 import {preflightCheckClients} from './server/preflight';
+import {loadRunState} from './resume/loadRunState';
+import {join, resolve} from 'path';
 
 const USAGE = `
 Nexus - Multi-Agent Conversation Orchestrator
 
 Usage:
   bun run src/cli.ts <config.yml> [options]
+  bun run src/cli.ts --resume <run_dir> [options]
 
 Example:
   bun run src/cli.ts examples/debate.yml
   bun run src/cli.ts examples/debate.yml --debug
 
 Options:
-  <config.yml>    Path to YAML configuration file (required)
+  <config.yml>    Path to YAML configuration file (required unless --resume)
+  --resume        Resume an existing run directory
   --debug         Enable debug logging (prints to console and logs.jsonl)
   --help, -h      Show this help message
 
@@ -54,20 +58,30 @@ async function main() {
         process.exit(args.length === 0 ? 1 : 0);
     }
 
-    // Parse options
     const debugMode = args.includes('--debug');
+    const resumeIndex = args.indexOf('--resume');
+    const resumeDir = resumeIndex !== -1 ? args[resumeIndex + 1] : undefined;
 
-    // Get config path (first non-flag argument)
-    const configPath = args.find(arg => !arg.startsWith('--'));
+    if (resumeIndex !== -1 && !resumeDir) {
+        console.error('Error: --resume requires a run directory path');
+        console.log(USAGE);
+        process.exit(1);
+    }
 
-    if (!configPath) {
-        console.error('Error: config.yml path is required');
+    const configPath = args.find(arg => !arg.startsWith('--') && arg !== resumeDir);
+
+    if (!resumeDir && !configPath) {
+        console.error('Error: config.yml path is required unless --resume is used');
         console.log(USAGE);
         process.exit(1);
     }
 
     console.log('🚀 Nexus Multi-Agent Orchestrator\n');
-    console.log(`📄 Loading config: ${configPath}`);
+    if (resumeDir) {
+        console.log(`📄 Resuming run: ${resumeDir}`);
+    } else {
+        console.log(`📄 Loading config: ${configPath}`);
+    }
     if (debugMode) {
         console.log('🐛 Debug mode enabled\n');
     }
@@ -75,7 +89,12 @@ async function main() {
     // Load and validate config
     let config;
     try {
-        config = await loadConfig(configPath);
+        if (resumeDir) {
+            const resumeConfigPath = join(resumeDir, 'config.yml');
+            config = await loadConfig(resumeConfigPath);
+        } else {
+            config = await loadConfig(configPath!);
+        }
         console.log('✅ Config validated successfully\n');
     } catch (error) {
         console.error('❌ Config validation failed:');
@@ -114,27 +133,36 @@ async function main() {
     }
 
     // Read config file text for logging
-    let configText: string;
-    try {
-        const resolvedPath = new URL(configPath, `file://${process.cwd()}/`).pathname;
-        configText = await Bun.file(resolvedPath).text();
-    } catch (error) {
-        console.error('❌ Failed to read config file for logging');
-        process.exit(1);
-    }
-
-    // Create logger
     const started_at = new Date().toISOString();
     let logger;
     try {
-        logger = await createRunLogger({
-            configPath,
-            configText,
-            config,
-            started_at,
-            debugMode,
-        });
-        console.log(`📁 Run directory: ${logger.runDir}\n`);
+        if (resumeDir) {
+            const resolvedRunDir = resolve(resumeDir);
+            logger = await createResumeLogger({
+                runDir: resolvedRunDir,
+                config,
+                debugMode,
+            });
+            console.log(`📁 Run directory: ${logger.runDir}\n`);
+        } else {
+            let configText: string;
+            try {
+                const resolvedPath = new URL(configPath!, `file://${process.cwd()}/`).pathname;
+                configText = await Bun.file(resolvedPath).text();
+            } catch (error) {
+                console.error('❌ Failed to read config file for logging');
+                process.exit(1);
+            }
+
+            logger = await createRunLogger({
+                configPath: configPath!,
+                configText,
+                config,
+                started_at,
+                debugMode,
+            });
+            console.log(`📁 Run directory: ${logger.runDir}\n`);
+        }
     } catch (error) {
         console.error('❌ Failed to create run logger:');
         console.error(error instanceof Error ? error.message : String(error));
@@ -142,8 +170,32 @@ async function main() {
     }
 
     // Create dependencies
+    let resumeState;
+    let latestSummary: string | undefined;
+    let lastCompletedRound = 0;
+    if (resumeDir) {
+        try {
+            const loaded = await loadRunState(logger.runDir, config);
+            resumeState = loaded.resume;
+            lastCompletedRound = loaded.lastCompletedRound;
+            if (loaded.latestSummary && loaded.latestSummary.round <= lastCompletedRound) {
+                latestSummary = loaded.latestSummary.summary;
+            }
+        } catch (error) {
+            console.error('❌ Failed to load run state for resume:');
+            console.error(error instanceof Error ? error.message : String(error));
+            process.exit(1);
+        }
+    }
+
     const agentCaller = createServerAgentCaller(config, logger.jsonLogger);
-    const judgeCaller = config.judge.enabled ? createServerJudgeCaller(config, logger.jsonLogger) : undefined;
+    const judgeCaller = config.judge.enabled
+        ? createServerJudgeCaller(config, logger.jsonLogger, {
+              initialSummary: latestSummary,
+              writeSummary: logger.writeJudgeSummary.bind(logger),
+              nowISO: () => new Date().toISOString(),
+          })
+        : undefined;
 
     const deps: RunnerDeps = {
         callAgent: agentCaller.callAgent,
@@ -158,7 +210,9 @@ async function main() {
     console.log('🎬 Starting conversation...\n');
 
     try {
-        const result = await runConversation(config, deps);
+        const result = resumeState
+            ? await runConversationFromState(config, deps, resumeState)
+            : await runConversation(config, deps);
 
         // Messages and judge records are already written incrementally during the run
         // Just finalize run metadata
