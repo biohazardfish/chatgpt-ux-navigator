@@ -53,6 +53,60 @@ Description:
     - judge/          (evaluation records)
 `;
 
+type ViewerHandlerDeps = {
+    startViewer: typeof startViewer;
+    log: (...args: unknown[]) => void;
+    error: (...args: unknown[]) => void;
+    exit: (code: number) => void;
+};
+
+const defaultViewerDeps: ViewerHandlerDeps = {
+    startViewer,
+    log: console.log,
+    error: console.error,
+    exit: process.exit,
+};
+
+export async function handleViewerArgs(
+    args: string[],
+    deps: Partial<ViewerHandlerDeps> = {}
+): Promise<boolean> {
+    const {startViewer: startViewerDep, log, error, exit} = {
+        ...defaultViewerDeps,
+        ...deps,
+    };
+
+    const viewerIndex = args.indexOf('--viewer');
+    if (viewerIndex === -1) {
+        return false;
+    }
+
+    const viewerRoot = args[viewerIndex + 1];
+    if (!viewerRoot || viewerRoot.startsWith('--')) {
+        error('Error: --viewer requires a runs root directory path');
+        log(USAGE);
+        exit(1);
+        return true;
+    }
+
+    log('👀 Nexus Run Viewer\n');
+    log(`📁 Loading runs root: ${viewerRoot}`);
+    log('🎨 Serving UI at port 8787\n');
+
+    try {
+        await startViewerDep({
+            runsRoot: viewerRoot,
+            port: 8787,
+        });
+        return true;
+    } catch (errorValue) {
+        error('❌ Failed to start viewer:');
+        error(errorValue instanceof Error ? errorValue.message : String(errorValue));
+        exit(1);
+        return true;
+    }
+}
+
 async function main() {
     const args = process.argv.slice(2);
 
@@ -62,35 +116,14 @@ async function main() {
         process.exit(args.length === 0 ? 1 : 0);
     }
 
+    const viewerHandled = await handleViewerArgs(args);
+    if (viewerHandled) {
+        return;
+    }
+
     const debugMode = args.includes('--debug');
-    const viewerIndex = args.indexOf('--viewer');
-    const viewerRoot = viewerIndex !== -1 ? args[viewerIndex + 1] : undefined;
     const resumeIndex = args.indexOf('--resume');
     const resumeDir = resumeIndex !== -1 ? args[resumeIndex + 1] : undefined;
-
-    if (viewerIndex !== -1) {
-        if (!viewerRoot || viewerRoot.startsWith('--')) {
-            console.error('Error: --viewer requires a runs root directory path');
-            console.log(USAGE);
-            process.exit(1);
-        }
-
-        console.log('👀 Nexus Run Viewer\n');
-        console.log(`📁 Loading runs root: ${viewerRoot}`);
-        console.log('🎨 Serving UI at port 8787\n');
-
-        try {
-            await startViewer({
-                runsRoot: viewerRoot,
-                port: 8787,
-            });
-            return;
-        } catch (error) {
-            console.error('❌ Failed to start viewer:');
-            console.error(error instanceof Error ? error.message : String(error));
-            process.exit(1);
-        }
-    }
 
     if (resumeIndex !== -1 && !resumeDir) {
         console.error('Error: --resume requires a run directory path');
@@ -287,7 +320,9 @@ async function main() {
 }
 
 // Run CLI
-main().catch(error => {
-    console.error('Fatal error:', error);
-    process.exit(1);
-});
+if (import.meta.main) {
+    main().catch(error => {
+        console.error('Fatal error:', error);
+        process.exit(1);
+    });
+}
