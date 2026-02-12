@@ -34,6 +34,11 @@ export type InflightResponses = {
     jsonResolve: ((resp: ResponseObject) => void) | null;
     jsonReject: ((err: Error) => void) | null;
 
+    // Image generation bookkeeping
+    expectsImage: boolean;
+    waitingForImage: boolean;
+    imageWaitHandle: any;
+
 };
 
 // --- Multi-client inflight tracking: Map of clientId -> InflightResponses ---
@@ -57,6 +62,7 @@ export function createInflight(
               timeoutHandle: any;
               response: ResponseObject;
               messageItemId: string;
+              expectsImage?: boolean;
               jsonResolve?: ((resp: ResponseObject) => void) | null;
               jsonReject?: ((err: Error) => void) | null;
           },
@@ -69,6 +75,7 @@ export function createInflight(
         timeoutHandle: any;
         response: ResponseObject;
         messageItemId: string;
+        expectsImage?: boolean;
         jsonResolve?: ((resp: ResponseObject) => void) | null;
         jsonReject?: ((err: Error) => void) | null;
     }
@@ -113,6 +120,9 @@ export function createInflight(
 
         jsonResolve: config.jsonResolve ?? null,
         jsonReject: config.jsonReject ?? null,
+        expectsImage: config.expectsImage ?? false,
+        waitingForImage: false,
+        imageWaitHandle: null,
     };
     inflights.set(clientId, inflight);
     return inflight;
@@ -206,6 +216,10 @@ export function inflightTerminate(
 
     try {
         clearTimeout(inflight.timeoutHandle);
+    } catch {}
+
+    try {
+        clearTimeout(inflight.imageWaitHandle);
     } catch {}
 
     if (inflight.mode === 'stream') {

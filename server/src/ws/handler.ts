@@ -20,6 +20,44 @@ import {
 } from '../http/images/capture';
 
 export function createWebSocketHandlers(cfg: AppConfig) {
+    function completeAndTerminate(clientId: string, reason?: {reason: string}) {
+        const inflight = getInflight(clientId);
+        if (!inflight) return;
+
+        const full = typeof inflight.lastText === 'string' ? inflight.lastText : '';
+        const sanitized = sanitizeAssistantText(full);
+        inflight.response.output_text = sanitized;
+        emitOutputTextDone(clientId, sanitized);
+        emitContentPartDone(clientId, sanitized);
+        emitOutputItemDone(clientId, sanitized);
+
+        if (reason) {
+            emitResponseCompleted(clientId, 'completed', reason);
+        } else {
+            emitResponseCompleted(clientId, 'completed');
+        }
+        inflightTerminate(clientId, null, null);
+    }
+
+    function maybeDelayCompletionForImage(clientId: string, reason?: {reason: string}): boolean {
+        const inflight = getInflight(clientId);
+        if (!inflight) return false;
+
+        const imagePath = inflight.response?.image_path || inflight.response?.meta?.image_path;
+        if (!inflight.expectsImage || imagePath) {
+            return false;
+        }
+
+        inflight.waitingForImage = true;
+        if (!inflight.imageWaitHandle) {
+            inflight.imageWaitHandle = setTimeout(() => {
+                completeAndTerminate(clientId, reason);
+            }, 15000);
+        }
+
+        return true;
+    }
+
     return {
         open(ws: ServerWebSocket<WsData>) {
             const clientId = ws.data.clientId;
@@ -48,7 +86,7 @@ export function createWebSocketHandlers(cfg: AppConfig) {
 
             if (t === 'image.generated') {
                 try {
-                    await saveGeneratedImage({
+                    const imagePath = await saveGeneratedImage({
                         imagesDir: cfg.imagesDir,
                         clientId,
                         dataBase64: String(obj?.dataBase64 || ''),
@@ -56,6 +94,16 @@ export function createWebSocketHandlers(cfg: AppConfig) {
                         fileName: typeof obj?.fileName === 'string' ? obj.fileName : null,
                         fileId: typeof obj?.fileId === 'string' ? obj.fileId : null,
                     });
+
+                    const inflight = getInflight(clientId);
+                    if (inflight) {
+                        inflight.response.image_path = imagePath;
+                        inflight.response.meta = {...(inflight.response.meta || {}), image_path: imagePath};
+
+                        if (inflight.waitingForImage) {
+                            completeAndTerminate(clientId);
+                        }
+                    }
                 } catch (err) {
                     console.warn('[images] save failed:', err);
                 }
@@ -92,15 +140,11 @@ export function createWebSocketHandlers(cfg: AppConfig) {
                         }
                     }
                 } else if (t === 'done') {
-                    const full = typeof inflight.lastText === 'string' ? inflight.lastText : '';
-                    const sanitized = sanitizeAssistantText(full);
-                    inflight.response.output_text = sanitized;
-                    emitOutputTextDone(clientId, sanitized);
-                    emitContentPartDone(clientId, sanitized);
-                    emitOutputItemDone(clientId, sanitized);
+                    if (maybeDelayCompletionForImage(clientId)) {
+                        return;
+                    }
 
-                    emitResponseCompleted(clientId, 'completed');
-                    inflightTerminate(clientId, null, null);
+                    completeAndTerminate(clientId);
                     return;
                 } else if (t === 'closed') {
                     const full = typeof inflight.lastText === 'string' ? inflight.lastText : '';
@@ -114,13 +158,11 @@ export function createWebSocketHandlers(cfg: AppConfig) {
                         return;
                     }
 
-                    inflight.response.output_text = sanitized;
-                    emitOutputTextDone(clientId, sanitized);
-                    emitContentPartDone(clientId, sanitized);
-                    emitOutputItemDone(clientId, sanitized);
+                    if (maybeDelayCompletionForImage(clientId, {reason: 'stream_closed'})) {
+                        return;
+                    }
 
-                    emitResponseCompleted(clientId, 'completed', {reason: 'stream_closed'});
-                    inflightTerminate(clientId, null, null);
+                    completeAndTerminate(clientId, {reason: 'stream_closed'});
                     return;
                 } else if (t === 'error') {
                     emitResponseCompleted(clientId, 'error', {

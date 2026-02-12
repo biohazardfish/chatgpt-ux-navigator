@@ -189,6 +189,7 @@ function handleStreamingResponse(
             }, timeoutMs);
 
             if (clientId) {
+                const expectsImage = messageType === 'prompt.image';
                 createInflight(clientId, {
                     id,
                     createdAt,
@@ -198,6 +199,7 @@ function handleStreamingResponse(
                     timeoutHandle,
                     response: responseObj,
                     messageItemId,
+                    expectsImage,
                 });
             }
 
@@ -272,20 +274,22 @@ async function handleJsonResponse(
                 reject(new Error('Timed out waiting for completion'));
             }, timeoutMs);
 
-            if (clientId) {
-                createInflight(clientId, {
-                    id,
-                    createdAt,
-                    mode: 'json',
-                    controller: null,
-                    encoder: null,
-                    timeoutHandle,
-                    response: responseObj,
-                    messageItemId,
-                    jsonResolve: resolve,
-                    jsonReject: reject,
-                });
-            }
+        if (clientId) {
+            const expectsImage = messageType === 'prompt.image';
+            createInflight(clientId, {
+                id,
+                createdAt,
+                mode: 'json',
+                controller: null,
+                encoder: null,
+                timeoutHandle,
+                response: responseObj,
+                messageItemId,
+                expectsImage,
+                jsonResolve: resolve,
+                jsonReject: reject,
+            });
+        }
 
             const ok = sendPromptToExtension(id, createdAt, prompt, {
                 createTemporaryChat,
@@ -403,6 +407,9 @@ export async function handleResponsesRequest(
     const timeoutMs = cfg.requestTimeout * 1000; // Convert seconds to milliseconds
 
     const responseObj = createResponseObject(id, createdAt, body, prompt);
+    if (messageType === 'prompt.image') {
+        responseObj.image_path = null;
+    }
 
     if (shouldStream) {
         return handleStreamingResponse(

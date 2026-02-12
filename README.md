@@ -155,7 +155,7 @@ Refactor the following code to be more functional:
 - `POST /responses/:client_id` sends a prompt to a connected ChatGPT tab.
 - `POST /responses/:client_id/new` starts a new chat before sending the prompt.
 - `POST /responses/:client_id/new?temporary=false` starts a new chat without temporary mode.
-- `POST /images/:client_id` sends an image-generation prompt and saves the final generated image to `IMAGES_DIR`.
+- `POST /images/:client_id` sends an image-generation prompt, saves the final generated image to `IMAGES_DIR`, and returns the saved `image_path` in the response payload.
 
 Note: for image generation, manually enable **Create image** in the ChatGPT composer before sending `/images/:client_id`.
 
