@@ -7,14 +7,14 @@ type StartViewerParams = {
     port?: number;
 };
 
-export async function startViewer(params: StartViewerParams): Promise<void> {
+export async function startViewer(params: StartViewerParams): Promise<Bun.Server> {
     const runsRoot = resolve(params.runsRoot);
     const port = params.port ?? 8787;
     const publicDir = join(import.meta.dir, 'public');
 
     await assertRunsRootDirectory(runsRoot);
 
-    Bun.serve({
+    const server = Bun.serve({
         hostname: '127.0.0.1',
         port,
         async fetch(request) {
@@ -99,4 +99,6 @@ export async function startViewer(params: StartViewerParams): Promise<void> {
     console.log(`📁 Runs root: ${runsRoot}`);
     console.log(`🌐 Open: http://127.0.0.1:${port}/?view=overview`);
     console.log('   Selected view is kept in query params.');
+
+    return server;
 }

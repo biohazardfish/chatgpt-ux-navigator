@@ -92,7 +92,12 @@ async function validateRunDirectory(runDir: string): Promise<void> {
     }
 
     const runJsonPath = join(runDir, 'run.json');
-    const runStat = await stat(runJsonPath);
+    let runStat;
+    try {
+        runStat = await stat(runJsonPath);
+    } catch {
+        throw new Error(`Missing run.json in run directory: ${runDir}`);
+    }
     if (!runStat.isFile()) {
         throw new Error(`Missing run.json in run directory: ${runDir}`);
     }

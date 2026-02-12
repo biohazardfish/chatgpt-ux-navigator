@@ -105,4 +105,116 @@ describe('loadRunArtifacts', () => {
         expect(loaded.logs.length).toBe(1);
         expect(loaded.transcript.html.length).toBeGreaterThan(0);
     });
+
+    it('throws when run.json is missing', async () => {
+        const runDir = await mkdtemp(join(tmpdir(), TEST_PREFIX));
+        tempDirs.push(runDir);
+
+        await mkdir(join(runDir, 'messages'), {recursive: true});
+
+        await expect(loadRunArtifacts(runDir)).rejects.toThrow('Missing run.json');
+    });
+
+    it('throws when message frontmatter is missing', async () => {
+        const runDir = await mkdtemp(join(tmpdir(), TEST_PREFIX));
+        tempDirs.push(runDir);
+
+        await mkdir(join(runDir, 'messages'), {recursive: true});
+
+        await writeFile(
+            join(runDir, 'run.json'),
+            JSON.stringify({run_id: 'demo'}) + '\n',
+            'utf-8'
+        );
+
+        await writeFile(join(runDir, 'messages/0001_alpha.md'), 'No frontmatter', 'utf-8');
+
+        await expect(loadRunArtifacts(runDir)).rejects.toThrow(
+            'Message file is missing frontmatter block'
+        );
+    });
+
+    it('skips invalid logs but keeps valid entries', async () => {
+        const runDir = await mkdtemp(join(tmpdir(), TEST_PREFIX));
+        tempDirs.push(runDir);
+
+        await mkdir(join(runDir, 'messages'), {recursive: true});
+
+        await writeFile(
+            join(runDir, 'run.json'),
+            JSON.stringify({run_id: 'demo'}) + '\n',
+            'utf-8'
+        );
+
+        await writeFile(
+            join(runDir, 'messages/0001_alpha.md'),
+            [
+                '---',
+                'turn: 1',
+                'speaker: alpha',
+                'client_id: client-1',
+                'created_at: 2026-02-12T00:00:00.000Z',
+                'received_turns: [0]',
+                '---',
+                '',
+                'hello',
+                '',
+            ].join('\n'),
+            'utf-8'
+        );
+
+        await writeFile(
+            join(runDir, 'logs.jsonl'),
+            [
+                '{not valid json}',
+                JSON.stringify({
+                    timestamp: '2026-02-12T00:01:01.000Z',
+                    level: 'info',
+                    category: 'runner',
+                    event: 'turn_complete',
+                    data: {turn: 1},
+                }),
+            ].join('\n') + '\n',
+            'utf-8'
+        );
+
+        const loaded = await loadRunArtifacts(runDir);
+
+        expect(loaded.logs.length).toBe(1);
+        expect(loaded.logs[0].event).toBe('turn_complete');
+    });
+
+    it('returns empty judge list when judge directory is missing', async () => {
+        const runDir = await mkdtemp(join(tmpdir(), TEST_PREFIX));
+        tempDirs.push(runDir);
+
+        await mkdir(join(runDir, 'messages'), {recursive: true});
+
+        await writeFile(
+            join(runDir, 'run.json'),
+            JSON.stringify({run_id: 'demo'}) + '\n',
+            'utf-8'
+        );
+
+        await writeFile(
+            join(runDir, 'messages/0001_alpha.md'),
+            [
+                '---',
+                'turn: 1',
+                'speaker: alpha',
+                'client_id: client-1',
+                'created_at: 2026-02-12T00:00:00.000Z',
+                'received_turns: [0]',
+                '---',
+                '',
+                'hello',
+                '',
+            ].join('\n'),
+            'utf-8'
+        );
+
+        const loaded = await loadRunArtifacts(runDir);
+
+        expect(loaded.judge.length).toBe(0);
+    });
 });
