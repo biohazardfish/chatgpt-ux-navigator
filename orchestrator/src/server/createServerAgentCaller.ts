@@ -39,10 +39,15 @@ export function createServerAgentCaller(
             const agentConfig = config.agents[agent_id];
             if (!agentConfig) {
                 const errorMsg = `Agent config not found for ${agent_id} turn ${turn}`;
-                await jsonLogger?.error('agent_caller', 'config_not_found', {
-                    agent_id,
-                    turn,
-                }, errorMsg);
+                await jsonLogger?.error(
+                    'agent_caller',
+                    'config_not_found',
+                    {
+                        agent_id,
+                        turn,
+                    },
+                    errorMsg
+                );
                 throw new Error(errorMsg);
             }
 
@@ -185,25 +190,35 @@ export function createServerAgentCaller(
                 // Handle abort (timeout)
                 if (err instanceof Error && err.name === 'AbortError') {
                     const timeoutSeconds = config.server.request_timeout ?? 360;
-                    await jsonLogger?.error('agent_caller', 'timeout', {
-                        agent_id,
-                        client_id,
-                        turn,
-                        timeout_ms: timeoutSeconds * 1000,
-                        elapsed_ms: responseTime,
-                    }, `Request timed out after ${timeoutSeconds} seconds`);
+                    await jsonLogger?.error(
+                        'agent_caller',
+                        'timeout',
+                        {
+                            agent_id,
+                            client_id,
+                            turn,
+                            timeout_ms: timeoutSeconds * 1000,
+                            elapsed_ms: responseTime,
+                        },
+                        `Request timed out after ${timeoutSeconds} seconds`
+                    );
 
                     throw new Error(`Server request timeout for ${agent_id} turn ${turn}`);
                 }
 
                 // Log other errors with full details
-                await jsonLogger?.error('agent_caller', 'call_failed', {
-                    agent_id,
-                    client_id,
-                    turn,
-                    elapsed_ms: responseTime,
-                    error_details: errorDetails,
-                }, errorMsg);
+                await jsonLogger?.error(
+                    'agent_caller',
+                    'call_failed',
+                    {
+                        agent_id,
+                        client_id,
+                        turn,
+                        elapsed_ms: responseTime,
+                        error_details: errorDetails,
+                    },
+                    errorMsg
+                );
 
                 // Re-throw original error
                 throw err;

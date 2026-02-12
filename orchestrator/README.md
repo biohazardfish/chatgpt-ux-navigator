@@ -279,6 +279,20 @@ bun run src/cli.ts examples/debate.yml
 bun start --help
 ```
 
+### View Existing Run Artifacts
+
+You can serve a local UI for any completed run directory:
+
+```bash
+# Build Tailwind CSS once (or after UI changes)
+bun run viewer:css
+
+# Serve viewer on http://127.0.0.1:8787
+bun start --viewer runs
+```
+
+The viewer renders markdown via `Bun.markdown.html(...)` and persists selected run/tab/turn in query params (for example `?run=2026-02-11T14-09-16Z_vn-cyber-longstory&view=messages&turn=12`) so you can revisit the same view directly.
+
 From the **monorepo root**:
 
 ```bash
@@ -508,6 +522,12 @@ bun typecheck
 
 ```bash
 bun format
+```
+
+### Build Viewer CSS
+
+```bash
+bun run viewer:css
 ```
 
 ---

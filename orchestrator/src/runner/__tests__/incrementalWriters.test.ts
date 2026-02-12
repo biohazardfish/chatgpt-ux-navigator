@@ -352,7 +352,7 @@ describe('Incremental Writers', () => {
         // Verify received_turns tracks all non-seed messages delivered to the inbox
         // since the agent last spoke (seed turn 0 is excluded).
         // With broadcast delivery, inboxes accumulate messages from multiple agents.
-        
+
         expect(writtenTurns[0]).toEqual({turn: 1, speaker: 'A', received_turns: []});
         expect(writtenTurns[1]).toEqual({turn: 2, speaker: 'B', received_turns: [1]});
         expect(writtenTurns[2]).toEqual({turn: 3, speaker: 'C', received_turns: [1, 2]});

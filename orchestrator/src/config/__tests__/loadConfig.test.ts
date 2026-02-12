@@ -1260,7 +1260,6 @@ termination:
 
             cleanup();
         });
-
     });
 
     // Termination validation

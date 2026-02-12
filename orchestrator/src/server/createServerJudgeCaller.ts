@@ -70,7 +70,7 @@ export function createServerJudgeCaller(
                 const summaryWindow = config.judge.summary.window?.type ?? 'last_round';
                 const summaryTranscript =
                     summaryWindow === 'last_n_turns'
-                        ? transcript.slice(-((config.judge.summary.window?.n ?? 1)))
+                        ? transcript.slice(-(config.judge.summary.window?.n ?? 1))
                         : round_transcript;
 
                 const summaryPrompt = buildJudgeSummaryPrompt({
@@ -101,8 +101,8 @@ export function createServerJudgeCaller(
                         'details' in summaryParsed
                             ? summaryParsed.details
                             : summaryParsed.type === 'empty_response'
-                                ? 'Summary output was empty'
-                                : 'Invalid summary output';
+                              ? 'Summary output was empty'
+                              : 'Invalid summary output';
 
                     await jsonLogger?.warn('judge_caller', 'summary_parse_failed_retrying', {
                         round: turn,
@@ -129,12 +129,16 @@ export function createServerJudgeCaller(
                             'details' in summaryParsed
                                 ? summaryParsed.details
                                 : summaryParsed.type === 'empty_response'
-                                    ? 'Summary output was empty'
-                                    : 'Invalid summary output';
-                        await jsonLogger?.error('judge_caller', 'summary_parse_failed_after_retry', {
-                            round: turn,
-                            error: retryError,
-                        });
+                                  ? 'Summary output was empty'
+                                  : 'Invalid summary output';
+                        await jsonLogger?.error(
+                            'judge_caller',
+                            'summary_parse_failed_after_retry',
+                            {
+                                round: turn,
+                                error: retryError,
+                            }
+                        );
                         throw new Error('Judge summary output invalid after retry');
                     }
 
@@ -167,9 +171,14 @@ export function createServerJudgeCaller(
                 });
             } catch (err) {
                 const errorMsg = `Judge prompt building failed at turn ${turn}: ${err instanceof Error ? err.message : String(err)}`;
-                await jsonLogger?.error('judge_caller', 'prompt_build_failed', {
-                    round: turn,
-                }, errorMsg);
+                await jsonLogger?.error(
+                    'judge_caller',
+                    'prompt_build_failed',
+                    {
+                        round: turn,
+                    },
+                    errorMsg
+                );
                 throw new Error(errorMsg);
             }
 
@@ -179,7 +188,14 @@ export function createServerJudgeCaller(
                 use_new_chat: true,
             });
 
-            let judgeResponse = await callJudgeOnce(config, clientId, prompt, turn, true, jsonLogger);
+            let judgeResponse = await callJudgeOnce(
+                config,
+                clientId,
+                prompt,
+                turn,
+                true,
+                jsonLogger
+            );
             let parsed = parseJudgeResponse(judgeResponse, config);
 
             // If parse/validation failed, retry once with correction prompt
@@ -220,7 +236,8 @@ export function createServerJudgeCaller(
 
                 // Check if retry also failed
                 if (isParseError(parsed)) {
-                    const retryErrorDetails = 'details' in parsed ? parsed.details : 'Invalid judge output';
+                    const retryErrorDetails =
+                        'details' in parsed ? parsed.details : 'Invalid judge output';
                     await jsonLogger?.error('judge_caller', 'parse_failed_after_retry', {
                         round: turn,
                         error: retryErrorDetails,
@@ -337,9 +354,14 @@ async function callJudgeOnce(
         const content = parseJSONResponse(responseBody, `judge`, turn);
 
         if (!content || content.trim().length === 0) {
-            await jsonLogger?.error('judge_caller', 'empty_content', {
-                round: turn,
-            }, 'Judge returned empty content');
+            await jsonLogger?.error(
+                'judge_caller',
+                'empty_content',
+                {
+                    round: turn,
+                },
+                'Judge returned empty content'
+            );
             throw new Error('Server judge returned empty content');
         }
 
@@ -380,17 +402,27 @@ async function callJudgeOnce(
         // Handle abort (timeout)
         if (err instanceof Error && err.name === 'AbortError') {
             const timeoutSeconds = config.server.request_timeout ?? 360;
-            await jsonLogger?.error('judge_caller', 'timeout', {
-                turn,
-                timeout_ms: timeoutSeconds * 1000,
-                elapsed_ms: responseTime,
-            }, `Request timed out after ${timeoutSeconds} seconds`);
+            await jsonLogger?.error(
+                'judge_caller',
+                'timeout',
+                {
+                    turn,
+                    timeout_ms: timeoutSeconds * 1000,
+                    elapsed_ms: responseTime,
+                },
+                `Request timed out after ${timeoutSeconds} seconds`
+            );
         } else {
-            await jsonLogger?.error('judge_caller', 'http_failed', {
-                round: turn,
-                elapsed_ms: responseTime,
-                error_details: errorDetails,
-            }, errorMsg);
+            await jsonLogger?.error(
+                'judge_caller',
+                'http_failed',
+                {
+                    round: turn,
+                    elapsed_ms: responseTime,
+                    error_details: errorDetails,
+                },
+                errorMsg
+            );
         }
 
         throw err;

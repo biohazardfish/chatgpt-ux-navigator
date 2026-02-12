@@ -29,8 +29,7 @@ describe('buildJudgeSummaryPrompt', () => {
             rubric: 'Score based on helpfulness (0-10)',
             summary: {
                 enabled: true,
-                prompt:
-                    'Summary:\n{{ROLLING_SUMMARY}}\nRound: {{ROUND_INDEX}}\nAgents: {{AGENTS}}\nSeed: {{SEED}}\nRubric: {{RUBRIC}}\nTranscript:\n{{THIS_ROUND_TRANSCRIPT}}',
+                prompt: 'Summary:\n{{ROLLING_SUMMARY}}\nRound: {{ROUND_INDEX}}\nAgents: {{AGENTS}}\nSeed: {{SEED}}\nRubric: {{RUBRIC}}\nTranscript:\n{{THIS_ROUND_TRANSCRIPT}}',
                 max_chars: 8000,
                 window: {type: 'last_round'},
             },

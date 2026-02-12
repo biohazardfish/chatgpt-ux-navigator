@@ -12,6 +12,7 @@ import {createRunLogger, createResumeLogger} from './logging/createRunLogger';
 import type {RunnerDeps} from './runner/types';
 import {preflightCheckClients} from './server/preflight';
 import {loadRunState} from './resume/loadRunState';
+import {startViewer} from './viewer/server';
 import {join, resolve} from 'path';
 
 const USAGE = `
@@ -20,14 +21,17 @@ Nexus - Multi-Agent Conversation Orchestrator
 Usage:
   bun run src/cli.ts <config.yml> [options]
   bun run src/cli.ts --resume <run_dir> [options]
+  bun run src/cli.ts --viewer <runs_root>
 
 Example:
   bun run src/cli.ts examples/debate.yml
   bun run src/cli.ts examples/debate.yml --debug
+  bun run src/cli.ts --viewer runs
 
 Options:
   <config.yml>    Path to YAML configuration file (required unless --resume)
   --resume        Resume an existing run directory
+  --viewer        Serve run-browser UI from runs root directory (port 8787)
   --debug         Enable debug logging (prints to console and logs.jsonl)
   --help, -h      Show this help message
 
@@ -59,8 +63,34 @@ async function main() {
     }
 
     const debugMode = args.includes('--debug');
+    const viewerIndex = args.indexOf('--viewer');
+    const viewerRoot = viewerIndex !== -1 ? args[viewerIndex + 1] : undefined;
     const resumeIndex = args.indexOf('--resume');
     const resumeDir = resumeIndex !== -1 ? args[resumeIndex + 1] : undefined;
+
+    if (viewerIndex !== -1) {
+        if (!viewerRoot || viewerRoot.startsWith('--')) {
+            console.error('Error: --viewer requires a runs root directory path');
+            console.log(USAGE);
+            process.exit(1);
+        }
+
+        console.log('👀 Nexus Run Viewer\n');
+        console.log(`📁 Loading runs root: ${viewerRoot}`);
+        console.log('🎨 Serving UI at port 8787\n');
+
+        try {
+            await startViewer({
+                runsRoot: viewerRoot,
+                port: 8787,
+            });
+            return;
+        } catch (error) {
+            console.error('❌ Failed to start viewer:');
+            console.error(error instanceof Error ? error.message : String(error));
+            process.exit(1);
+        }
+    }
 
     if (resumeIndex !== -1 && !resumeDir) {
         console.error('Error: --resume requires a run directory path');

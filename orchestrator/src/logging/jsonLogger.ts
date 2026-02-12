@@ -24,15 +24,31 @@ export type JSONLogger = {
     /**
      * Write a log event to logs.jsonl
      */
-    log: (level: LogLevel, category: string, event: string, data?: Record<string, unknown>, error?: string) => Promise<void>;
+    log: (
+        level: LogLevel,
+        category: string,
+        event: string,
+        data?: Record<string, unknown>,
+        error?: string
+    ) => Promise<void>;
 
     /**
      * Convenience methods for specific log levels
      */
     debug: (category: string, event: string, data?: Record<string, unknown>) => Promise<void>;
     info: (category: string, event: string, data?: Record<string, unknown>) => Promise<void>;
-    warn: (category: string, event: string, data?: Record<string, unknown>, error?: string) => Promise<void>;
-    error: (category: string, event: string, data?: Record<string, unknown>, error?: string) => Promise<void>;
+    warn: (
+        category: string,
+        event: string,
+        data?: Record<string, unknown>,
+        error?: string
+    ) => Promise<void>;
+    error: (
+        category: string,
+        event: string,
+        data?: Record<string, unknown>,
+        error?: string
+    ) => Promise<void>;
 };
 
 /**

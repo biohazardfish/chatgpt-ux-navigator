@@ -30,16 +30,17 @@ function validateSummary(obj: unknown): SummaryParseError | null {
         return {type: 'validation_error', details: 'response must contain only rolling_summary'};
     }
 
-    if (typeof summary.rolling_summary !== 'string' || summary.rolling_summary.trim().length === 0) {
+    if (
+        typeof summary.rolling_summary !== 'string' ||
+        summary.rolling_summary.trim().length === 0
+    ) {
         return {type: 'validation_error', details: 'rolling_summary must be a non-empty string'};
     }
 
     return null;
 }
 
-export function parseJudgeSummaryResponse(
-    responseText: string
-): SummaryResult | SummaryParseError {
+export function parseJudgeSummaryResponse(responseText: string): SummaryResult | SummaryParseError {
     if (!responseText || responseText.trim().length === 0) {
         return {type: 'empty_response'};
     }

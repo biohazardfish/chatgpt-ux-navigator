@@ -15,7 +15,7 @@ type SSEEvent = {
 /**
  * @deprecated SSE parsing is no longer used. Orchestrator now uses JSON-only responses.
  * This function is kept for backward compatibility and testing only.
- * 
+ *
  * Parses a complete SSE stream and extracts the response text
  * Handles OpenAI Responses API format with priority:
  * 1. response.completed → data.response.output_text
@@ -59,7 +59,8 @@ export function parseSSEStream(body: string, agentId: string, turn: number): str
                     }
                 } else if (event === 'response.error') {
                     // Extract error and throw with full details
-                    const errorMsg = (data.message as string) || (data.error as string) || 'Unknown error';
+                    const errorMsg =
+                        (data.message as string) || (data.error as string) || 'Unknown error';
                     const errorDetails = JSON.stringify(data, null, 2);
                     throw new Error(
                         `Server agent error for ${agentId} turn ${turn}: ${errorMsg}\nDetails: ${errorDetails}`
@@ -129,7 +130,7 @@ export function parseJSONResponse(body: string, agentId: string, turn: number): 
     // The server returns the response object directly (not nested under a "response" key)
     // Response structure: { id, status, output_text, output: [...], ... }
     const responseObj = response as {output_text?: string; status?: string; error?: unknown} | null;
-    
+
     // Check for error status
     if (responseObj?.status === 'error') {
         // Extract error message from server response
@@ -147,7 +148,7 @@ export function parseJSONResponse(body: string, agentId: string, turn: number): 
         }
         throw new Error(`Server agent error for ${agentId} turn ${turn}: ${errorMsg}`);
     }
-    
+
     const outputText = responseObj?.output_text ?? '';
     const trimmed = String(outputText).trimEnd();
 
