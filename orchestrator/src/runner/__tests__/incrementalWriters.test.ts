@@ -454,13 +454,27 @@ describe('Incremental Writers', () => {
         await runConversation(config, deps);
 
         // Verify the last judge call (round 2) received correct data
-        expect(capturedTurn).toBe(2);
-        expect(capturedDecision).toEqual({
+        if (capturedTurn === null || capturedDecision === null || capturedCreatedAt === null) {
+            throw new Error('Expected writeJudge to be called with turn, decision, and timestamp');
+        }
+
+        if (capturedTurn !== 2) {
+            throw new Error(`Expected turn 2, got ${capturedTurn}`);
+        }
+
+        const expectedDecision: JudgeDecision = {
             should_stop: true,
-            scores: {A: 4, B: 4}, // 4 messages in transcript after round 2
+            scores: {A: 4, B: 4},
             reason: 'Transcript has 4 messages',
-        });
-        expect(capturedCreatedAt).toBe('2026-02-10T15:30:45Z');
+        };
+
+        if (JSON.stringify(capturedDecision) !== JSON.stringify(expectedDecision)) {
+            throw new Error(`Unexpected decision: ${JSON.stringify(capturedDecision)}`);
+        }
+
+        if (capturedCreatedAt !== '2026-02-10T15:30:45Z') {
+            throw new Error(`Expected timestamp 2026-02-10T15:30:45Z, got ${capturedCreatedAt}`);
+        }
     });
 
     /**
