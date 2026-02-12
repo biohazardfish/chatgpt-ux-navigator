@@ -14,6 +14,19 @@ async function sendRequest() {
     let endpoint: string;
 
     switch (command) {
+        case 'images':
+            endpoint = channelId
+                ? `http://localhost:8765/images/${channelId}`
+                : 'http://localhost:8765/images';
+            requestBody = {
+                input: [
+                    {
+                        role: 'user',
+                        content: userMessage,
+                    },
+                ],
+            };
+            break;
         case 'new':
             endpoint = channelId
                 ? `http://localhost:8765/responses/${channelId}/new`
@@ -44,6 +57,7 @@ async function sendRequest() {
     }
 
     try {
+		// console.log(">>>", endpoint, requestBody);
         const response = await fetch(endpoint, {
             method: 'POST',
             headers: {

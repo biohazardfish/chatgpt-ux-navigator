@@ -33,6 +33,7 @@ export type InflightResponses = {
     // For JSON (non-stream) mode
     jsonResolve: ((resp: ResponseObject) => void) | null;
     jsonReject: ((err: Error) => void) | null;
+
 };
 
 // --- Multi-client inflight tracking: Map of clientId -> InflightResponses ---

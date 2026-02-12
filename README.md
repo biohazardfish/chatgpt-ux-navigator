@@ -87,6 +87,9 @@ PROMPTS_DIR=./prompts
 # Root directory for file inclusion (@path syntax)
 FILES_ROOT=./server
 
+# Directory where generated images are saved
+IMAGES_DIR=./images
+
 # If true, disable SSE streaming and return single JSON responses
 NO_STREAM=false
 
@@ -146,6 +149,15 @@ Refactor the following code to be more functional:
 3.  Use the dropdown at the top to select `my-task.md`.
 4.  Click the prompt text in the sidebar to insert it into the chat input.
 5.  After ChatGPT replies, click the **Save** icon in the sidebar to append the response to `my-task.md`.
+
+### Response and Image APIs
+
+- `POST /responses/:client_id` sends a prompt to a connected ChatGPT tab.
+- `POST /responses/:client_id/new` starts a new chat before sending the prompt.
+- `POST /responses/:client_id/new?temporary=false` starts a new chat without temporary mode.
+- `POST /images/:client_id` sends an image-generation prompt and saves the final generated image to `IMAGES_DIR`.
+
+Note: for image generation, manually enable **Create image** in the ChatGPT composer before sending `/images/:client_id`.
 
 ### Running Multi-Agent Conversations
 

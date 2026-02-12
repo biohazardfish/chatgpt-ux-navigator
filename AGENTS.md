@@ -152,3 +152,29 @@ Please refer to [CODE_CONVENTIONS.md](./CODE_CONVENTIONS.md) for detailed coding
 - **"Verify local changes"**:
     - For server: Run `bun test` from the root or from `server/`.
     - For extension: Reload the extension in `chrome://extensions` and refresh ChatGPT.
+
+## Image Generation SSE Notes
+
+When handling image generation, the extension forwards page-hook SSE messages as WS frames with shape:
+
+```json
+{ "type": "sse", "payload": { "meta": { ... }, "event": null, "raw": null, "json": { ... } } }
+```
+
+Expected `payload.json` events for final image capture:
+
+1. **Tool message add** (`o: "add"`) with image pointer:
+   - `json.v.message.author.role === "tool"`
+   - `json.v.message.content.parts[0].content_type === "image_asset_pointer"`
+   - `json.v.message.content.parts[0].asset_pointer === "sediment://file_<id>"`
+   - `json.conversation_id` present.
+2. **Patch updates** (`o: "patch"`) may replace the same asset pointer multiple times:
+   - Example patch path: `/message/content/parts/0/asset_pointer`
+   - Use the **latest** `file_<id>` as candidate.
+3. **Completion marker**:
+   - `json.type === "message_stream_complete"`
+   - Indicates the generation stream is complete; persist only the final image for that conversation.
+
+Notes:
+- Intermediate `file_<id>` values can be transient previews.
+- `refresh_key_info` is **not** a conversation id and should not be used for file downloads.

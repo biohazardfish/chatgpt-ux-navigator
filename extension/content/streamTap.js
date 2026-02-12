@@ -16,9 +16,16 @@
     let currentClientId = null;
 
     // Prompt queue to serialize "new chat -> inject -> submit"
-    /** @type {Array<{id?:string, created?:number, input:string, newTemporaryChat?:boolean}>} */
+    /** @type {Array<{id?:string, created?:number, input:string, newChat?:boolean, temporary?:boolean, type?:string}>} */
     const promptQueue = [];
     let promptProcessing = false;
+
+    const seenImageFileIds = new Set();
+    const pendingImageFileIds = new Set();
+    const FILE_ID_RE = /file_[a-zA-Z0-9]+/g;
+    let imageObserver = null;
+    let latestGeneratedImageSrc = null;
+    const imageStateByConversation = new Map();
 
     function safeJsonStringify(obj) {
         try {
@@ -108,6 +115,7 @@
             return null;
         }
 
+
         async function ensureComposerReady() {
             // Prefer your chatInput finder if present; otherwise DOM fallback
             const ok = await waitFor(() => {
@@ -138,13 +146,17 @@
                     const prompt = String(item?.input ?? '');
                     if (!prompt.trim()) continue;
 
-                    const needsTemporaryChat = !!item?.newTemporaryChat;
+                    const needsNewChat = !!item?.newChat;
+                    const wantsTemporary = item?.temporary !== false;
+                    const isImagePrompt = item?.type === 'prompt.image';
 
-                    // 1) Start new temporary chat if requested (best-effort)
-                    if (needsTemporaryChat) {
+                    // 1) Start new chat if requested (best-effort)
+                    if (needsNewChat) {
                         try {
                             const nc = window.CGPT_NAV.newChat;
-                            if (nc?.startNewTemporaryChat) {
+                            if (nc?.startNewChat) {
+                                await nc.startNewChat({temporary: wantsTemporary});
+                            } else if (nc?.startNewTemporaryChat) {
                                 await nc.startNewTemporaryChat();
                             }
                         } catch (_) {
@@ -154,6 +166,12 @@
 
                     // 2) Wait for navigation/UI mount so composer exists
                     await ensureComposerReady();
+
+                    if (isImagePrompt) {
+                        try {
+                            await window.CGPT_NAV.newChat?.ensureTemporaryChatDisabled?.();
+                        } catch (_) {}
+                    }
 
                     // 3) Inject prompt + submit
                     try {
@@ -197,13 +215,16 @@
             const prompt = typeof msg?.input === 'string' ? msg.input : '';
             if (!prompt.trim()) return;
 
-            const requiresTempChat = msg?.type === 'prompt.new' || msg?.newChat === true;
+            const requiresNewChat = msg?.type === 'prompt.new' || msg?.newChat === true;
+            const temporary = msg?.temporary !== false;
 
             promptQueue.push({
                 id: msg?.id,
                 created: msg?.created,
                 input: prompt,
-                newTemporaryChat: requiresTempChat,
+                newChat: requiresNewChat,
+                temporary,
+                type: msg?.type,
             });
 
             // Kick processor (fire-and-forget)
@@ -224,7 +245,7 @@
             // Expected:
             // { type: "prompt", id: "...", created: <unix>, input: "..." }
             // { type: "prompt.new", ... } // -> request a fresh temporary chat first
-            if (msg.type === 'prompt' || msg.type === 'prompt.new') {
+            if (msg.type === 'prompt' || msg.type === 'prompt.new' || msg.type === 'prompt.image') {
                 enqueuePromptMessage(msg);
                 return;
             }
@@ -257,6 +278,122 @@
                 // ignore; reconnect loop will handle
             }
         }
+    }
+
+    function extractFileIdFromUrl(url) {
+        try {
+            const u = new URL(url, location.href);
+            const id = u.searchParams.get('id');
+            if (id && id.startsWith('file_')) return id;
+            const m = String(url).match(FILE_ID_RE);
+            return m && m[0] ? m[0] : null;
+        } catch (_) {
+            const m = String(url || '').match(FILE_ID_RE);
+            return m && m[0] ? m[0] : null;
+        }
+    }
+
+    function arrayBufferToBase64(arrayBuffer) {
+        const bytes = new Uint8Array(arrayBuffer);
+        const chunkSize = 0x8000;
+        let binary = '';
+        for (let i = 0; i < bytes.length; i += chunkSize) {
+            const chunk = bytes.subarray(i, i + chunkSize);
+            binary += String.fromCharCode.apply(null, chunk);
+        }
+        return btoa(binary);
+    }
+
+    async function forwardImageBySrc(src) {
+        if (!src) return;
+        try {
+            const fileId = extractFileIdFromUrl(src);
+            if (fileId && (seenImageFileIds.has(fileId) || pendingImageFileIds.has(fileId))) return;
+            if (fileId) pendingImageFileIds.add(fileId);
+
+            const resp = await fetch(src, {credentials: 'include', cache: 'no-store'});
+            if (!resp.ok) return;
+
+            const mimeType = resp.headers.get('content-type') || 'image/png';
+            const arrayBuffer = await resp.arrayBuffer();
+            const dataBase64 = arrayBufferToBase64(arrayBuffer);
+
+            wsSend({
+                type: 'image.generated',
+                fileId: fileId || null,
+                fileName: null,
+                mimeType,
+                dataBase64,
+            });
+
+            if (fileId) seenImageFileIds.add(fileId);
+        } catch (_) {
+            // ignore transient fetch failures
+        } finally {
+            const fileId = extractFileIdFromUrl(src);
+            if (fileId) pendingImageFileIds.delete(fileId);
+        }
+    }
+
+    function scanRenderedImages(root = document) {
+        const imgs = root.querySelectorAll(
+            'img[alt="Generated image"][src*="/backend-api/estuary/content?id=file_"]'
+        );
+        imgs.forEach(img => {
+            const src = img.getAttribute('src') || '';
+            if (src) latestGeneratedImageSrc = src;
+        });
+    }
+
+    function startImageObserver() {
+        if (imageObserver) return;
+
+        scanRenderedImages(document);
+
+        imageObserver = new MutationObserver(mutations => {
+            for (const m of mutations) {
+                if (m.type === 'attributes' && m.target instanceof HTMLImageElement) {
+                    const src = m.target.getAttribute('src') || '';
+                    const alt = m.target.getAttribute('alt') || '';
+                    if (src.includes('/backend-api/estuary/content?id=file_') && alt === 'Generated image') {
+                        latestGeneratedImageSrc = src;
+                    }
+                    continue;
+                }
+
+                if (!m.addedNodes || m.addedNodes.length === 0) continue;
+                m.addedNodes.forEach(node => {
+                    if (!(node instanceof Element)) return;
+                    if (node instanceof HTMLImageElement) {
+                        const src = node.getAttribute('src') || '';
+                        const alt = node.getAttribute('alt') || '';
+                        if (
+                            src.includes('/backend-api/estuary/content?id=file_') &&
+                            alt === 'Generated image'
+                        ) {
+                            latestGeneratedImageSrc = src;
+                        }
+                        return;
+                    }
+                    scanRenderedImages(node);
+                });
+            }
+        });
+
+        imageObserver.observe(document.documentElement || document.body, {
+            subtree: true,
+            childList: true,
+            attributes: true,
+            attributeFilter: ['src'],
+        });
+    }
+
+    function stopImageObserver() {
+        if (!imageObserver) return;
+        try {
+            imageObserver.disconnect();
+        } catch (_) {}
+        imageObserver = null;
     }
 
     // ---------- Page-world injection (CSP-safe) ----------
@@ -309,6 +446,174 @@
     }
 
     // Receive page-world events and forward to Bun WS
+    function collectStrings(input, out, limit = 3000) {
+        if (!input || out.length >= limit) return;
+
+        if (typeof input === 'string') {
+            out.push(input);
+            return;
+        }
+
+        if (Array.isArray(input)) {
+            for (const item of input) {
+                if (out.length >= limit) break;
+                collectStrings(item, out, limit);
+            }
+            return;
+        }
+
+        if (typeof input === 'object') {
+            for (const [k, v] of Object.entries(input)) {
+                if (out.length >= limit) break;
+                out.push(String(k));
+                collectStrings(v, out, limit);
+            }
+        }
+    }
+
+    function extractConversationId(payload) {
+        const data = payload?.json || payload;
+        if (data && typeof data.conversation_id === 'string') {
+            return data.conversation_id;
+        }
+
+        const strings = [];
+        collectStrings(data, strings);
+        for (const s of strings) {
+            if (!s.includes('conversation_id=')) continue;
+            const m = s.match(/conversation_id=([0-9a-f-]+)/i);
+            if (m && m[1]) return m[1];
+        }
+
+        return null;
+    }
+
+    function extractImageFileIds(payload) {
+        const data = payload?.json || payload;
+        const strings = [];
+        collectStrings(data, strings);
+
+        const ids = new Set();
+        for (const s of strings) {
+            if (!s.includes('file_')) continue;
+            const matches = s.match(FILE_ID_RE);
+            if (matches) matches.forEach(id => ids.add(id));
+        }
+
+        return Array.from(ids);
+    }
+
+    async function fetchAndForwardGeneratedImage(fileId, conversationId) {
+        if (!fileId || !conversationId) return;
+        if (seenImageFileIds.has(fileId) || pendingImageFileIds.has(fileId)) return;
+
+        pendingImageFileIds.add(fileId);
+
+        try {
+            const metaUrl = `https://chatgpt.com/backend-api/files/download/${fileId}?conversation_id=${encodeURIComponent(
+                conversationId
+            )}&inline=false`;
+
+            const metaResp = await fetch(metaUrl, {
+                credentials: 'include',
+                cache: 'no-store',
+            });
+            if (!metaResp.ok) {
+                return;
+            }
+
+            const meta = await metaResp.json();
+            const downloadUrl = typeof meta?.download_url === 'string' ? meta.download_url : '';
+            if (!downloadUrl) return;
+
+            const imageResp = await fetch(downloadUrl, {
+                credentials: 'include',
+                cache: 'no-store',
+            });
+            if (!imageResp.ok) {
+                return;
+            }
+
+            const arrayBuffer = await imageResp.arrayBuffer();
+            const dataBase64 = arrayBufferToBase64(arrayBuffer);
+            const mimeType = imageResp.headers.get('content-type') || meta?.mime_type || 'image/png';
+
+            wsSend({
+                type: 'image.generated',
+                fileId,
+                conversationId,
+                fileName: typeof meta?.file_name === 'string' ? meta.file_name : null,
+                mimeType,
+                dataBase64,
+            });
+
+            seenImageFileIds.add(fileId);
+        } catch (_) {
+            // ignore; next SSE patch may retry
+        } finally {
+            pendingImageFileIds.delete(fileId);
+        }
+    }
+
+    function getConversationState(conversationId) {
+        const key = String(conversationId || '');
+        if (!key) return null;
+        const existing = imageStateByConversation.get(key);
+        if (existing) return existing;
+
+        const next = {
+            latestFileId: null,
+            streamComplete: false,
+        };
+        imageStateByConversation.set(key, next);
+        return next;
+    }
+
+    function extractSseJson(payload) {
+        return payload?.json || payload || null;
+    }
+
+    function updateImageStateFromSse(payload) {
+        const data = extractSseJson(payload);
+        if (!data || typeof data !== 'object') return;
+
+        const conversationId = extractConversationId(payload);
+        if (!conversationId) return;
+        const state = getConversationState(conversationId);
+        if (!state) return;
+
+        const fileIds = extractImageFileIds(payload);
+        if (fileIds.length > 0) {
+            state.latestFileId = fileIds[fileIds.length - 1];
+        }
+
+        if (data.type === 'message_stream_complete') {
+            state.streamComplete = true;
+        }
+    }
+
+    async function maybeSendFinalImageForConversation(conversationId) {
+        if (!conversationId) return;
+        const state = imageStateByConversation.get(conversationId);
+        if (!state || !state.streamComplete) return;
+
+        if (state.latestFileId) {
+            if (seenImageFileIds.has(state.latestFileId) || pendingImageFileIds.has(state.latestFileId)) {
+                state.streamComplete = false;
+                return;
+            }
+            await fetchAndForwardGeneratedImage(state.latestFileId, conversationId);
+            state.streamComplete = false;
+            return;
+        }
+
+        if (latestGeneratedImageSrc) {
+            await forwardImageBySrc(latestGeneratedImageSrc);
+        }
+
+        state.streamComplete = false;
+    }
+
     function onWindowMessage(ev) {
         if (!enabled) return;
 
@@ -321,6 +626,14 @@
             pageUrl: location.href,
             at: Date.now(),
         });
+
+        if (d.type === 'sse') {
+            updateImageStateFromSse(d.payload);
+            const conversationId = extractConversationId(d.payload);
+            if (conversationId) {
+                maybeSendFinalImageForConversation(conversationId);
+            }
+        }
     }
 
     function enable(clientId) {
@@ -338,6 +651,8 @@
         // Start WS + inject page hook
         connectWs(currentClientId);
         injectPageHook();
+        startImageObserver();
+
     }
 
     function disable() {
@@ -346,6 +661,7 @@
 
         // Stop forwarding and close WS
         window.removeEventListener('message', onWindowMessage);
+        stopImageObserver();
         closeWs();
 
         // NOTE: we do not remove the injected script; it is harmless if no listener/WS is active.

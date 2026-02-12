@@ -131,15 +131,27 @@ function createResponseObject(id: string, createdAt: number, body: any, prompt: 
 /**
  * Handles streaming responses (SSE).
  */
+type PromptMessageOptions = {
+    createTemporaryChat: boolean;
+    newChat: boolean;
+    messageType?: string;
+    clientId?: string;
+};
+
 function sendPromptToExtension(
     id: string,
     createdAt: number,
     prompt: string,
-    createTemporaryChat: boolean,
-    clientId?: string
+    opts: PromptMessageOptions
 ): boolean {
-    const type = createTemporaryChat ? 'prompt.new' : 'prompt';
-    const msg = {type, id, created: createdAt, input: prompt};
+    const {createTemporaryChat, newChat, messageType, clientId} = opts;
+    const type = messageType || (createTemporaryChat && newChat ? 'prompt.new' : 'prompt');
+    const msg: any = {type, id, created: createdAt, input: prompt};
+
+    if (newChat) {
+        msg.newChat = true;
+        msg.temporary = !!createTemporaryChat;
+    }
 
     if (clientId) {
         return sendToClient(clientId, msg);
@@ -155,6 +167,8 @@ function handleStreamingResponse(
     messageItemId: string,
     timeoutMs: number,
     createTemporaryChat: boolean,
+    newChat: boolean,
+    messageType: string | undefined,
     clientId?: string
 ): Response {
     const encoder = new TextEncoder();
@@ -187,7 +201,12 @@ function handleStreamingResponse(
                 });
             }
 
-            const ok = sendPromptToExtension(id, createdAt, prompt, createTemporaryChat, clientId);
+            const ok = sendPromptToExtension(id, createdAt, prompt, {
+                createTemporaryChat,
+                newChat,
+                messageType,
+                clientId,
+            });
             if (!ok) {
                 emitResponseCompleted(clientId, 'error', {
                     error: 'Failed to send prompt to WS client',
@@ -236,6 +255,8 @@ async function handleJsonResponse(
     timeoutMs: number,
     cors: Record<string, string>,
     createTemporaryChat: boolean,
+    newChat: boolean,
+    messageType: string | undefined,
     clientId?: string
 ): Promise<Response> {
     try {
@@ -266,7 +287,12 @@ async function handleJsonResponse(
                 });
             }
 
-            const ok = sendPromptToExtension(id, createdAt, prompt, createTemporaryChat, clientId);
+            const ok = sendPromptToExtension(id, createdAt, prompt, {
+                createTemporaryChat,
+                newChat,
+                messageType,
+                clientId,
+            });
             if (!ok) {
                 emitResponseCompleted(clientId, 'error', {
                     error: 'Failed to send prompt to WS client',
@@ -306,16 +332,18 @@ async function handleJsonResponse(
  */
 type ResponseHandlerOptions = {
     createTemporaryChat: boolean;
+    newChat: boolean;
+    messageType?: string;
     clientId?: string;
 };
 
-async function handleResponsesRequest(
+export async function handleResponsesRequest(
     req: Request,
     cfg: AppConfig,
     url: URL,
     opts: ResponseHandlerOptions
 ): Promise<Response> {
-    const {createTemporaryChat, clientId} = opts;
+    const {createTemporaryChat, clientId, newChat, messageType} = opts;
     const cors = corsHeaders();
 
     // Check inflight for specific clientId (or default if no clientId)
@@ -385,6 +413,8 @@ async function handleResponsesRequest(
             messageItemId,
             timeoutMs,
             createTemporaryChat,
+            newChat,
+            messageType,
             clientId
         );
     } else {
@@ -397,6 +427,8 @@ async function handleResponsesRequest(
             timeoutMs,
             cors,
             createTemporaryChat,
+            newChat,
+            messageType,
             clientId
         );
     }
@@ -413,7 +445,11 @@ export function handlePostResponsesById(req: Request, cfg: AppConfig, url: URL):
         });
     }
 
-    return handleResponsesRequest(req, cfg, url, {createTemporaryChat: false, clientId});
+    return handleResponsesRequest(req, cfg, url, {
+        createTemporaryChat: false,
+        newChat: false,
+        clientId,
+    });
 }
 
 /**
@@ -435,5 +471,12 @@ export async function handlePostResponsesByIdNew(
         });
     }
 
-    return handleResponsesRequest(req, cfg, url, {createTemporaryChat: true, clientId});
+    const temporaryParam = url.searchParams.get('temporary');
+    const createTemporaryChat = temporaryParam !== 'false';
+
+    return handleResponsesRequest(req, cfg, url, {
+        createTemporaryChat,
+        newChat: true,
+        clientId,
+    });
 }

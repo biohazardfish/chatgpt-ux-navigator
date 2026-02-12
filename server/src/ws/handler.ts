@@ -1,7 +1,7 @@
 import type {ServerWebSocket} from 'bun';
 import type {WsData} from '../types/ws';
 import type {AppConfig} from '../config/config';
-import {setClient, removeClient, getClient} from './hub';
+import {setClient, removeClient} from './hub';
 import {safeParseJson} from './parse';
 import {extractTextUpdateFromChatGPTPayload, computeDelta} from './extract';
 import {
@@ -15,6 +15,9 @@ import {
     emitGenericEvent,
 } from '../http/responses/inflight';
 import {sanitizeAssistantText} from '../http/responses/sanitize';
+import {
+    saveGeneratedImage,
+} from '../http/images/capture';
 
 export function createWebSocketHandlers(cfg: AppConfig) {
     return {
@@ -28,7 +31,7 @@ export function createWebSocketHandlers(cfg: AppConfig) {
             ws.send(JSON.stringify({type: 'welcome', at: Date.now()}));
         },
 
-        message(ws: ServerWebSocket<WsData>, message: string | Uint8Array) {
+        async message(ws: ServerWebSocket<WsData>, message: string | Uint8Array) {
             const text =
                 typeof message === 'string'
                     ? message
@@ -42,6 +45,22 @@ export function createWebSocketHandlers(cfg: AppConfig) {
 
             const t = String(obj.type || '');
             const clientId = ws.data.clientId;
+
+            if (t === 'image.generated') {
+                try {
+                    await saveGeneratedImage({
+                        imagesDir: cfg.imagesDir,
+                        clientId,
+                        dataBase64: String(obj?.dataBase64 || ''),
+                        mimeType: typeof obj?.mimeType === 'string' ? obj.mimeType : null,
+                        fileName: typeof obj?.fileName === 'string' ? obj.fileName : null,
+                        fileId: typeof obj?.fileId === 'string' ? obj.fileId : null,
+                    });
+                } catch (err) {
+                    console.warn('[images] save failed:', err);
+                }
+                return;
+            }
 
             const inflight = getInflight(clientId);
 
@@ -104,7 +123,10 @@ export function createWebSocketHandlers(cfg: AppConfig) {
                     inflightTerminate(clientId, null, null);
                     return;
                 } else if (t === 'error') {
-                    emitResponseCompleted(clientId, 'error', {reason: 'extension_error'});
+                    emitResponseCompleted(clientId, 'error', {
+                        reason: 'extension_error',
+                        detail: obj?.error || obj?.payload || null,
+                    });
                     inflightTerminate(clientId, 'response.error', {
                         type: 'response.error',
                         error: {message: 'Extension reported error', detail: obj},

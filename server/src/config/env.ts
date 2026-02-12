@@ -59,6 +59,10 @@ export function parseEnv(): Partial<AppConfig> {
         config.filesRoot = resolve(process.env.FILES_ROOT);
     }
 
+    if (process.env.IMAGES_DIR) {
+        config.imagesDir = resolve(process.env.IMAGES_DIR);
+    }
+
     config.noStream = parseBooleanEnv(process.env.NO_STREAM, false);
     config.debugEvents = parseBooleanEnv(process.env.DEBUG_EVENTS, false);
 

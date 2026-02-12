@@ -18,6 +18,7 @@ const config: AppConfig = {
     port: 0,
     promptsDir: '/tmp',
     filesRoot: '/tmp',
+    imagesDir: '/tmp/images',
     noStream: false,
     debugEvents: false,
     requestTimeout: 360,
@@ -171,6 +172,29 @@ describe('POST /responses/:id', () => {
         expect(res.status).toBe(200);
         expect(parsed?.type).toBe('prompt.new');
         expect(parsed?.input).toContain('Hello fresh chat');
+    });
+
+    it('should allow new chat without temporary mode via query param', async () => {
+        let parsed: any = null;
+        const mockSend = mock((msg: string) => {
+            parsed = JSON.parse(msg);
+            inflightTerminate(CLIENT_ID, null, null);
+        });
+        setClient(CLIENT_ID, {send: mockSend} as any);
+
+        const req = new Request(
+            `http://localhost/responses/${CLIENT_ID}/new?temporary=false`,
+            {
+                method: 'POST',
+                body: JSON.stringify({input: 'Hello no temp'}),
+            }
+        );
+
+        const res = await handlePostResponsesByIdNew(req, config, new URL(req.url));
+        expect(res.status).toBe(200);
+        expect(parsed?.type).toBe('prompt');
+        expect(parsed?.newChat).toBe(true);
+        expect(parsed?.temporary).toBe(false);
     });
 
     it('should accept array of messages as input', async () => {

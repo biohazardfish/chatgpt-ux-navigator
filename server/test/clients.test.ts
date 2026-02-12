@@ -7,6 +7,7 @@ const config: AppConfig = {
     port: 0,
     promptsDir: '/tmp',
     filesRoot: '/tmp',
+    imagesDir: '/tmp/images',
     noStream: false,
     debugEvents: false,
     requestTimeout: 360,

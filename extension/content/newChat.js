@@ -289,11 +289,90 @@
     }
 
     /**
+     * Best-effort: find a Temporary Chat toggle/switch/button and disable it.
+     * Returns true if it believes the UI is now in non-temporary mode.
+     * @returns {Promise<boolean>}
+     */
+    async function ensureTemporaryChatDisabled() {
+        const prompt = await waitFor(
+            () =>
+                document.querySelector('[data-testid="prompt-textarea"][contenteditable="true"]') ||
+                document.querySelector('form [contenteditable="true"]'),
+            {timeoutMs: 12000}
+        );
+
+        if (!prompt) return false;
+
+        await sleep(250);
+
+        const selectors = [
+            'button[aria-label="Turn off temporary chat"]',
+            'button[aria-label="Turn on temporary chat"]',
+            '[role="switch"][aria-label*="Temporary"]',
+            '[role="switch"][aria-label*="temporary"]',
+            'button[aria-label*="Temporary"]',
+            'button[aria-label*="temporary"]',
+            'button[data-testid*="temporary"]',
+            'button[data-testid*="Temporary"]',
+            '[role="button"][aria-label*="Temporary"]',
+            '[role="button"][aria-label*="temporary"]',
+        ];
+
+        for (const sel of selectors) {
+            const el = document.querySelector(sel);
+            if (!(el instanceof HTMLElement)) continue;
+
+            const state = getTemporaryChatToggleState(el);
+
+            if (state === true) {
+                el.click();
+                await sleep(200);
+                const after = getTemporaryChatToggleState(el);
+                if (after === false) return true;
+                return true;
+            }
+
+            if (state === false) return true;
+        }
+
+        const clickables = Array.from(document.querySelectorAll('button, [role="button"]'));
+        for (const el of clickables) {
+            if (!(el instanceof HTMLElement)) continue;
+
+            const txt = (el.innerText || el.textContent || '').trim();
+            const low = txt.toLowerCase();
+
+            if (low === 'temporary' || low.includes('temporary chat') || low === 'temporary chat') {
+                const state = getToggleState(el);
+                if (state === true) {
+                    el.click();
+                    await sleep(200);
+                    return true;
+                }
+
+                if (state === false) return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
      * Public API: start a new chat and attempt to enable temporary chat.
      * @returns {Promise<{ok:boolean, temp:boolean, error?:string}>}
      */
     async function startNewTemporaryChat() {
-        console.log('[newChat] Starting new temporary chat...');
+        return startNewChat({temporary: true});
+    }
+
+    /**
+     * Public API: start a new chat with temporary mode control.
+     * @param {{temporary?: boolean}} opts
+     * @returns {Promise<{ok:boolean, temp:boolean, error?:string}>}
+     */
+    async function startNewChat(opts = {}) {
+        const temporary = opts.temporary !== false;
+        console.log('[newChat] Starting new chat...', {temporary});
 
         const clicked = await clickNewChatButton();
         console.log('[newChat] New chat button clicked:', clicked);
@@ -304,16 +383,22 @@
 
         window.CGPT_NAV.sidebar?.resetList?.();
 
-        // Wait a moment for navigation/transition
         await sleep(1500);
 
-        const tempOk = await ensureTemporaryChatEnabled();
-        console.log('[newChat] Temporary chat enabled:', tempOk);
+        if (temporary) {
+            const tempOk = await ensureTemporaryChatEnabled();
+            console.log('[newChat] Temporary chat enabled:', tempOk);
+            return {ok: true, temp: tempOk};
+        }
 
-        return {ok: true, temp: tempOk};
+        const tempOff = await ensureTemporaryChatDisabled();
+        console.log('[newChat] Temporary chat disabled:', tempOff);
+        return {ok: true, temp: false};
     }
 
     window.CGPT_NAV.newChat = {
         startNewTemporaryChat,
+        startNewChat,
+        ensureTemporaryChatDisabled,
     };
 })();
