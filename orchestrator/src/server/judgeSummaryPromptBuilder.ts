@@ -50,7 +50,8 @@ export function buildJudgeSummaryPrompt(params: {
     }
 
     const values: Record<string, string> = {
-        ROLLING_SUMMARY: rollingSummary && rollingSummary.trim().length > 0 ? rollingSummary : '<<NONE>>',
+        ROLLING_SUMMARY:
+            rollingSummary && rollingSummary.trim().length > 0 ? rollingSummary : '<<NONE>>',
         THIS_ROUND_TRANSCRIPT: formatTranscriptEntries(roundTranscript),
         ROUND_INDEX: String(roundIndex),
         AGENTS: config.workflow.order.join(', '),

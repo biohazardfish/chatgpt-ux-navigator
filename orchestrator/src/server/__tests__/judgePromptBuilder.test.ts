@@ -166,7 +166,9 @@ describe('buildJudgePrompt', () => {
         expect(retryResult).toContain('YOUR PREVIOUS OUTPUT WAS INVALID');
         expect(retryResult).toContain('Output ONLY a valid JSON object');
         expect(retryResult).toContain('Follow the required schema exactly:');
-        expect(retryResult).toContain('Validation error: scores missing required agent key: agent_b');
+        expect(retryResult).toContain(
+            'Validation error: scores missing required agent key: agent_b'
+        );
 
         // Non-retry should not have correction section
         expect(nonRetryResult).not.toContain('YOUR PREVIOUS OUTPUT WAS INVALID');

@@ -197,14 +197,19 @@ async function runConversationInternal(
                 }
             }
 
-            await logger?.error('runner', 'agent_call_failed', {
-                turn: state.turn,
-                agent_id: speaker,
-                client_id: config.agents[speaker].client_id,
-                round,
-                turns_in_round: turnsInRound,
-                error_details: errorDetails,
-            }, errorMsg);
+            await logger?.error(
+                'runner',
+                'agent_call_failed',
+                {
+                    turn: state.turn,
+                    agent_id: speaker,
+                    client_id: config.agents[speaker].client_id,
+                    round,
+                    turns_in_round: turnsInRound,
+                    error_details: errorDetails,
+                },
+                errorMsg
+            );
 
             // Log full error stack for debugging
             if (errorStack) {
@@ -218,7 +223,7 @@ async function runConversationInternal(
             // Agent failure: mark for abort after round completes
             agentFailed = true;
             abortAfterRound = true;
-            
+
             await logger?.warn('runner', 'abort_after_round_scheduled', {
                 turn: state.turn,
                 round,
@@ -234,10 +239,15 @@ async function runConversationInternal(
             // Validate agent output
             const content = agentOutput!.content.trim();
             if (!content || content.length === 0) {
-                await logger?.error('runner', 'agent_output_invalid', {
-                    turn: state.turn,
-                    agent_id: speaker,
-                }, 'Agent returned empty content');
+                await logger?.error(
+                    'runner',
+                    'agent_output_invalid',
+                    {
+                        turn: state.turn,
+                        agent_id: speaker,
+                    },
+                    'Agent returned empty content'
+                );
 
                 throw new Error(`Agent output invalid: ${speaker} turn ${state.turn}`);
             }
@@ -262,7 +272,8 @@ async function runConversationInternal(
                 // Calculate which turns this agent received
                 const received_turns: number[] = [];
                 for (const item of inbox) {
-                    if (item.turn > 0) { // Skip seed prompt (turn 0)
+                    if (item.turn > 0) {
+                        // Skip seed prompt (turn 0)
                         received_turns.push(item.turn);
                     }
                 }
@@ -299,7 +310,9 @@ async function runConversationInternal(
                 turn: state.turn,
                 from: speaker,
                 recipients,
-                recipient_inbox_sizes: Object.fromEntries(recipients.map(id => [id, state.pending[id].length])),
+                recipient_inbox_sizes: Object.fromEntries(
+                    recipients.map(id => [id, state.pending[id].length])
+                ),
             });
         }
 

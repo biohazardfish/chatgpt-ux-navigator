@@ -12,7 +12,10 @@ type ParsedSummary = {
     summary: string;
 };
 
-export async function loadRunState(runDir: string, config: AppConfig): Promise<{
+export async function loadRunState(
+    runDir: string,
+    config: AppConfig
+): Promise<{
     resume: ResumeState;
     lastCompletedRound: number;
     latestSummary: ParsedSummary | null;
@@ -22,7 +25,11 @@ export async function loadRunState(runDir: string, config: AppConfig): Promise<{
     const transcript = await loadTranscript(runDir);
     const judgeRecords = await loadJudgeRecords(runDir);
 
-    const {state, round, turnsInRound, roundStartIndex} = rebuildState(config, transcript, judgeRecords);
+    const {state, round, turnsInRound, roundStartIndex} = rebuildState(
+        config,
+        transcript,
+        judgeRecords
+    );
 
     const agentsPerRound = config.workflow.order.length;
     const lastCompletedRound = Math.floor(transcript.length / agentsPerRound);
@@ -68,10 +75,14 @@ async function loadTranscript(runDir: string): Promise<AgentMessage[]> {
         const parsed = parseMessageFile(text);
 
         if (parsed.turn !== file.turn) {
-            throw new Error(`Turn mismatch in ${file.name}: filename ${file.turn}, frontmatter ${parsed.turn}`);
+            throw new Error(
+                `Turn mismatch in ${file.name}: filename ${file.turn}, frontmatter ${parsed.turn}`
+            );
         }
         if (parsed.speaker !== file.speaker) {
-            throw new Error(`Speaker mismatch in ${file.name}: filename ${file.speaker}, frontmatter ${parsed.speaker}`);
+            throw new Error(
+                `Speaker mismatch in ${file.name}: filename ${file.speaker}, frontmatter ${parsed.speaker}`
+            );
         }
 
         transcript.push({

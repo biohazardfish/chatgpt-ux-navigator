@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>Nexus Run Viewer</title>
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+        <link
+            href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Space+Grotesk:wght@400;500;700&display=swap"
+            rel="stylesheet"
+        />
+        <link rel="stylesheet" href="/viewer.css" />
+    </head>
+    <body class="bg-slate-950 text-slate-100 antialiased">
+        <div
+            class="min-h-screen bg-[radial-gradient(circle_at_top,#1d4ed822,transparent_58%),linear-gradient(180deg,#020617_0%,#0b1120_100%)]"
+        >
+            <header class="border-b border-slate-800/80 bg-slate-900/60 backdrop-blur">
+                <div class="mx-auto flex w-full max-w-7xl flex-col gap-4 px-4 py-4 sm:px-6 lg:px-8">
+                    <div class="flex flex-wrap items-center justify-between gap-3">
+                        <h1 class="text-xl font-bold tracking-tight">Nexus Run Viewer</h1>
+                        <div class="flex flex-wrap items-center gap-3">
+                            <label
+                                for="run-select"
+                                class="text-xs font-medium uppercase tracking-wide text-slate-400"
+                                >Run</label
+                            >
+                            <select
+                                id="run-select"
+                                class="rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 font-mono text-xs text-slate-100 outline-none ring-cyan-400/50 focus:ring"
+                            ></select>
+                        </div>
+                    </div>
+                    <p id="run-path" class="font-mono text-xs text-slate-400"></p>
+                    <nav id="tabs" class="flex flex-wrap gap-2"></nav>
+                </div>
+            </header>
+
+            <main class="mx-auto w-full max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
+                <div
+                    id="content"
+                    class="rounded-2xl border border-slate-800/70 bg-slate-900/60 p-4 shadow-2xl shadow-slate-950/40 sm:p-6"
+                ></div>
+            </main>
+        </div>
+
+        <script type="module" src="/app.js"></script>
+    </body>
+</html>

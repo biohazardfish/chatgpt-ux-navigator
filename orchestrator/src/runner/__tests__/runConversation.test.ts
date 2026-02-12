@@ -456,7 +456,11 @@ describe('runConversation', () => {
 
 describe('runConversationFromState', () => {
     it('uses full context inbox for first resumed turn only', async () => {
-        const inboxes: Array<{turn: number; agent_id: string; inbox: Array<{turn: number; from: string}>}> = [];
+        const inboxes: Array<{
+            turn: number;
+            agent_id: string;
+            inbox: Array<{turn: number; from: string}>;
+        }> = [];
 
         const deps: RunnerDeps = {
             callAgent: async ({agent_id, turn, inbox}) => {

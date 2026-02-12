@@ -154,7 +154,7 @@ export async function loadConfig(configPath: string): Promise<AppConfig> {
             // Override from environment variable if present
             request_timeout: process.env.REQUEST_TIMEOUT
                 ? parseInt(process.env.REQUEST_TIMEOUT, 10)
-                : config.server.request_timeout ?? 360,
+                : (config.server.request_timeout ?? 360),
         },
         run: {
             // Default out_dir to "runs"

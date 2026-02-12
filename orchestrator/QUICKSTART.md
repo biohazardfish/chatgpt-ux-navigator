@@ -55,7 +55,7 @@ termination:
 
 Create `my-judged-run.yml`:
 
-````yaml
+```yaml
 version: 1
 
 server:
@@ -138,7 +138,7 @@ judge:
 termination:
     max_turns: 10
     judge_stop: true # Judge can stop early if solution is reached
-````
+```
 
 **Note**: With judge enabled, you need **3 browser tabs**:
 
@@ -214,6 +214,12 @@ bun start examples/planner-critic.yml
 
 # Run simple conversation (2 agents, no judge)
 bun start examples/simple.yml
+
+# Build CSS for run viewer UI
+bun run viewer:css
+
+# Browse completed runs in browser (port 8787)
+bun start --viewer runs
 
 # Type check code
 bun typecheck
