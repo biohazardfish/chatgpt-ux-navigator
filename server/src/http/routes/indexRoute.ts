@@ -8,13 +8,16 @@ export function handleIndex(req: Request, cfg: AppConfig, url: URL): Response {
     return new Response(
         `OK.\n` +
             `Prompts Directory: ${cfg.promptsDir}\n` +
-            `Files Root:        ${cfg.filesRoot}\n\n` +
+            `Files Root:        ${cfg.filesRoot}\n` +
+            `Images Directory:  ${cfg.imagesDir}\n\n` +
             `Routes:\n` +
             `GET  /list              - List all .md prompts\n` +
             `GET  /prompt/<filename> - Get processed content of a prompt\n` +
             `POST /prompt/<filename> - Append assistant response\n` +
-            `POST /responses         - Stream assistant output without forcing a new ChatGPT chat\n` +
-            `POST /responses/new     - Same as /responses but spawns a temporary chat first\n` +
+            `POST /responses/<client_id>              - Stream assistant output to a connected client\n` +
+            `POST /responses/<client_id>/new          - Same as /responses with new chat (temporary by default)\n` +
+            `POST /responses/<client_id>/new?temporary=false - New chat without temporary mode\n` +
+            `POST /images/<client_id>                 - Trigger image generation flow\n` +
             `GET  /ws                - WebSocket ingest for streaming events + prompt delivery\n`,
         {
             status: 200,

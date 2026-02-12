@@ -6,7 +6,7 @@ import {startViewer} from '../server';
 
 const TEST_PREFIX = 'nexus-viewer-server-';
 let tempDir: string | null = null;
-let server: Bun.Server | null = null;
+let server: Bun.Server<any> | null = null;
 let baseUrl = '';
 let runsRoot = '';
 
@@ -27,7 +27,7 @@ describe('viewer server', () => {
         await startTestServer();
 
         const response = await fetch(`${baseUrl}/api/runs`);
-        const body = await response.json();
+        const body = (await response.json()) as any;
 
         expect(response.status).toBe(200);
         expect(body.runs_root).toBe(runsRoot);
@@ -41,7 +41,7 @@ describe('viewer server', () => {
         await startTestServer();
 
         const response = await fetch(`${baseUrl}/api/run`);
-        const body = await response.json();
+        const body = (await response.json()) as any;
 
         expect(response.status).toBe(400);
         expect(body.error).toContain('Missing required query parameter: run');
@@ -51,7 +51,7 @@ describe('viewer server', () => {
         await startTestServer();
 
         const response = await fetch(`${baseUrl}/api/run?run=../x`);
-        const body = await response.json();
+        const body = (await response.json()) as any;
 
         expect(response.status).toBe(400);
         expect(body.error).toContain('Invalid run folder name');
@@ -61,7 +61,7 @@ describe('viewer server', () => {
         await startTestServer();
 
         const response = await fetch(`${baseUrl}/api/run?run=missing`);
-        const body = await response.json();
+        const body = (await response.json()) as any;
 
         expect(response.status).toBe(404);
         expect(body.error).toBeTruthy();

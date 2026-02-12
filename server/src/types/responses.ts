@@ -8,6 +8,7 @@ export type ResponseObject = {
 
     output: any[];
     output_text: string;
+    image_path?: string | null;
 
     usage: any | null;
 

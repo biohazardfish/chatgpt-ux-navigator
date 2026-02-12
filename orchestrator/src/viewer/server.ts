@@ -7,7 +7,7 @@ type StartViewerParams = {
     port?: number;
 };
 
-export async function startViewer(params: StartViewerParams): Promise<Bun.Server> {
+export async function startViewer(params: StartViewerParams): Promise<Bun.Server<any>> {
     const runsRoot = resolve(params.runsRoot);
     const port = params.port ?? 8787;
     const publicDir = join(import.meta.dir, 'public');

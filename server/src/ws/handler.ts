@@ -1,7 +1,7 @@
 import type {ServerWebSocket} from 'bun';
 import type {WsData} from '../types/ws';
 import type {AppConfig} from '../config/config';
-import {setClient, removeClient, getClient} from './hub';
+import {setClient, removeClient} from './hub';
 import {safeParseJson} from './parse';
 import {extractTextUpdateFromChatGPTPayload, computeDelta} from './extract';
 import {
@@ -15,8 +15,49 @@ import {
     emitGenericEvent,
 } from '../http/responses/inflight';
 import {sanitizeAssistantText} from '../http/responses/sanitize';
+import {
+    saveGeneratedImage,
+} from '../http/images/capture';
 
 export function createWebSocketHandlers(cfg: AppConfig) {
+    function completeAndTerminate(clientId: string, reason?: {reason: string}) {
+        const inflight = getInflight(clientId);
+        if (!inflight) return;
+
+        const full = typeof inflight.lastText === 'string' ? inflight.lastText : '';
+        const sanitized = sanitizeAssistantText(full);
+        inflight.response.output_text = sanitized;
+        emitOutputTextDone(clientId, sanitized);
+        emitContentPartDone(clientId, sanitized);
+        emitOutputItemDone(clientId, sanitized);
+
+        if (reason) {
+            emitResponseCompleted(clientId, 'completed', reason);
+        } else {
+            emitResponseCompleted(clientId, 'completed');
+        }
+        inflightTerminate(clientId, null, null);
+    }
+
+    function maybeDelayCompletionForImage(clientId: string, reason?: {reason: string}): boolean {
+        const inflight = getInflight(clientId);
+        if (!inflight) return false;
+
+        const imagePath = inflight.response?.image_path || inflight.response?.meta?.image_path;
+        if (!inflight.expectsImage || imagePath) {
+            return false;
+        }
+
+        inflight.waitingForImage = true;
+        if (!inflight.imageWaitHandle) {
+            inflight.imageWaitHandle = setTimeout(() => {
+                completeAndTerminate(clientId, reason);
+            }, 15000);
+        }
+
+        return true;
+    }
+
     return {
         open(ws: ServerWebSocket<WsData>) {
             const clientId = ws.data.clientId;
@@ -28,7 +69,7 @@ export function createWebSocketHandlers(cfg: AppConfig) {
             ws.send(JSON.stringify({type: 'welcome', at: Date.now()}));
         },
 
-        message(ws: ServerWebSocket<WsData>, message: string | Uint8Array) {
+        async message(ws: ServerWebSocket<WsData>, message: string | Uint8Array) {
             const text =
                 typeof message === 'string'
                     ? message
@@ -42,6 +83,32 @@ export function createWebSocketHandlers(cfg: AppConfig) {
 
             const t = String(obj.type || '');
             const clientId = ws.data.clientId;
+
+            if (t === 'image.generated') {
+                try {
+                    const imagePath = await saveGeneratedImage({
+                        imagesDir: cfg.imagesDir,
+                        clientId,
+                        dataBase64: String(obj?.dataBase64 || ''),
+                        mimeType: typeof obj?.mimeType === 'string' ? obj.mimeType : null,
+                        fileName: typeof obj?.fileName === 'string' ? obj.fileName : null,
+                        fileId: typeof obj?.fileId === 'string' ? obj.fileId : null,
+                    });
+
+                    const inflight = getInflight(clientId);
+                    if (inflight) {
+                        inflight.response.image_path = imagePath;
+                        inflight.response.meta = {...(inflight.response.meta || {}), image_path: imagePath};
+
+                        if (inflight.waitingForImage) {
+                            completeAndTerminate(clientId);
+                        }
+                    }
+                } catch (err) {
+                    console.warn('[images] save failed:', err);
+                }
+                return;
+            }
 
             const inflight = getInflight(clientId);
 
@@ -73,15 +140,11 @@ export function createWebSocketHandlers(cfg: AppConfig) {
                         }
                     }
                 } else if (t === 'done') {
-                    const full = typeof inflight.lastText === 'string' ? inflight.lastText : '';
-                    const sanitized = sanitizeAssistantText(full);
-                    inflight.response.output_text = sanitized;
-                    emitOutputTextDone(clientId, sanitized);
-                    emitContentPartDone(clientId, sanitized);
-                    emitOutputItemDone(clientId, sanitized);
+                    if (maybeDelayCompletionForImage(clientId)) {
+                        return;
+                    }
 
-                    emitResponseCompleted(clientId, 'completed');
-                    inflightTerminate(clientId, null, null);
+                    completeAndTerminate(clientId);
                     return;
                 } else if (t === 'closed') {
                     const full = typeof inflight.lastText === 'string' ? inflight.lastText : '';
@@ -95,16 +158,17 @@ export function createWebSocketHandlers(cfg: AppConfig) {
                         return;
                     }
 
-                    inflight.response.output_text = sanitized;
-                    emitOutputTextDone(clientId, sanitized);
-                    emitContentPartDone(clientId, sanitized);
-                    emitOutputItemDone(clientId, sanitized);
+                    if (maybeDelayCompletionForImage(clientId, {reason: 'stream_closed'})) {
+                        return;
+                    }
 
-                    emitResponseCompleted(clientId, 'completed', {reason: 'stream_closed'});
-                    inflightTerminate(clientId, null, null);
+                    completeAndTerminate(clientId, {reason: 'stream_closed'});
                     return;
                 } else if (t === 'error') {
-                    emitResponseCompleted(clientId, 'error', {reason: 'extension_error'});
+                    emitResponseCompleted(clientId, 'error', {
+                        reason: 'extension_error',
+                        detail: obj?.error || obj?.payload || null,
+                    });
                     inflightTerminate(clientId, 'response.error', {
                         type: 'response.error',
                         error: {message: 'Extension reported error', detail: obj},

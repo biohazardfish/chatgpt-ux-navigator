@@ -1,7 +1,10 @@
+import {resolve} from 'node:path';
+
 export type AppConfig = {
     port: number;
     promptsDir: string;
     filesRoot: string;
+    imagesDir: string;
 
     // If true, /responses will return a single JSON response (no SSE streaming),
     // regardless of request body `stream`.
@@ -21,6 +24,7 @@ export function makeConfig(partial: Partial<AppConfig>): AppConfig {
         port: partial.port ?? 8765,
         promptsDir: partial.promptsDir ?? process.cwd(),
         filesRoot: partial.filesRoot ?? process.cwd(),
+        imagesDir: partial.imagesDir ?? resolve(process.cwd(), 'images'),
         noStream: partial.noStream ?? false,
         debugEvents: partial.debugEvents ?? false,
         requestTimeout: partial.requestTimeout ?? 360,

@@ -39,7 +39,7 @@ describe('cli --viewer handling', () => {
 
 function createDeps(): {
     deps: {
-        startViewer: () => Promise<Bun.Server>;
+        startViewer: () => Promise<Bun.Server<any>>;
         log: (...args: unknown[]) => void;
         error: (...args: unknown[]) => void;
         exit: (code: number) => void;
@@ -60,7 +60,7 @@ function createDeps(): {
                 calls.startViewer += 1;
                 return {
                     stop: () => {},
-                } as Bun.Server;
+                } as Bun.Server<any>;
             },
             log: () => {},
             error: () => {},

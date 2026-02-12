@@ -4,6 +4,7 @@ import {Router} from './router';
 import {handleIndex} from './routes/indexRoute';
 import {handleListPrompts, handleGetPrompt, handlePostPrompt} from './routes/prompts';
 import {handlePostResponsesById, handlePostResponsesByIdNew} from './routes/responses';
+import {handlePostImagesById} from './routes/images';
 import {handleListClients} from './routes/clients';
 import {createWebSocketHandlers} from '../ws/handler';
 import type {WsData} from '../types/ws';
@@ -20,6 +21,7 @@ export function startServer(cfg: AppConfig): void {
     router.post(/\/prompt\/.+/, handlePostPrompt);
     router.post(/\/responses\/[^\/]+\/new/, handlePostResponsesByIdNew);
     router.post(/\/responses\/[^\/]+/, handlePostResponsesById);
+    router.post(/\/images\/[^\/]+/, handlePostImagesById);
 
     router.options(/.*/, handleOptions);
 
@@ -62,6 +64,7 @@ export function startServer(cfg: AppConfig): void {
     console.log(`Bun prompt server running: http://localhost:${cfg.port}`);
     console.log(`Serving prompts from:      ${cfg.promptsDir}`);
     console.log(`Resolving @files from:     ${cfg.filesRoot}`);
+    console.log(`Saving images to:          ${cfg.imagesDir}`);
     console.log(`List endpoint:             http://localhost:${cfg.port}/list`);
     console.log(`WebSocket endpoint:        ws://localhost:${cfg.port}/ws`);
 }

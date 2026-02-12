@@ -12,6 +12,7 @@ const config: AppConfig = {
     port: 0,
     promptsDir: PROMPTS_ROOT,
     filesRoot: FILES_ROOT,
+    imagesDir: join(TEST_ROOT, 'images'),
     noStream: false,
     debugEvents: false,
     requestTimeout: 360,
