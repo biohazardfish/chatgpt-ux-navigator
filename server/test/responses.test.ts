@@ -21,6 +21,7 @@ const config: AppConfig = {
     imagesDir: '/tmp/images',
     noStream: false,
     debugEvents: false,
+    debugLogs: false,
     requestTimeout: 360,
 };
 

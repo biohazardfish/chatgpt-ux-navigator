@@ -17,6 +17,10 @@ export type AppConfig = {
     // Request timeout in seconds for agent/judge responses.
     // Default: 360 seconds (6 minutes).
     requestTimeout: number;
+
+    // If true, emit server-side debug logs for response/WS flow.
+    // Enabled by passing --debug to the server process.
+    debugLogs: boolean;
 };
 
 export function makeConfig(partial: Partial<AppConfig>): AppConfig {
@@ -28,5 +32,6 @@ export function makeConfig(partial: Partial<AppConfig>): AppConfig {
         noStream: partial.noStream ?? false,
         debugEvents: partial.debugEvents ?? false,
         requestTimeout: partial.requestTimeout ?? 360,
+        debugLogs: partial.debugLogs ?? false,
     };
 }
