@@ -1,5 +1,5 @@
 {
-    "name": "orchestrator",
+    "name": "@repo/orchestrator",
     "type": "module",
     "module": "src/index.ts",
     "scripts": {

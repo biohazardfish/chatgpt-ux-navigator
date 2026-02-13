@@ -5,22 +5,63 @@ import {existsSync} from 'node:fs';
 const IMAGE_GEN_URL = process.env.IMAGE_GEN_URL ?? 'http://localhost:8765/images/image-gen';
 const TIMEOUT_MS = Number(process.env.IMAGE_GEN_TIMEOUT_MS ?? 5 * 60 * 1000);
 
-function extractPrompts(markdown: string): string[] {
+type PromptBlock = {
+    prompt: string;
+    start: number;
+    end: number;
+    index: number;
+};
+
+function extractPromptBlocks(markdown: string): PromptBlock[] {
     const re = /```image_prompt[ \t]*\r?\n([\s\S]*?)\r?\n```/g;
-    const prompts: string[] = [];
+    const blocks: PromptBlock[] = [];
+    let promptIndex = 0;
 
     let match: RegExpExecArray | null;
     while ((match = re.exec(markdown)) !== null) {
         const prompt = (match[1] ?? '').trim();
         if (prompt.length > 0) {
-            prompts.push(prompt);
+            promptIndex += 1;
+            blocks.push({
+                prompt,
+                start: match.index,
+                end: re.lastIndex,
+                index: promptIndex,
+            });
         }
     }
 
-    return prompts;
+    return blocks;
 }
 
-async function postPrompt(prompt: string, label: string): Promise<void> {
+function hasImageMarkerBefore(markdown: string, start: number): boolean {
+    if (start <= 0) return false;
+
+    let i = start - 1;
+    while (i >= 0 && /\s/.test(markdown[i])) {
+        i -= 1;
+    }
+    if (i < 0) return false;
+
+    const lineStart = markdown.lastIndexOf('\n', i) + 1;
+    const line = markdown.slice(lineStart, i + 1).trim();
+
+    return /^!?\[Image\s+\d+\]\(.+\)$/.test(line);
+}
+
+function insertImageMarkerBeforeBlock(markdown: string, block: PromptBlock, imagePath: string): string {
+    let prefix = markdown.slice(0, block.start);
+    const suffix = markdown.slice(block.start);
+
+    if (prefix.length > 0 && !prefix.endsWith('\n')) {
+        prefix += '\n';
+    }
+
+    const marker = `![Image ${block.index}](${imagePath})\n\n`;
+    return `${prefix}${marker}${suffix}`;
+}
+
+async function postPrompt(prompt: string, label: string): Promise<string> {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), TIMEOUT_MS);
 
@@ -38,7 +79,24 @@ async function postPrompt(prompt: string, label: string): Promise<void> {
             throw new Error(`API error (${res.status}): ${text}`);
         }
 
-        console.log(`✓ ${label} done`);
+        let payload: any;
+        try {
+            payload = JSON.parse(text);
+        } catch {
+            throw new Error(`API returned non-JSON response: ${text}`);
+        }
+
+        const imagePath =
+            (typeof payload?.image_path === 'string' && payload.image_path.trim()) ||
+            (typeof payload?.meta?.image_path === 'string' && payload.meta.image_path.trim()) ||
+            null;
+
+        if (!imagePath) {
+            throw new Error(`Image path not found in response for ${label}`);
+        }
+
+        console.log(`✓ ${label} done -> ${imagePath}`);
+        return imagePath;
     } catch (err: any) {
         if (err?.name === 'AbortError') {
             throw new Error(`Timed out after ${Math.round(TIMEOUT_MS / 1000)}s`);
@@ -64,15 +122,38 @@ async function main() {
         }
 
         console.log(`→ Processing ${file}`);
-        const markdown = await Bun.file(file).text();
-        const prompts = extractPrompts(markdown);
+        const initialMarkdown = await Bun.file(file).text();
+        const initialBlocks = extractPromptBlocks(initialMarkdown);
 
-        console.log(`  Found ${prompts.length} prompt(s)`);
+        console.log(`  Found ${initialBlocks.length} prompt(s)`);
 
-        for (let i = 0; i < prompts.length; i++) {
-            const label = `${file} [${i + 1}/${prompts.length}]`;
-            console.log(`→ Sending ${label} - prompt: ${prompts[i]}`);
-            await postPrompt(prompts[i], label);
+        let generatedCount = 0;
+
+        while (true) {
+            const markdown = await Bun.file(file).text();
+            const blocks = extractPromptBlocks(markdown);
+            const nextBlock = blocks.find(block => !hasImageMarkerBefore(markdown, block.start));
+
+            if (!nextBlock) {
+                break;
+            }
+
+            const label = `${file} [${nextBlock.index}/${blocks.length}]`;
+
+            console.log(`→ Sending ${label} - prompt: ${nextBlock.prompt}`);
+            const imagePath = await postPrompt(nextBlock.prompt, label);
+
+            const nextMarkdown = insertImageMarkerBeforeBlock(markdown, nextBlock, imagePath);
+            await Bun.write(file, nextMarkdown);
+
+            generatedCount += 1;
+            console.log(`  Inserted marker for ${label}`);
+        }
+
+        if (generatedCount > 0) {
+            console.log(`  Updated ${file} with ${generatedCount} image marker(s)`);
+        } else {
+            console.log(`  No markdown updates needed for ${file}`);
         }
     }
 
