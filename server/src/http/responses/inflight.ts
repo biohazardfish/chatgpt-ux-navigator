@@ -44,6 +44,12 @@ export type InflightResponses = {
 // --- Multi-client inflight tracking: Map of clientId -> InflightResponses ---
 const inflights = new Map<string, InflightResponses>();
 const defaultClientId = '__default__';
+const DEBUG_LOGS_ENABLED = process.argv.includes('--debug') || process.env.DEBUG_LOGS === 'true';
+
+function logInflight(event: string, meta: Record<string, unknown> = {}) {
+    if (!DEBUG_LOGS_ENABLED) return;
+    console.log('[inflight]', event, JSON.stringify(meta));
+}
 
 export function getInflight(clientId?: string): InflightResponses | null {
     const id = clientId || defaultClientId;
@@ -125,6 +131,12 @@ export function createInflight(
         imageWaitHandle: null,
     };
     inflights.set(clientId, inflight);
+    logInflight('created', {
+        clientId,
+        id: inflight.id,
+        mode: inflight.mode,
+        expectsImage: inflight.expectsImage,
+    });
     return inflight;
 }
 
@@ -212,6 +224,13 @@ export function inflightTerminate(
     const id = clientId || defaultClientId;
     const inflight = inflights.get(id);
     if (!inflight || inflight.closed) return;
+    logInflight('terminate_called', {
+        clientId: id,
+        id: inflight.id,
+        mode: inflight.mode,
+        finalEvent,
+        hasFinalData: finalData != null,
+    });
     inflight.closed = true;
 
     try {
@@ -250,6 +269,7 @@ export function inflightTerminate(
     inflight.jsonReject = null;
 
     inflights.delete(id);
+    logInflight('terminated', {clientId: id, id: inflight.id, mode: inflight.mode});
 
     try {
         resolve?.(resp);
@@ -506,6 +526,11 @@ export function emitResponseCompleted(clientIdOrStatus?: string, statusOrExtra?:
     if (!inflight) return;
 
     inflight.response.status = status;
+    logInflight('response_completed_event', {
+        clientId: id,
+        id: inflight.id,
+        status,
+    });
 
     if (status !== 'in_progress') {
         inflight.response.completed_at = Math.floor(Date.now() / 1000);

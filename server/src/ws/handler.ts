@@ -20,9 +20,24 @@ import {
 } from '../http/images/capture';
 
 export function createWebSocketHandlers(cfg: AppConfig) {
+    function logWs(event: string, meta: Record<string, unknown> = {}) {
+        if (!cfg.debugLogs) return;
+        console.log('[ws][responses]', event, JSON.stringify(meta));
+    }
+
     function completeAndTerminate(clientId: string, reason?: {reason: string}) {
         const inflight = getInflight(clientId);
         if (!inflight) return;
+
+        logWs('complete_and_terminate', {
+            clientId,
+            inflightId: inflight.id,
+            reason: reason?.reason || null,
+            lastTextLength: typeof inflight.lastText === 'string' ? inflight.lastText.length : 0,
+            expectsImage: inflight.expectsImage,
+            waitingForImage: inflight.waitingForImage,
+            imagePath: inflight.response?.image_path || inflight.response?.meta?.image_path || null,
+        });
 
         const full = typeof inflight.lastText === 'string' ? inflight.lastText : '';
         const sanitized = sanitizeAssistantText(full);
@@ -61,6 +76,7 @@ export function createWebSocketHandlers(cfg: AppConfig) {
     return {
         open(ws: ServerWebSocket<WsData>) {
             const clientId = ws.data.clientId;
+            logWs('socket_open', {clientId});
             if (!clientId) {
                 ws.close();
                 return;
@@ -83,8 +99,19 @@ export function createWebSocketHandlers(cfg: AppConfig) {
 
             const t = String(obj.type || '');
             const clientId = ws.data.clientId;
+            logWs('message_received', {
+                clientId,
+                type: t,
+                hasPayload: !!obj.payload,
+            });
 
             if (t === 'image.generated') {
+                logWs('image_generated_received', {
+                    clientId,
+                    fileId: typeof obj?.fileId === 'string' ? obj.fileId : null,
+                    mimeType: typeof obj?.mimeType === 'string' ? obj.mimeType : null,
+                    dataBase64Length: typeof obj?.dataBase64 === 'string' ? obj.dataBase64.length : 0,
+                });
                 try {
                     const imagePath = await saveGeneratedImage({
                         imagesDir: cfg.imagesDir,
@@ -97,6 +124,12 @@ export function createWebSocketHandlers(cfg: AppConfig) {
 
                     const inflight = getInflight(clientId);
                     if (inflight) {
+                        logWs('image_saved_for_inflight', {
+                            clientId,
+                            inflightId: inflight.id,
+                            imagePath,
+                            waitingForImage: inflight.waitingForImage,
+                        });
                         inflight.response.image_path = imagePath;
                         inflight.response.meta = {...(inflight.response.meta || {}), image_path: imagePath};
 
@@ -112,9 +145,34 @@ export function createWebSocketHandlers(cfg: AppConfig) {
 
             const inflight = getInflight(clientId);
 
+            if (!inflight) {
+                logWs('message_without_inflight', {
+                    clientId,
+                    messageType: t,
+                });
+            }
+
             if (inflight) {
+                logWs('inflight_message', {
+                    clientId,
+                    inflightId: inflight.id,
+                    messageType: t,
+                    lastTextLength: typeof inflight.lastText === 'string' ? inflight.lastText.length : 0,
+                    expectsImage: inflight.expectsImage,
+                    waitingForImage: inflight.waitingForImage,
+                    hasImagePath: !!(inflight.response?.image_path || inflight.response?.meta?.image_path),
+                });
+
                 if (t === 'sse') {
                     const upd = extractTextUpdateFromChatGPTPayload(obj);
+                    if (upd) {
+                        logWs('sse_text_update', {
+                            clientId,
+                            inflightId: inflight.id,
+                            mode: upd.mode,
+                            textLength: upd.text.length,
+                        });
+                    }
 
                     if (upd && typeof upd.text === 'string' && upd.text.length > 0) {
                         if (upd.mode === 'full') {
@@ -140,7 +198,9 @@ export function createWebSocketHandlers(cfg: AppConfig) {
                         }
                     }
                 } else if (t === 'done') {
+                    logWs('done_received', {clientId, inflightId: inflight.id});
                     if (maybeDelayCompletionForImage(clientId)) {
+                        logWs('done_waiting_for_image', {clientId, inflightId: inflight.id});
                         return;
                     }
 
@@ -155,16 +215,27 @@ export function createWebSocketHandlers(cfg: AppConfig) {
                     // Don't complete the request - let it timeout or wait for actual content.
                     const inflightAge = Date.now() / 1000 - inflight.createdAt;
                     if (sanitized.length === 0 && inflightAge < 2) {
+                        logWs('closed_ignored_early_empty', {
+                            clientId,
+                            inflightId: inflight.id,
+                            inflightAge,
+                        });
                         return;
                     }
 
                     if (maybeDelayCompletionForImage(clientId, {reason: 'stream_closed'})) {
+                        logWs('closed_waiting_for_image', {clientId, inflightId: inflight.id});
                         return;
                     }
 
                     completeAndTerminate(clientId, {reason: 'stream_closed'});
                     return;
                 } else if (t === 'error') {
+                    logWs('extension_error_received', {
+                        clientId,
+                        inflightId: inflight.id,
+                        detail: obj?.error || obj?.payload || null,
+                    });
                     emitResponseCompleted(clientId, 'error', {
                         reason: 'extension_error',
                         detail: obj?.error || obj?.payload || null,
@@ -184,6 +255,7 @@ export function createWebSocketHandlers(cfg: AppConfig) {
 
         close(ws: ServerWebSocket<WsData>) {
             const clientId = ws.data.clientId;
+            logWs('socket_closed', {clientId});
             if (clientId) {
                 removeClient(clientId);
             }

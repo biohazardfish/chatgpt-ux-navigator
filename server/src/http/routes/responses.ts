@@ -138,6 +138,11 @@ type PromptMessageOptions = {
     clientId?: string;
 };
 
+function logResponseRoute(cfg: AppConfig, event: string, meta: Record<string, unknown> = {}) {
+    if (!cfg.debugLogs) return;
+    console.log('[http][responses]', event, JSON.stringify(meta));
+}
+
 function sendPromptToExtension(
     id: string,
     createdAt: number,
@@ -160,6 +165,7 @@ function sendPromptToExtension(
 }
 
 function handleStreamingResponse(
+    cfg: AppConfig,
     id: string,
     createdAt: number,
     prompt: string,
@@ -176,8 +182,16 @@ function handleStreamingResponse(
 
     const stream = new ReadableStream<Uint8Array>({
         start(controller) {
+            logResponseRoute(cfg, 'stream_start', {id, clientId, messageType: messageType || 'prompt'});
             const timeoutHandle = setTimeout(() => {
                 if (!getInflight(clientId)) return;
+
+                logResponseRoute(cfg, 'stream_timeout', {
+                    id,
+                    clientId,
+                    timeoutMs,
+                    messageType: messageType || 'prompt',
+                });
 
                 emitResponseCompleted(clientId, 'error', {
                     error: 'Timed out waiting for extension SSE',
@@ -201,6 +215,12 @@ function handleStreamingResponse(
                     messageItemId,
                     expectsImage,
                 });
+                logResponseRoute(cfg, 'inflight_created', {
+                    id,
+                    clientId,
+                    mode: 'stream',
+                    expectsImage,
+                });
             }
 
             const ok = sendPromptToExtension(id, createdAt, prompt, {
@@ -210,6 +230,11 @@ function handleStreamingResponse(
                 clientId,
             });
             if (!ok) {
+                logResponseRoute(cfg, 'send_prompt_failed', {
+                    id,
+                    clientId,
+                    messageType: messageType || 'prompt',
+                });
                 emitResponseCompleted(clientId, 'error', {
                     error: 'Failed to send prompt to WS client',
                 });
@@ -219,6 +244,14 @@ function handleStreamingResponse(
                 });
                 return;
             }
+
+            logResponseRoute(cfg, 'send_prompt_ok', {
+                id,
+                clientId,
+                messageType: messageType || 'prompt',
+                newChat,
+                createTemporaryChat,
+            });
 
             emitResponseCreated(clientId);
             emitResponseInProgress(clientId);
@@ -249,6 +282,7 @@ function handleStreamingResponse(
  * Handles JSON responses (Promise-based).
  */
 async function handleJsonResponse(
+    cfg: AppConfig,
     id: string,
     createdAt: number,
     prompt: string,
@@ -262,10 +296,17 @@ async function handleJsonResponse(
     clientId?: string
 ): Promise<Response> {
     try {
+        logResponseRoute(cfg, 'json_start', {id, clientId, messageType: messageType || 'prompt'});
         const result = await new Promise<any>((resolve, reject) => {
             const timeoutHandle = setTimeout(() => {
                 const current = getInflight(clientId);
                 if (current && current.id === id) {
+                    logResponseRoute(cfg, 'json_timeout', {
+                        id,
+                        clientId,
+                        timeoutMs,
+                        messageType: messageType || 'prompt',
+                    });
                     emitResponseCompleted(clientId, 'error', {
                         error: 'Timed out waiting for extension SSE',
                     });
@@ -289,6 +330,12 @@ async function handleJsonResponse(
                 jsonResolve: resolve,
                 jsonReject: reject,
             });
+            logResponseRoute(cfg, 'inflight_created', {
+                id,
+                clientId,
+                mode: 'json',
+                expectsImage,
+            });
         }
 
             const ok = sendPromptToExtension(id, createdAt, prompt, {
@@ -298,6 +345,11 @@ async function handleJsonResponse(
                 clientId,
             });
             if (!ok) {
+                logResponseRoute(cfg, 'send_prompt_failed', {
+                    id,
+                    clientId,
+                    messageType: messageType || 'prompt',
+                });
                 emitResponseCompleted(clientId, 'error', {
                     error: 'Failed to send prompt to WS client',
                 });
@@ -305,6 +357,14 @@ async function handleJsonResponse(
                 reject(new Error('Failed to send prompt to WS client'));
                 return;
             }
+
+            logResponseRoute(cfg, 'send_prompt_ok', {
+                id,
+                clientId,
+                messageType: messageType || 'prompt',
+                newChat,
+                createTemporaryChat,
+            });
 
             emitResponseCreated(clientId);
             emitResponseInProgress(clientId);
@@ -349,6 +409,14 @@ export async function handleResponsesRequest(
 ): Promise<Response> {
     const {createTemporaryChat, clientId, newChat, messageType} = opts;
     const cors = corsHeaders();
+    logResponseRoute(cfg, 'request_received', {
+        clientId,
+        path: url.pathname,
+        method: req.method,
+        messageType: messageType || 'prompt',
+        newChat,
+        createTemporaryChat,
+    });
 
     // Check inflight for specific clientId (or default if no clientId)
     if (getInflight(clientId)) {
@@ -413,6 +481,7 @@ export async function handleResponsesRequest(
 
     if (shouldStream) {
         return handleStreamingResponse(
+            cfg,
             id,
             createdAt,
             prompt,
@@ -426,6 +495,7 @@ export async function handleResponsesRequest(
         );
     } else {
         return handleJsonResponse(
+            cfg,
             id,
             createdAt,
             prompt,

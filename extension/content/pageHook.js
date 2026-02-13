@@ -1,6 +1,7 @@
 (() => {
     const NS = 'CGPT_NAV_STREAM_TAP';
-    const TARGET_SUBSTR = '/backend-api/f/conversation';
+    const BACKEND_API_SUBSTR = '/backend-api/';
+    const CONVERSATION_SUBSTR = 'conversation';
 
     function post(type, payload) {
         try {
@@ -10,7 +11,9 @@
 
     function isTargetUrl(u) {
         try {
-            return typeof u === 'string' && u.includes(TARGET_SUBSTR);
+            if (typeof u !== 'string' || u.length === 0) return false;
+            if (!u.includes(BACKEND_API_SUBSTR)) return false;
+            return u.includes(CONVERSATION_SUBSTR);
         } catch (_) {
             return false;
         }
@@ -95,12 +98,11 @@
         const res = await origFetch.apply(this, args);
 
         try {
-            if (!isTargetUrl(url)) return res;
-
             const ct = res.headers && res.headers.get ? res.headers.get('content-type') || '' : '';
             const isSse = ct.includes('text/event-stream');
+            const isTarget = isTargetUrl(url);
 
-            if (!isSse || !res.body || !res.body.tee) return res;
+            if (!isSse || !isTarget || !res.body || !res.body.tee) return res;
 
             const meta = {
                 url,
