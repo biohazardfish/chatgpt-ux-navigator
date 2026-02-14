@@ -2,8 +2,18 @@ import {sseFrame} from './sse';
 import type {ResponseObject} from '../../types/responses';
 import {parseToolCallsFromText} from '../../prompts/parser';
 import {sanitizeAssistantText} from './sanitize';
+import {debugSummary, debugRaw} from '../../logging/debug';
 
 type InflightMode = 'stream' | 'json';
+
+type SseStats = {
+    totalFrames: number;
+    textFrames: number;
+    patchFrames: number;
+    noopFrames: number;
+    sampledRawFrames: number;
+    startedAtMs: number;
+};
 
 export type InflightResponses = {
     id: string;
@@ -39,16 +49,33 @@ export type InflightResponses = {
     waitingForImage: boolean;
     imageWaitHandle: any;
 
+    // SSE diagnostics
+    sseStats: SseStats;
+    sseRawContext: Array<Record<string, unknown>>;
+
 };
 
 // --- Multi-client inflight tracking: Map of clientId -> InflightResponses ---
 const inflights = new Map<string, InflightResponses>();
 const defaultClientId = '__default__';
-const DEBUG_LOGS_ENABLED = process.argv.includes('--debug') || process.env.DEBUG_LOGS === 'true';
 
 function logInflight(event: string, meta: Record<string, unknown> = {}) {
-    if (!DEBUG_LOGS_ENABLED) return;
-    console.log('[inflight]', event, JSON.stringify(meta));
+    debugSummary('http.inflight', event, meta);
+}
+
+function elapsedMs(inflight: InflightResponses): number {
+    return Math.max(0, Date.now() - inflight.sseStats.startedAtMs);
+}
+
+function summarizeStats(inflight: InflightResponses): Record<string, unknown> {
+    return {
+        totalFrames: inflight.sseStats.totalFrames,
+        textFrames: inflight.sseStats.textFrames,
+        patchFrames: inflight.sseStats.patchFrames,
+        noopFrames: inflight.sseStats.noopFrames,
+        sampledRawFrames: inflight.sseStats.sampledRawFrames,
+        durationMs: elapsedMs(inflight),
+    };
 }
 
 export function getInflight(clientId?: string): InflightResponses | null {
@@ -129,6 +156,15 @@ export function createInflight(
         expectsImage: config.expectsImage ?? false,
         waitingForImage: false,
         imageWaitHandle: null,
+        sseStats: {
+            totalFrames: 0,
+            textFrames: 0,
+            patchFrames: 0,
+            noopFrames: 0,
+            sampledRawFrames: 0,
+            startedAtMs: Date.now(),
+        },
+        sseRawContext: [],
     };
     inflights.set(clientId, inflight);
     logInflight('created', {
@@ -258,6 +294,12 @@ export function inflightTerminate(
             inflight.controller?.close();
         } catch {}
 
+        logInflight('terminated', {
+            clientId: id,
+            id: inflight.id,
+            mode: inflight.mode,
+            ...summarizeStats(inflight),
+        });
         inflights.delete(id);
         return;
     }
@@ -269,7 +311,12 @@ export function inflightTerminate(
     inflight.jsonReject = null;
 
     inflights.delete(id);
-    logInflight('terminated', {clientId: id, id: inflight.id, mode: inflight.mode});
+    logInflight('terminated', {
+        clientId: id,
+        id: inflight.id,
+        mode: inflight.mode,
+        ...summarizeStats(inflight),
+    });
 
     try {
         resolve?.(resp);
@@ -576,5 +623,91 @@ export function emitGenericEvent(clientIdOrObj?: string, rawObj?: any) {
         response_id: inflight.id,
         raw: obj,
         sequence_number: nextSeq(clientId),
+    });
+}
+
+export function trackSseFrame(
+    clientId: string | undefined,
+    frame: {
+        hasText: boolean;
+        isPatch: boolean;
+        sampledRaw: boolean;
+    }
+): void {
+    const id = clientId || defaultClientId;
+    const inflight = inflights.get(id);
+    if (!inflight) return;
+
+    inflight.sseStats.totalFrames += 1;
+    if (frame.hasText) {
+        inflight.sseStats.textFrames += 1;
+    } else {
+        inflight.sseStats.noopFrames += 1;
+    }
+
+    if (frame.isPatch) {
+        inflight.sseStats.patchFrames += 1;
+    }
+
+    if (frame.sampledRaw) {
+        inflight.sseStats.sampledRawFrames += 1;
+    }
+}
+
+export function pushSseRawContext(clientId: string | undefined, context: Record<string, unknown>): void {
+    const id = clientId || defaultClientId;
+    const inflight = inflights.get(id);
+    if (!inflight) return;
+
+    inflight.sseRawContext.push({
+        at: new Date().toISOString(),
+        ...context,
+    });
+
+    if (inflight.sseRawContext.length > 50) {
+        inflight.sseRawContext.shift();
+    }
+}
+
+export function flushSseRawContext(
+    clientId: string | undefined,
+    reason: string,
+    extra: Record<string, unknown> = {}
+): void {
+    const id = clientId || defaultClientId;
+    const inflight = inflights.get(id);
+    if (!inflight || inflight.sseRawContext.length === 0) return;
+
+    debugRaw(
+        'sse.raw',
+        'error_context',
+        {
+            clientId: id,
+            responseId: inflight.id,
+            reason,
+            contextSize: inflight.sseRawContext.length,
+            context: inflight.sseRawContext,
+            ...extra,
+        },
+        {force: true}
+    );
+}
+
+export function clearSseRawContext(clientId: string | undefined): void {
+    const id = clientId || defaultClientId;
+    const inflight = inflights.get(id);
+    if (!inflight) return;
+    inflight.sseRawContext = [];
+}
+
+export function emitSseRollup(clientId: string | undefined): void {
+    const id = clientId || defaultClientId;
+    const inflight = inflights.get(id);
+    if (!inflight) return;
+
+    debugSummary('sse.summary', 'stream_rollup', {
+        clientId: id,
+        responseId: inflight.id,
+        ...summarizeStats(inflight),
     });
 }

@@ -9,6 +9,7 @@ import {handleListClients} from './routes/clients';
 import {createWebSocketHandlers} from '../ws/handler';
 import type {WsData} from '../types/ws';
 import type {Server} from 'bun';
+import {isDebugEnabled, getDebugLogFile} from '../logging/debug';
 
 export function startServer(cfg: AppConfig): void {
     const router = new Router();
@@ -68,7 +69,8 @@ export function startServer(cfg: AppConfig): void {
     console.log(`Saving images to:          ${cfg.imagesDir}`);
     console.log(`List endpoint:             http://localhost:${cfg.port}/list`);
     console.log(`WebSocket endpoint:        ws://localhost:${cfg.port}/ws`);
-    if (cfg.debugLogs) {
+    if (isDebugEnabled()) {
         console.log(`Debug logs:                enabled`);
+        console.log(`Debug log file:            ${getDebugLogFile()}`);
     }
 }

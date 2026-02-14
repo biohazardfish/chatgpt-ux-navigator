@@ -5,6 +5,7 @@ import {
     getInflight,
     createInflight,
     inflightTerminate,
+    flushSseRawContext,
     emitResponseCompleted,
     emitResponseCreated,
     emitResponseInProgress,
@@ -13,6 +14,7 @@ import {
 } from '../responses/inflight';
 import {sseResponseHeaders} from '../responses/sse';
 import {corsHeaders} from '../cors';
+import {debugLog} from '../../logging/debug';
 
 /**
  * Extracts the user prompt from the request body.
@@ -139,8 +141,8 @@ type PromptMessageOptions = {
 };
 
 function logResponseRoute(cfg: AppConfig, event: string, meta: Record<string, unknown> = {}) {
-    if (!cfg.debugLogs) return;
-    console.log('[http][responses]', event, JSON.stringify(meta));
+    if (!cfg.debug) return;
+    debugLog('http.responses', event, meta);
 }
 
 function sendPromptToExtension(
@@ -195,6 +197,10 @@ function handleStreamingResponse(
 
                 emitResponseCompleted(clientId, 'error', {
                     error: 'Timed out waiting for extension SSE',
+                });
+                flushSseRawContext(clientId, 'stream_timeout', {
+                    id,
+                    timeoutMs,
                 });
                 inflightTerminate(clientId, 'response.error', {
                     type: 'response.error',
@@ -309,6 +315,10 @@ async function handleJsonResponse(
                     });
                     emitResponseCompleted(clientId, 'error', {
                         error: 'Timed out waiting for extension SSE',
+                    });
+                    flushSseRawContext(clientId, 'json_timeout', {
+                        id,
+                        timeoutMs,
                     });
                     inflightTerminate(clientId, null, null);
                 }

@@ -10,17 +10,18 @@ export type AppConfig = {
     // regardless of request body `stream`.
     noStream: boolean;
 
-    // If true, emit raw upstream events as response.event (for debugging).
-    // Default: false (hides internal protocol events from clients).
-    debugEvents: boolean;
+    // If true, enable server debug diagnostics.
+    // This includes server-side debug logs and raw upstream events as response.event.
+    debug: boolean;
+
+    // Optional JSONL file path for persisted debug logs.
+    // Default: ./logs/server-debug.jsonl
+    debugLogFile: string;
 
     // Request timeout in seconds for agent/judge responses.
     // Default: 360 seconds (6 minutes).
     requestTimeout: number;
 
-    // If true, emit server-side debug logs for response/WS flow.
-    // Enabled by passing --debug to the server process.
-    debugLogs: boolean;
 };
 
 export function makeConfig(partial: Partial<AppConfig>): AppConfig {
@@ -30,8 +31,10 @@ export function makeConfig(partial: Partial<AppConfig>): AppConfig {
         filesRoot: partial.filesRoot ?? process.cwd(),
         imagesDir: partial.imagesDir ?? resolve(process.cwd(), 'images'),
         noStream: partial.noStream ?? false,
-        debugEvents: partial.debugEvents ?? false,
+        debug: partial.debug ?? false,
+        debugLogFile:
+            partial.debugLogFile ??
+            resolve(process.cwd(), 'logs', 'server-debug.jsonl'),
         requestTimeout: partial.requestTimeout ?? 360,
-        debugLogs: partial.debugLogs ?? false,
     };
 }

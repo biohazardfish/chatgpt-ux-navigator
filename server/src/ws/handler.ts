@@ -13,16 +13,43 @@ import {
     emitContentPartDone,
     emitOutputItemDone,
     emitGenericEvent,
+    trackSseFrame,
+    pushSseRawContext,
+    flushSseRawContext,
+    clearSseRawContext,
+    emitSseRollup,
 } from '../http/responses/inflight';
 import {sanitizeAssistantText} from '../http/responses/sanitize';
 import {
     saveGeneratedImage,
 } from '../http/images/capture';
+import {debugSummary, debugRaw} from '../logging/debug';
 
 export function createWebSocketHandlers(cfg: AppConfig) {
     function logWs(event: string, meta: Record<string, unknown> = {}) {
-        if (!cfg.debugLogs) return;
-        console.log('[ws][responses]', event, JSON.stringify(meta));
+        if (!cfg.debug) return;
+        debugSummary('ws.responses', event, meta);
+    }
+
+    function summarizeSsePayload(obj: any, clientId: string, inflightId: string): Record<string, unknown> {
+        const payloadJson = obj?.payload?.json;
+        const op = typeof payloadJson?.o === 'string' ? payloadJson.o : null;
+        const type = typeof payloadJson?.type === 'string' ? payloadJson.type : null;
+        const conversationId =
+            typeof payloadJson?.conversation_id === 'string' ? payloadJson.conversation_id : null;
+        const hasImagePointer = !!(
+            payloadJson?.v?.message?.content?.parts?.[0]?.asset_pointer ||
+            payloadJson?.v?.message?.content?.parts?.[0]?.content_type === 'image_asset_pointer'
+        );
+
+        return {
+            clientId,
+            responseId: inflightId,
+            op,
+            type,
+            conversationId,
+            hasImagePointer,
+        };
     }
 
     function completeAndTerminate(clientId: string, reason?: {reason: string}) {
@@ -51,6 +78,7 @@ export function createWebSocketHandlers(cfg: AppConfig) {
         } else {
             emitResponseCompleted(clientId, 'completed');
         }
+        clearSseRawContext(clientId);
         inflightTerminate(clientId, null, null);
     }
 
@@ -99,11 +127,13 @@ export function createWebSocketHandlers(cfg: AppConfig) {
 
             const t = String(obj.type || '');
             const clientId = ws.data.clientId;
-            logWs('message_received', {
-                clientId,
-                type: t,
-                hasPayload: !!obj.payload,
-            });
+            if (t !== 'sse') {
+                logWs('message_received', {
+                    clientId,
+                    type: t,
+                    hasPayload: !!obj.payload,
+                });
+            }
 
             if (t === 'image.generated') {
                 logWs('image_generated_received', {
@@ -139,6 +169,9 @@ export function createWebSocketHandlers(cfg: AppConfig) {
                     }
                 } catch (err) {
                     console.warn('[images] save failed:', err);
+                    flushSseRawContext(clientId, 'image_save_failed', {
+                        detail: String((err as Error)?.message || err),
+                    });
                 }
                 return;
             }
@@ -153,24 +186,51 @@ export function createWebSocketHandlers(cfg: AppConfig) {
             }
 
             if (inflight) {
-                logWs('inflight_message', {
-                    clientId,
-                    inflightId: inflight.id,
-                    messageType: t,
-                    lastTextLength: typeof inflight.lastText === 'string' ? inflight.lastText.length : 0,
-                    expectsImage: inflight.expectsImage,
-                    waitingForImage: inflight.waitingForImage,
-                    hasImagePath: !!(inflight.response?.image_path || inflight.response?.meta?.image_path),
-                });
+                if (t !== 'sse') {
+                    logWs('inflight_message', {
+                        clientId,
+                        inflightId: inflight.id,
+                        messageType: t,
+                        lastTextLength: typeof inflight.lastText === 'string' ? inflight.lastText.length : 0,
+                        expectsImage: inflight.expectsImage,
+                        waitingForImage: inflight.waitingForImage,
+                        hasImagePath: !!(inflight.response?.image_path || inflight.response?.meta?.image_path),
+                    });
+                }
 
                 if (t === 'sse') {
+                    const sseMeta = summarizeSsePayload(obj, clientId, inflight.id);
                     const upd = extractTextUpdateFromChatGPTPayload(obj);
-                    if (upd) {
-                        logWs('sse_text_update', {
-                            clientId,
-                            inflightId: inflight.id,
-                            mode: upd.mode,
-                            textLength: upd.text.length,
+                    const hasText = !!(upd && typeof upd.text === 'string' && upd.text.length > 0);
+                    const isPatch = sseMeta.op === 'patch';
+
+                    pushSseRawContext(clientId, {
+                        ...sseMeta,
+                        raw: obj?.payload?.raw || null,
+                        event: obj?.payload?.event || null,
+                    });
+
+                    const sampledRaw = debugRaw('sse.raw', 'frame_sample', {
+                        ...sseMeta,
+                        hasText,
+                        mode: upd?.mode || null,
+                        textLen: upd?.text?.length || 0,
+                        raw: obj?.payload?.raw || null,
+                        json: obj?.payload?.json || null,
+                    });
+
+                    trackSseFrame(clientId, {hasText, isPatch, sampledRaw});
+
+                    if (hasText) {
+                        debugSummary('sse.summary', 'text_update', {
+                            ...sseMeta,
+                            mode: upd?.mode || null,
+                            textLen: upd?.text?.length || 0,
+                        });
+                    } else if (isPatch || sseMeta.type === 'message_stream_complete') {
+                        debugSummary('sse.summary', 'frame_signal', {
+                            ...sseMeta,
+                            hasText,
                         });
                     }
 
@@ -193,12 +253,14 @@ export function createWebSocketHandlers(cfg: AppConfig) {
                             emitOutputTextDelta(clientId, delta);
                         }
                     } else {
-                        if (cfg.debugEvents) {
+                        if (cfg.debug) {
                             emitGenericEvent(clientId, obj);
                         }
                     }
                 } else if (t === 'done') {
                     logWs('done_received', {clientId, inflightId: inflight.id});
+                    emitSseRollup(clientId);
+                    clearSseRawContext(clientId);
                     if (maybeDelayCompletionForImage(clientId)) {
                         logWs('done_waiting_for_image', {clientId, inflightId: inflight.id});
                         return;
@@ -228,6 +290,8 @@ export function createWebSocketHandlers(cfg: AppConfig) {
                         return;
                     }
 
+                    emitSseRollup(clientId);
+                    clearSseRawContext(clientId);
                     completeAndTerminate(clientId, {reason: 'stream_closed'});
                     return;
                 } else if (t === 'error') {
@@ -240,13 +304,16 @@ export function createWebSocketHandlers(cfg: AppConfig) {
                         reason: 'extension_error',
                         detail: obj?.error || obj?.payload || null,
                     });
+                    flushSseRawContext(clientId, 'extension_error', {
+                        detail: obj?.error || obj?.payload || null,
+                    });
                     inflightTerminate(clientId, 'response.error', {
                         type: 'response.error',
                         error: {message: 'Extension reported error', detail: obj},
                     });
                     return;
                 } else {
-                    if (cfg.debugEvents) {
+                    if (cfg.debug) {
                         emitGenericEvent(clientId, obj);
                     }
                 }
@@ -262,6 +329,7 @@ export function createWebSocketHandlers(cfg: AppConfig) {
             const inflight = getInflight(clientId);
             if (inflight) {
                 emitResponseCompleted(clientId, 'error', {error: 'WebSocket closed'});
+                flushSseRawContext(clientId, 'websocket_closed');
                 inflightTerminate(clientId, 'response.error', {
                     type: 'response.error',
                     error: {message: 'WebSocket closed'},
