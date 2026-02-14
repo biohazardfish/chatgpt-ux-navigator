@@ -18,6 +18,7 @@ export function handleIndex(req: Request, cfg: AppConfig, url: URL): Response {
             `POST /responses/<client_id>/new          - Same as /responses with new chat (temporary by default)\n` +
             `POST /responses/<client_id>/new?temporary=false - New chat without temporary mode\n` +
             `POST /images/<client_id>                 - Trigger image generation flow\n` +
+            `POST /images/<client_id>/activate        - Activate Create image mode in current chat\n` +
             `GET  /ws                - WebSocket ingest for streaming events + prompt delivery\n`,
         {
             status: 200,

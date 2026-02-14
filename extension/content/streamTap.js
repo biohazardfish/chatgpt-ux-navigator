@@ -130,9 +130,143 @@
             return !!ok;
         }
 
+        function getMenuItemText(el) {
+            if (!(el instanceof HTMLElement)) return '';
+            return (el.innerText || el.textContent || '').trim().toLowerCase();
+        }
+
+        function userClick(el) {
+            if (!(el instanceof HTMLElement)) return false;
+
+            function firePointerClick(target) {
+                const opts = {
+                    bubbles: true,
+                    cancelable: true,
+                    composed: true,
+                    view: window,
+                };
+
+                target.dispatchEvent(
+                    new PointerEvent('pointerdown', {
+                        ...opts,
+                        pointerId: 1,
+                        pointerType: 'mouse',
+                        buttons: 1,
+                    })
+                );
+                target.dispatchEvent(new MouseEvent('mousedown', {...opts, buttons: 1}));
+                target.dispatchEvent(
+                    new PointerEvent('pointerup', {
+                        ...opts,
+                        pointerId: 1,
+                        pointerType: 'mouse',
+                        buttons: 0,
+                    })
+                );
+                target.dispatchEvent(new MouseEvent('mouseup', {...opts, buttons: 0}));
+                target.dispatchEvent(new MouseEvent('click', {...opts, buttons: 0}));
+            }
+
+            try {
+                firePointerClick(el);
+                return true;
+            } catch (_) {
+                try {
+                    const interactiveChild = el.querySelector('button, [role="menuitemradio"], [role="menuitem"]');
+                    if (interactiveChild instanceof HTMLElement) {
+                        firePointerClick(interactiveChild);
+                        return true;
+                    }
+
+                    el.click();
+                    return true;
+                } catch (_) {
+                    return false;
+                }
+            }
+        }
+
+        async function closePlusMenu(plusBtn) {
+            if (!(plusBtn instanceof HTMLElement)) return;
+            const isOpen = () => plusBtn.getAttribute('aria-expanded') === 'true';
+            if (!isOpen()) return;
+
+            try {
+                document.dispatchEvent(
+                    new KeyboardEvent('keydown', {
+                        key: 'Escape',
+                        code: 'Escape',
+                        bubbles: true,
+                        cancelable: true,
+                    })
+                );
+            } catch (_) {}
+
+            await sleep(80);
+            if (isOpen()) {
+                try {
+                    plusBtn.click();
+                } catch (_) {}
+            }
+        }
+
+        async function ensureImageModeEnabled() {
+            const plusBtn = await waitFor(() => {
+                return (
+                    document.querySelector('#composer-plus-btn') ||
+                    document.querySelector('[data-testid="composer-plus-btn"]') ||
+                    document.querySelector('button[aria-label="Add files and more"]')
+                );
+            }, {timeoutMs: 7000, intervalMs: 120});
+
+            if (!(plusBtn instanceof HTMLElement)) return false;
+
+            const isOpen = () => plusBtn.getAttribute('aria-expanded') === 'true';
+            for (let attempt = 0; attempt < 3; attempt += 1) {
+                if (isOpen()) break;
+                userClick(plusBtn);
+                await sleep(160);
+            }
+
+            const createImageItem = await waitFor(
+                () => {
+                    const nodes = Array.from(
+                        document.querySelectorAll('[role="menuitemradio"], [role="menuitem"]')
+                    );
+
+                    const byText = nodes.find(node => getMenuItemText(node).includes('create image'));
+                    if (byText) return byText;
+
+                    const byIcon = nodes.find(node => {
+                        if (!(node instanceof HTMLElement)) return false;
+                        return !!node.querySelector('use[href*="#266724"]');
+                    });
+                    return byIcon || null;
+                },
+                {timeoutMs: 4000, intervalMs: 100}
+            );
+
+            if (!(createImageItem instanceof HTMLElement)) {
+                await closePlusMenu(plusBtn);
+                return false;
+            }
+
+            const ariaChecked = createImageItem.getAttribute('aria-checked');
+            const dataState = createImageItem.getAttribute('data-state');
+            const alreadyEnabled = ariaChecked === 'true' || dataState === 'checked';
+
+            if (!alreadyEnabled) {
+                userClick(createImageItem);
+                await sleep(150);
+            }
+
+            await closePlusMenu(plusBtn);
+            return true;
+        }
+
         /**
          * Process queued prompts sequentially:
-         * - create new temporary chat
+         * - create new chat if requested
          * - wait for composer
          * - inject and submit
          */
@@ -170,6 +304,10 @@
                     if (isImagePrompt) {
                         try {
                             await window.CGPT_NAV.newChat?.ensureTemporaryChatDisabled?.();
+                        } catch (_) {}
+
+                        try {
+                            await ensureImageModeEnabled();
                         } catch (_) {}
                     }
 
@@ -211,6 +349,16 @@
             }
         }
 
+        async function activateImageGenerationMode() {
+            await ensureComposerReady();
+
+            try {
+                await ensureImageModeEnabled();
+            } catch (_) {
+                // best-effort
+            }
+        }
+
         function enqueuePromptMessage(msg) {
             const prompt = typeof msg?.input === 'string' ? msg.input : '';
             if (!prompt.trim()) return;
@@ -247,6 +395,11 @@
             // { type: "prompt.new", ... } // -> request a fresh temporary chat first
             if (msg.type === 'prompt' || msg.type === 'prompt.new' || msg.type === 'prompt.image') {
                 enqueuePromptMessage(msg);
+                return;
+            }
+
+            if (msg.type === 'image.activate') {
+                activateImageGenerationMode();
                 return;
             }
         };
