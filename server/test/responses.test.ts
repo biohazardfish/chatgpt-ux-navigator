@@ -1,12 +1,10 @@
 import {describe, it, expect, beforeEach, afterEach, mock} from 'bun:test';
 import {
-    handlePostResponses,
-    handlePostResponsesNew,
     handlePostResponsesById,
     handlePostResponsesByIdNew,
 } from '../src/http/routes/responses';
 import type {AppConfig} from '../src/config/config';
-import {setSoleClient, setClient, removeClient} from '../src/ws/hub';
+import {setClient, removeClient} from '../src/ws/hub';
 import {
     getInflight,
     inflightTerminate,
@@ -29,12 +27,12 @@ const CLIENT_ID = 'test-client';
 
 describe('POST /responses/:id', () => {
     beforeEach(() => {
-        setClient(CLIENT_ID, null);
+        removeClient(CLIENT_ID);
         inflightTerminate(CLIENT_ID, null, null);
     });
 
     afterEach(() => {
-        setClient(CLIENT_ID, null);
+        removeClient(CLIENT_ID);
         inflightTerminate(CLIENT_ID, null, null);
     });
 

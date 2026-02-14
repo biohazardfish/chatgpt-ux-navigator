@@ -641,21 +641,6 @@
         return null;
     }
 
-    function extractImageFileIds(payload) {
-        const data = payload?.json || payload;
-        const strings = [];
-        collectStrings(data, strings);
-
-        const ids = new Set();
-        for (const s of strings) {
-            if (!s.includes('file_')) continue;
-            const matches = s.match(FILE_ID_RE);
-            if (matches) matches.forEach(id => ids.add(id));
-        }
-
-        return Array.from(ids);
-    }
-
     async function fetchAndForwardGeneratedImage(fileId, conversationId) {
         if (!fileId || !conversationId) return;
         if (seenImageFileIds.has(fileId) || pendingImageFileIds.has(fileId)) return;
@@ -715,7 +700,7 @@
         if (existing) return existing;
 
         const next = {
-            latestFileId: null,
+            slotFileIds: new Map(),
             streamComplete: false,
         };
         imageStateByConversation.set(key, next);
@@ -724,6 +709,78 @@
 
     function extractSseJson(payload) {
         return payload?.json || payload || null;
+    }
+
+    function extractFileIdFromAssetPointer(pointer) {
+        if (typeof pointer !== 'string') return null;
+        const matches = pointer.match(FILE_ID_RE);
+        return matches && matches[0] ? matches[0] : null;
+    }
+
+    function setConversationSlotFileId(state, slotIndex, fileId) {
+        if (!state || !state.slotFileIds || !fileId) return;
+        const normalizedSlot = Number.isInteger(slotIndex) && slotIndex >= 0 ? slotIndex : -1;
+        state.slotFileIds.set(normalizedSlot, fileId);
+    }
+
+    function collectImagePointersFromAddPayload(data, state) {
+        if (!data || data.o !== 'add') return;
+        const message = data?.v?.message;
+        if (!message || message?.author?.role !== 'tool') return;
+
+        const parts = message?.content?.parts;
+        if (!Array.isArray(parts)) return;
+
+        for (let i = 0; i < parts.length; i += 1) {
+            const part = parts[i];
+            if (!part || typeof part !== 'object') continue;
+            if (part.content_type !== 'image_asset_pointer') continue;
+
+            const fileId = extractFileIdFromAssetPointer(part.asset_pointer);
+            if (!fileId) continue;
+            setConversationSlotFileId(state, i, fileId);
+        }
+    }
+
+    function collectImagePointersFromPatchPayload(data, state) {
+        if (!data || data.o !== 'patch') return;
+
+        const patches = Array.isArray(data?.p)
+            ? data.p
+            : Array.isArray(data?.patches)
+              ? data.patches
+              : [];
+
+        for (const patch of patches) {
+            if (!patch || typeof patch !== 'object') continue;
+
+            const path =
+                typeof patch.p === 'string'
+                    ? patch.p
+                    : typeof patch.path === 'string'
+                      ? patch.path
+                      : null;
+            if (!path || !/\/message\/content\/parts\/\d+\/asset_pointer$/.test(path)) continue;
+
+            const value =
+                typeof patch.v === 'string'
+                    ? patch.v
+                    : typeof patch.value === 'string'
+                      ? patch.value
+                      : null;
+            const fileId = extractFileIdFromAssetPointer(value);
+            if (!fileId) continue;
+
+            const slotMatch = path.match(/\/message\/content\/parts\/(\d+)\/asset_pointer$/);
+            const slotIndex = slotMatch && slotMatch[1] ? Number(slotMatch[1]) : -1;
+            setConversationSlotFileId(state, slotIndex, fileId);
+        }
+    }
+
+    function pickRandom(values) {
+        if (!Array.isArray(values) || values.length === 0) return null;
+        const idx = Math.floor(Math.random() * values.length);
+        return values[idx] || null;
     }
 
     function updateImageStateFromSse(payload) {
@@ -735,10 +792,8 @@
         const state = getConversationState(conversationId);
         if (!state) return;
 
-        const fileIds = extractImageFileIds(payload);
-        if (fileIds.length > 0) {
-            state.latestFileId = fileIds[fileIds.length - 1];
-        }
+        collectImagePointersFromAddPayload(data, state);
+        collectImagePointersFromPatchPayload(data, state);
 
         if (data.type === 'message_stream_complete') {
             state.streamComplete = true;
@@ -750,13 +805,24 @@
         const state = imageStateByConversation.get(conversationId);
         if (!state || !state.streamComplete) return;
 
-        if (state.latestFileId) {
-            if (seenImageFileIds.has(state.latestFileId) || pendingImageFileIds.has(state.latestFileId)) {
-                state.streamComplete = false;
-                return;
+        const finalCandidates = Array.from(state.slotFileIds.values()).filter(
+            fileId => fileId && !seenImageFileIds.has(fileId) && !pendingImageFileIds.has(fileId)
+        );
+
+        if (finalCandidates.length > 0) {
+            const dedupedCandidates = Array.from(new Set(finalCandidates));
+            const selectedFileId = pickRandom(dedupedCandidates);
+            console.debug('[cgpt-nav:image-final-select]', {
+                conversationId,
+                finalCandidates: dedupedCandidates,
+                selectedFileId,
+            });
+
+            if (selectedFileId) {
+                await fetchAndForwardGeneratedImage(selectedFileId, conversationId);
             }
-            await fetchAndForwardGeneratedImage(state.latestFileId, conversationId);
             state.streamComplete = false;
+            state.slotFileIds.clear();
             return;
         }
 
@@ -765,6 +831,7 @@
         }
 
         state.streamComplete = false;
+        state.slotFileIds.clear();
     }
 
     function onWindowMessage(ev) {

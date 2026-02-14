@@ -17,7 +17,7 @@ First understand the preconditon below and confirm that you are ready to receive
 type ParsedArgs = {
     files: string[];
     preconditionFile: string | null;
-    outputDir: string | null;
+    imagesDir: string | null;
 };
 
 type Endpoints = {
@@ -105,7 +105,7 @@ function usage(): string {
 function parseArgs(argv: string[]): ParsedArgs {
     const files: string[] = [];
     let preconditionFile: string | null = null;
-    let outputDir: string | null = null;
+    let imagesDir: string | null = null;
 
     for (let i = 0; i < argv.length; i += 1) {
         const arg = argv[i];
@@ -125,7 +125,7 @@ function parseArgs(argv: string[]): ParsedArgs {
             if (!next || next.startsWith('--')) {
                 throw new Error('Missing value for --output-dir');
             }
-            outputDir = next;
+            imagesDir = next;
             i += 1;
             continue;
         }
@@ -137,7 +137,7 @@ function parseArgs(argv: string[]): ParsedArgs {
         files.push(arg);
     }
 
-    return {files, preconditionFile, outputDir};
+    return {files, preconditionFile, imagesDir};
 }
 
 // Normalize Windows-style separators for markdown links.
@@ -149,11 +149,19 @@ function padIndex(index: number): string {
     return String(index).padStart(3, '0');
 }
 
-// Copy a generated image into outputDir using chapter/image numbering.
+function extractChapterIndex(markdown: string): number | null {
+    const chapterMatch = markdown.match(/\bCHAPTER\s+(\d+)\s*\/\s*\d+\s*:/i);
+    if (!chapterMatch) return null;
+
+    const chapterIndex = Number.parseInt(chapterMatch[1] ?? '', 10);
+    return Number.isFinite(chapterIndex) && chapterIndex > 0 ? chapterIndex : null;
+}
+
+// Copy a generated image into imagesDir using chapter/image numbering.
 // Returns both filesystem path and markdown-friendly relative path.
-async function copyImageToOutputDir(
+async function copyImageToImagesDir(
     imagePath: string,
-    outputDir: string,
+    imagesDir: string,
     markdownFile: string,
     chapterIndex: number,
     imageIndex: number
@@ -167,11 +175,11 @@ async function copyImageToOutputDir(
         throw new Error(`Generated image file not found: ${sourcePath}`);
     }
 
-    mkdirSync(outputDir, {recursive: true});
+    mkdirSync(imagesDir, {recursive: true});
 
     const extension = extname(sourcePath);
     const targetFileName = `chapter_${padIndex(chapterIndex)}_image_${padIndex(imageIndex)}${extension}`;
-    const targetPath = join(outputDir, targetFileName);
+    const targetPath = join(imagesDir, targetFileName);
 
     await Bun.write(targetPath, Bun.file(sourcePath));
 
@@ -287,7 +295,7 @@ async function postPrompt(imagePromptUrl: string, prompt: string, label: string)
 }
 
 async function main() {
-    const {files, preconditionFile, outputDir} = parseArgs(process.argv.slice(2));
+    const {files, preconditionFile, imagesDir} = parseArgs(process.argv.slice(2));
 
     if (files.length === 0) {
         console.error(usage());
@@ -308,9 +316,9 @@ async function main() {
         }
     }
 
-    const resolvedOutputDir = outputDir ? resolve(process.cwd(), outputDir) : null;
-    if (resolvedOutputDir) {
-        mkdirSync(resolvedOutputDir, {recursive: true});
+    const resolvedImagesDir = imagesDir ? resolve(process.cwd(), imagesDir) : null;
+    if (resolvedImagesDir) {
+        mkdirSync(resolvedImagesDir, {recursive: true});
     }
 
     if (preconditionFile) {
@@ -331,12 +339,19 @@ async function main() {
     await postAction(endpoints.activateUrl, `Image activation for '${endpoints.clientId}'`);
     console.log(`[${SCRIPT}] Image generation mode activated`);
 
-    // Chapter index is based on CLI file order: first file => chapter_1, etc.
+    // Chapter index is read from markdown header (ex: CHAPTER 7/12: ...).
+    // Fallback to CLI order if header is missing.
     for (let chapterOffset = 0; chapterOffset < files.length; chapterOffset += 1) {
         const file = files[chapterOffset];
-        const chapterIndex = chapterOffset + 1;
         console.log(`[${SCRIPT}] Processing ${file}`);
         const initialMarkdown = await Bun.file(file).text();
+        const parsedChapterIndex = extractChapterIndex(initialMarkdown);
+        const chapterIndex = parsedChapterIndex ?? chapterOffset + 1;
+        if (parsedChapterIndex === null) {
+            console.warn(
+                `[${SCRIPT}] Could not parse chapter index from '${file}' using 'CHAPTER n/total:' format; falling back to ${chapterIndex}`
+            );
+        }
         const initialBlocks = extractPromptBlocks(initialMarkdown);
 
         console.log(`[${SCRIPT}] Found ${initialBlocks.length} prompt(s) in ${file}`);
@@ -363,10 +378,10 @@ async function main() {
             );
 
             let markerImagePath = generatedImagePath;
-            if (resolvedOutputDir) {
-                const copied = await copyImageToOutputDir(
+            if (resolvedImagesDir) {
+                const copied = await copyImageToImagesDir(
                     generatedImagePath,
-                    resolvedOutputDir,
+                    resolvedImagesDir,
                     file,
                     chapterIndex,
                     nextBlock.index

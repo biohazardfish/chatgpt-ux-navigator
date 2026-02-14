@@ -15,6 +15,7 @@ import {
 import {sseResponseHeaders} from '../responses/sse';
 import {corsHeaders} from '../cors';
 import {debugLog} from '../../logging/debug';
+import type {ResponseObject} from '../../types/responses';
 
 /**
  * Extracts the user prompt from the request body.
@@ -484,7 +485,7 @@ export async function handleResponsesRequest(
     const messageItemId = `msg_${crypto.randomUUID()}`;
     const timeoutMs = cfg.requestTimeout * 1000; // Convert seconds to milliseconds
 
-    const responseObj = createResponseObject(id, createdAt, body, prompt);
+    const responseObj = createResponseObject(id, createdAt, body, prompt) as ResponseObject;
     if (messageType === 'prompt.image') {
         responseObj.image_path = null;
     }
@@ -521,7 +522,7 @@ export async function handleResponsesRequest(
     }
 }
 
-export function handlePostResponsesById(req: Request, cfg: AppConfig, url: URL): Promise<Response> {
+export async function handlePostResponsesById(req: Request, cfg: AppConfig, url: URL): Promise<Response> {
     const pathParts = url.pathname.split('/');
     const clientId = pathParts[pathParts.length - 1];
 
@@ -532,7 +533,7 @@ export function handlePostResponsesById(req: Request, cfg: AppConfig, url: URL):
         });
     }
 
-    return handleResponsesRequest(req, cfg, url, {
+    return await handleResponsesRequest(req, cfg, url, {
         createTemporaryChat: false,
         newChat: false,
         clientId,
