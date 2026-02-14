@@ -1,57 +1,89 @@
 #!/usr/bin/env bun
-import {readFileSync, writeFileSync, existsSync} from 'fs';
-import {resolve, dirname, basename, extname, join} from 'path';
+import {existsSync, mkdirSync, readFileSync, writeFileSync} from 'node:fs';
+import {basename, dirname, extname, join, resolve} from 'node:path';
 
-/**
- * Removes:
- * 1. YAML frontmatter block (--- ... --- at top of file)
- * 2. "### Continuity & Next Hooks" section through EOF
- */
+const SCRIPT = 'clean-chapter';
+
 function cleanChapter(content: string): string {
     let output = content;
 
-    // 1. Remove YAML frontmatter (only if at top)
     output = output.replace(/^---\r?\n[\s\S]*?\r?\n---\r?\n?/, '');
 
-    // 2. Remove "Continuity & Next Hooks" section to EOF
     output = output.replace(/\n?###\s+Continuity\s*&\s*Next\s*Hooks[\s\S]*$/i, '');
 
     return output.trim() + '\n';
 }
 
-/**
- * Generates output path with `_out` suffix.
- * Example:
- *   chapter.md -> chapter_out.md
- */
-function buildOutputPath(inputPath: string): string {
-    const dir = dirname(inputPath);
+function buildOutputPath(inputPath: string, outputDir?: string): string {
+    const dir = outputDir ?? dirname(inputPath);
     const ext = extname(inputPath);
     const base = basename(inputPath, ext);
 
     return join(dir, `${base}_out${ext}`);
 }
 
-// --------------------------------------------------
-// CLI
-// --------------------------------------------------
-
 const inputArgs = process.argv.slice(2);
+const fileArgs: string[] = [];
+let outputDirArg: string | undefined;
 
-if (inputArgs.length === 0) {
-    console.error('Usage: bun clean-chapter.ts <file1.md> <file2.md> ...');
+for (let i = 0; i < inputArgs.length; i++) {
+    const arg = inputArgs[i];
+
+    if (arg === '-o' || arg === '--output-dir') {
+        const next = inputArgs[i + 1];
+
+        if (!next || next.startsWith('-')) {
+            console.error(`[${SCRIPT}] Missing value for --output-dir`);
+            process.exit(1);
+        }
+
+        outputDirArg = next;
+        i++;
+        continue;
+    }
+
+    if (arg.startsWith('--output-dir=')) {
+        const value = arg.slice('--output-dir='.length);
+
+        if (!value) {
+            console.error(`[${SCRIPT}] Missing value for --output-dir`);
+            process.exit(1);
+        }
+
+        outputDirArg = value;
+        continue;
+    }
+
+    if (arg.startsWith('-')) {
+        console.error(`[${SCRIPT}] Unknown option: ${arg}`);
+        process.exit(1);
+    }
+
+    fileArgs.push(arg);
+}
+
+if (fileArgs.length === 0) {
+    console.error(
+        `[${SCRIPT}] Usage: bun clean-chapter.ts [--output-dir <dir> | -o <dir>] <file1.md> <file2.md> ...`
+    );
     process.exit(1);
+}
+
+const outputDir = outputDirArg ? resolve(outputDirArg) : undefined;
+
+if (outputDir) {
+    mkdirSync(outputDir, {recursive: true});
 }
 
 let hadError = false;
 
-for (const arg of inputArgs) {
+for (const arg of fileArgs) {
     const inputPath = resolve(arg);
-    const outputPath = buildOutputPath(inputPath);
+    const outputPath = buildOutputPath(inputPath, outputDir);
 
     try {
         if (existsSync(outputPath)) {
-            console.error(`⚠ Skipping (output exists): ${outputPath}`);
+            console.warn(`[${SCRIPT}] Skipping (output exists): ${outputPath}`);
             hadError = true;
             continue;
         }
@@ -60,9 +92,9 @@ for (const arg of inputArgs) {
         const cleaned = cleanChapter(content);
 
         writeFileSync(outputPath, cleaned, 'utf8');
-        console.log(`✔ Cleaned: ${inputPath} -> ${outputPath}`);
+        console.log(`[${SCRIPT}] Cleaned: ${inputPath} -> ${outputPath}`);
     } catch (err) {
-        console.error(`✖ Error processing ${inputPath}:`, err);
+        console.error(`[${SCRIPT}] Error processing ${inputPath}:`, err);
         hadError = true;
     }
 }

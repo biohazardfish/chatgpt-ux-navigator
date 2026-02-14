@@ -3,15 +3,22 @@
 import {basename, dirname, extname, join} from 'node:path';
 import {existsSync} from 'node:fs';
 
-const API_URL = process.env.IMAGE_PROMPTER_URL ?? 'http://localhost:8765/responses/image-prompter';
+const SCRIPT = 'image-prompter';
+const SERVER_URL = 'http://localhost:8765';
+const CLIENT_ID = 'image-gen';
+const API_URL = new URL(`/responses/${encodeURIComponent(CLIENT_ID)}`, SERVER_URL).toString();
 
 const TIMEOUT_MS = 5 * 60 * 1000; // 5 minutes per chapter
 
-const CONDITIONING_PROMPT = `I have a story that requires illustrations, and I would like to use an AI image generator to create them. Please help me draft prompts for the generator. I want the final output to be the story chapters with the image prompts embedded within code blocks like this: 
+const CONDITIONING_PROMPT = `I have a story that requires illustrations, and I would like to use an AI image generator to create them. Please help me draft prompts for the generator. I want the final output to be the story chapters with the image prompts embedded within code blocks like this:
 
 \`\`\`image_prompt
 ...
 \`\`\`
+
+Note that I have conditioned the AI to recognize specific character names. Use them in your prompts whenever appropriate.
+
+Don't over do the number of images. Only include prompts for scenes that are visually rich or important to the story. Each prompt should be concise but descriptive, focusing on key visual elements, characters, and mood.
 
 Output only the chapters with the included image prompts and nothing else.
 
@@ -45,6 +52,17 @@ function extractTextFromResponse(json: any): string {
     return texts.join('').trim();
 }
 
+function formatHttpError(status: number, body: string): string {
+    const snippet = body.trim().slice(0, 500) || '<empty response body>';
+    if (status === 404) {
+        return `server returned 404 (client '${CLIENT_ID}' is not connected). Open ChatGPT tab with extension and retry. Body: ${snippet}`;
+    }
+    if (status === 409) {
+        return `server returned 409 (client '${CLIENT_ID}' has an in-flight request). Wait for completion and retry. Body: ${snippet}`;
+    }
+    return `server returned ${status}. Body: ${snippet}`;
+}
+
 async function postToApi(messages: ApiMessage[], timeoutMs: number): Promise<string> {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), timeoutMs);
@@ -61,11 +79,16 @@ async function postToApi(messages: ApiMessage[], timeoutMs: number): Promise<str
 
         if (!res.ok) {
             const errorText = await res.text();
-            throw new Error(`API error ${res.status}: ${errorText}`);
+            throw new Error(formatHttpError(res.status, errorText));
         }
 
         const json = await res.json();
         return extractTextFromResponse(json);
+    } catch (err: any) {
+        if (err?.name === 'AbortError') {
+            throw new Error(`Request timed out after ${Math.round(timeoutMs / 1000)}s`);
+        }
+        throw err;
     } finally {
         clearTimeout(timeout);
     }
@@ -75,32 +98,32 @@ function outputPathFor(inputPath: string): string {
     const dir = dirname(inputPath);
     const ext = extname(inputPath);
     const base = basename(inputPath, ext);
-    return join(dir, `${base}_image_gen_prompted${ext}`);
+    return join(dir, `${base}_with_image_prompt${ext}`);
 }
 
 async function main() {
     const files = process.argv.slice(2);
 
     if (files.length === 0) {
-        console.error('Usage: bun run image-prompter.ts chapter1.txt chapter2.md ...');
+        console.error(`[${SCRIPT}] Usage: bun run image-prompter.ts chapter1.txt chapter2.md ...`);
         process.exit(1);
     }
 
     for (const f of files) {
         if (!existsSync(f)) {
-            console.error(`File not found: ${f}`);
+            console.error(`[${SCRIPT}] File not found: ${f}`);
             process.exit(1);
         }
     }
 
     // Send conditioning prompt once
-    console.log('→ Sending conditioning prompt...');
+    console.log(`[${SCRIPT}] Sending conditioning prompt to ${API_URL}`);
     await postToApi([{role: 'user', content: CONDITIONING_PROMPT}], 60_000);
-    console.log('✓ Conditioning acknowledged.\n');
+    console.log(`[${SCRIPT}] Conditioning acknowledged`);
 
     // Process chapters
     for (const filePath of files) {
-        console.log(`→ Processing: ${filePath}`);
+        console.log(`[${SCRIPT}] Processing: ${filePath}`);
 
         const chapterText = await Bun.file(filePath).text();
 
@@ -112,17 +135,13 @@ async function main() {
         const outPath = outputPathFor(filePath);
         await Bun.write(outPath, promptedChapter);
 
-        console.log(`✓ Wrote: ${outPath}\n`);
+        console.log(`[${SCRIPT}] Wrote: ${outPath}`);
     }
 
-    console.log('Done.');
+    console.log(`[${SCRIPT}] Done.`);
 }
 
 main().catch(err => {
-    if (err?.name === 'AbortError') {
-        console.error('Request timed out.');
-    } else {
-        console.error(err?.stack ?? String(err));
-    }
+    console.error(`[${SCRIPT}] ${err?.stack ?? String(err)}`);
     process.exit(1);
 });

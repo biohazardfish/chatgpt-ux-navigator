@@ -9,8 +9,8 @@ const config: AppConfig = {
     filesRoot: '/tmp',
     imagesDir: '/tmp/images',
     noStream: false,
-    debugEvents: false,
-    debugLogs: false,
+    debug: false,
+    debugLogFile: '/tmp/server-debug.jsonl',
     requestTimeout: 360,
 };
 

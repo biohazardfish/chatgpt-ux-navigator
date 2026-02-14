@@ -14,8 +14,8 @@ const config: AppConfig = {
     filesRoot: FILES_ROOT,
     imagesDir: join(TEST_ROOT, 'images'),
     noStream: false,
-    debugEvents: false,
-    debugLogs: false,
+    debug: false,
+    debugLogFile: join(TEST_ROOT, 'server-debug.jsonl'),
     requestTimeout: 360,
 };
 

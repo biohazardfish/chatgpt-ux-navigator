@@ -77,6 +77,7 @@ chatgpt-ux-navigator/
     - `src/config/`: Configuration and environment parsing.
     - `src/fs/`: File system operations (security, tree generation, constants).
     - `src/http/`: HTTP server, router, CORS, routes, and response handling (SSE).
+    - `src/logging/`: Debug logger and JSONL diagnostics utilities.
     - `src/prompts/`: Prompt building, parsing, include resolution, and thread handling.
     - `src/ws/`: WebSocket hub, handlers, message parsing.
     - `src/types/`: Shared TypeScript type definitions.
@@ -125,6 +126,13 @@ chatgpt-ux-navigator/
 - **Mandatory Check**: Run `bun test` before submitting any changes to the server logic.
 - **Coverage**: Ensure new features include corresponding test cases in `server/test/`.
 
+## Server Debug Logging
+
+- **Single Flag**: Use `DEBUG=true` to enable server debug diagnostics.
+- **Persisted Logs**: Set `DEBUG_LOG_FILE` to control JSONL output path (default: `./logs/server-debug.jsonl`).
+- **Event Behavior**: When `DEBUG=true`, server debug logs are written and raw upstream events may be emitted as `response.event` for troubleshooting.
+- **Policy Reference**: See `server/LOGGING.md` for summary/raw policy, SSE sampling, truncation, and error-context capture.
+
 ## Code Conventions
 
 Please refer to [CODE_CONVENTIONS.md](./CODE_CONVENTIONS.md) for detailed coding standards.
@@ -151,6 +159,7 @@ Please refer to [CODE_CONVENTIONS.md](./CODE_CONVENTIONS.md) for detailed coding
 - **"Run a command in a specific workspace"**: Use `bun --filter <package-name> <script>` from the root.
 - **"Verify local changes"**:
     - For server: Run `bun test` from the root or from `server/`.
+    - For server debug investigations: enable `DEBUG=true`, reproduce once, then inspect `DEBUG_LOG_FILE` JSONL entries.
     - For extension: Reload the extension in `chrome://extensions` and refresh ChatGPT.
 
 ## Image Generation SSE Notes
