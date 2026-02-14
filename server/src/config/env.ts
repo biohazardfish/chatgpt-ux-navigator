@@ -8,8 +8,7 @@ function parseBooleanEnv(value: string | undefined, defaultValue: boolean): bool
 }
 
 function loadEnvFile(): void {
-    const projectRoot = resolve(import.meta.dir, '../../..');
-    const envPath = resolve(projectRoot, '.env');
+    const envPath = resolve(import.meta.dir, '.env');
 
     if (!existsSync(envPath)) {
         return;

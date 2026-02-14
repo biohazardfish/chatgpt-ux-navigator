@@ -2,8 +2,21 @@
 
 import {existsSync} from 'node:fs';
 
-const IMAGE_GEN_URL = process.env.IMAGE_GEN_URL ?? 'http://localhost:8765/images/image-gen';
+const CLIENT_ID = 'image-gen';
+const IMAGE_GEN_URL = process.env.IMAGE_GEN_URL ?? `http://localhost:8765/images/${CLIENT_ID}`;
 const TIMEOUT_MS = Number(process.env.IMAGE_GEN_TIMEOUT_MS ?? 5 * 60 * 1000);
+
+type ParsedArgs = {
+    files: string[];
+    preconditionFile: string | null;
+};
+
+type Endpoints = {
+    imagePromptUrl: string;
+    activateUrl: string;
+    newChatUrl: string;
+    clientId: string;
+};
 
 type PromptBlock = {
     prompt: string;
@@ -49,7 +62,11 @@ function hasImageMarkerBefore(markdown: string, start: number): boolean {
     return /^!?\[Image\s+\d+\]\(.+\)$/.test(line);
 }
 
-function insertImageMarkerBeforeBlock(markdown: string, block: PromptBlock, imagePath: string): string {
+function insertImageMarkerBeforeBlock(
+    markdown: string,
+    block: PromptBlock,
+    imagePath: string
+): string {
     let prefix = markdown.slice(0, block.start);
     const suffix = markdown.slice(block.start);
 
@@ -61,12 +78,120 @@ function insertImageMarkerBeforeBlock(markdown: string, block: PromptBlock, imag
     return `${prefix}${marker}${suffix}`;
 }
 
-async function postPrompt(prompt: string, label: string): Promise<string> {
+function usage(): string {
+    return [
+        'Usage: bun run image-gen-from-prompts.ts [--precondition <file>] file1.md file2.md ...',
+        '',
+        'Examples:',
+        '  bun run image-gen-from-prompts.ts chapter1.md chapter2.md',
+        '  bun run image-gen-from-prompts.ts --precondition style.md chapter1.md chapter2.md',
+    ].join('\n');
+}
+
+function parseArgs(argv: string[]): ParsedArgs {
+    const files: string[] = [];
+    let preconditionFile: string | null = null;
+
+    for (let i = 0; i < argv.length; i += 1) {
+        const arg = argv[i];
+
+        if (arg === '--precondition') {
+            const next = argv[i + 1];
+            if (!next || next.startsWith('--')) {
+                throw new Error('Missing value for --precondition');
+            }
+            preconditionFile = next;
+            i += 1;
+            continue;
+        }
+
+        if (arg.startsWith('--')) {
+            throw new Error(`Unknown option: ${arg}`);
+        }
+
+        files.push(arg);
+    }
+
+    return {files, preconditionFile};
+}
+
+function createEndpoints(imageGenUrl: string): Endpoints {
+    let parsed: URL;
+    try {
+        parsed = new URL(imageGenUrl);
+    } catch {
+        throw new Error(`Invalid IMAGE_GEN_URL: ${imageGenUrl}`);
+    }
+
+    const path = parsed.pathname.replace(/\/+$/, '');
+    const match = path.match(/^(.*)\/images\/([^/]+)$/);
+
+    if (!match || !match[2]) {
+        throw new Error(`IMAGE_GEN_URL must end with /images/<client_id>: ${imageGenUrl}`);
+    }
+
+    const prefix = match[1] ?? '';
+    const clientId = decodeURIComponent(match[2]);
+    const encodedClientId = encodeURIComponent(clientId);
+
+    const imagePromptPath = `${prefix}/images/${encodedClientId}`;
+    const activatePath = `${prefix}/images/${encodedClientId}/activate`;
+    const newChatPath = `${prefix}/responses/${encodedClientId}/new`;
+
+    const imagePromptUrlObj = new URL(parsed.origin);
+    imagePromptUrlObj.pathname = imagePromptPath;
+
+    const activateUrlObj = new URL(parsed.origin);
+    activateUrlObj.pathname = activatePath;
+
+    const newChatUrlObj = new URL(parsed.origin);
+    newChatUrlObj.pathname = newChatPath;
+    newChatUrlObj.searchParams.set('temporary', 'false');
+
+    return {
+        imagePromptUrl: imagePromptUrlObj.toString(),
+        activateUrl: activateUrlObj.toString(),
+        newChatUrl: newChatUrlObj.toString(),
+        clientId,
+    };
+}
+
+async function postAction(url: string, label: string, body?: unknown): Promise<void> {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), TIMEOUT_MS);
 
     try {
-        const res = await fetch(IMAGE_GEN_URL, {
+        const init: RequestInit = {
+            method: 'POST',
+            signal: controller.signal,
+        };
+
+        if (body !== undefined) {
+            init.headers = {'Content-Type': 'application/json'};
+            init.body = JSON.stringify(body);
+        }
+
+        const res = await fetch(url, init);
+        if (!res.ok) {
+            const text = await res.text();
+            throw new Error(`${label} failed (${res.status}): ${text}`);
+        }
+    } catch (err: any) {
+        if (err?.name === 'AbortError') {
+            throw new Error(`${label} timed out after ${Math.round(TIMEOUT_MS / 1000)}s`);
+        }
+        throw err;
+    } finally {
+        clearTimeout(timeout);
+    }
+}
+
+async function postPrompt(imagePromptUrl: string, prompt: string, label: string): Promise<string> {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), TIMEOUT_MS);
+
+    try {
+        const res = await fetch(imagePromptUrl, {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
             body: JSON.stringify({prompt}),
@@ -108,10 +233,17 @@ async function postPrompt(prompt: string, label: string): Promise<string> {
 }
 
 async function main() {
-    const files = process.argv.slice(2);
+    const {files, preconditionFile} = parseArgs(process.argv.slice(2));
 
     if (files.length === 0) {
-        console.error('Usage: bun run image-gen-from-prompts.ts file1.md file2.md ...');
+        console.error(usage());
+        process.exit(1);
+    }
+
+    const endpoints = createEndpoints(IMAGE_GEN_URL);
+
+    if (preconditionFile && !existsSync(preconditionFile)) {
+        console.error(`Precondition file not found: ${preconditionFile}`);
         process.exit(1);
     }
 
@@ -120,7 +252,27 @@ async function main() {
             console.error(`File not found: ${file}`);
             process.exit(1);
         }
+    }
 
+    if (preconditionFile) {
+        const preconditionPrompt = (await Bun.file(preconditionFile).text()).trim();
+        if (!preconditionPrompt) {
+            console.error(`Precondition file is empty: ${preconditionFile}`);
+            process.exit(1);
+        }
+
+        console.log(`→ Sending precondition prompt (${preconditionFile})`);
+        await postAction(endpoints.newChatUrl, `Precondition request for '${endpoints.clientId}'`, {
+            prompt: preconditionPrompt,
+        });
+        console.log('✓ Precondition prompt sent');
+    }
+
+    console.log(`→ Activating image generation mode for '${endpoints.clientId}'`);
+    await postAction(endpoints.activateUrl, `Image activation for '${endpoints.clientId}'`);
+    console.log('✓ Image generation mode activated');
+
+    for (const file of files) {
         console.log(`→ Processing ${file}`);
         const initialMarkdown = await Bun.file(file).text();
         const initialBlocks = extractPromptBlocks(initialMarkdown);
@@ -141,7 +293,7 @@ async function main() {
             const label = `${file} [${nextBlock.index}/${blocks.length}]`;
 
             console.log(`→ Sending ${label} - prompt: ${nextBlock.prompt}`);
-            const imagePath = await postPrompt(nextBlock.prompt, label);
+            const imagePath = await postPrompt(endpoints.imagePromptUrl, nextBlock.prompt, label);
 
             const nextMarkdown = insertImageMarkerBeforeBlock(markdown, nextBlock, imagePath);
             await Bun.write(file, nextMarkdown);
