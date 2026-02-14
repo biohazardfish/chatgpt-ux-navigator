@@ -14,7 +14,7 @@ function extractClientIdFromImagesPath(pathname: string, mode: 'base' | 'activat
     return match[1];
 }
 
-export function handlePostImagesById(req: Request, cfg: AppConfig, url: URL): Promise<Response> {
+export async function handlePostImagesById(req: Request, cfg: AppConfig, url: URL): Promise<Response> {
     const clientId = extractClientIdFromImagesPath(url.pathname, 'base');
 
     if (!clientId || clientId.trim() === '') {
@@ -24,7 +24,7 @@ export function handlePostImagesById(req: Request, cfg: AppConfig, url: URL): Pr
         });
     }
 
-    return handleResponsesRequest(req, cfg, url, {
+    return await handleResponsesRequest(req, cfg, url, {
         createTemporaryChat: false,
         newChat: false,
         messageType: 'prompt.image',

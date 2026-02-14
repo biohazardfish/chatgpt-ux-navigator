@@ -123,6 +123,7 @@ export function createInflight(
         timeoutHandle: any;
         response: ResponseObject;
         messageItemId: string;
+        expectsImage?: boolean;
         jsonResolve?: ((resp: ResponseObject) => void) | null;
         jsonReject?: ((err: Error) => void) | null;
     };
@@ -541,6 +542,8 @@ export function emitResponseCompleted(clientIdOrStatus?: string, statusOrExtra?:
     let clientId: string | undefined;
     let status: ResponseObject['status'];
     let extraData: any;
+    const isResponseStatus = (value: unknown): value is ResponseObject['status'] =>
+        value === 'error' || value === 'in_progress' || value === 'completed' || value === 'cancelled';
 
     // Helper to determine if the first argument is a status string (global mode)
     // or a client ID (specific mode).
@@ -554,17 +557,17 @@ export function emitResponseCompleted(clientIdOrStatus?: string, statusOrExtra?:
     if (extra !== undefined) {
         // Case 4
         clientId = clientIdOrStatus;
-        status = statusOrExtra;
+        status = isResponseStatus(statusOrExtra) ? statusOrExtra : 'error';
         extraData = extra;
     } else if (typeof statusOrExtra === 'string') {
         // Case 3
         clientId = clientIdOrStatus;
-        status = statusOrExtra;
+        status = isResponseStatus(statusOrExtra) ? statusOrExtra : 'error';
         extraData = undefined;
     } else {
         // Case 1 or 2
         clientId = undefined;
-        status = clientIdOrStatus as any;
+        status = isResponseStatus(clientIdOrStatus) ? clientIdOrStatus : 'error';
         extraData = statusOrExtra;
     }
 

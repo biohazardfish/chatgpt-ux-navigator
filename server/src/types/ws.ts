@@ -80,5 +80,10 @@ export type WsPayload = WsPayloadSse | WsPayloadDoneOrClosed;
 
 export type IncomingWebSocketMessage = {
     type: 'sse' | 'done' | 'closed' | 'error' | string;
-    payload: WsPayload;
+    payload?: WsPayload;
+    error?: unknown;
+    fileId?: string;
+    mimeType?: string;
+    dataBase64?: string;
+    fileName?: string;
 };

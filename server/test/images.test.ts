@@ -1,7 +1,7 @@
 import {describe, it, expect, beforeEach, afterEach, mock} from 'bun:test';
 import {handlePostImagesById, handlePostImagesByIdActivate} from '../src/http/routes/images';
 import type {AppConfig} from '../src/config/config';
-import {setClient} from '../src/ws/hub';
+import {setClient, removeClient} from '../src/ws/hub';
 import {inflightTerminate} from '../src/http/responses/inflight';
 
 const config: AppConfig = {
@@ -19,12 +19,12 @@ const CLIENT_ID = 'image-client';
 
 describe('POST /images/:client_id', () => {
     beforeEach(() => {
-        setClient(CLIENT_ID, null);
+        removeClient(CLIENT_ID);
         inflightTerminate(CLIENT_ID, null, null);
     });
 
     afterEach(() => {
-        setClient(CLIENT_ID, null);
+        removeClient(CLIENT_ID);
         inflightTerminate(CLIENT_ID, null, null);
     });
 

@@ -127,6 +127,10 @@ export function createWebSocketHandlers(cfg: AppConfig) {
 
             const t = String(obj.type || '');
             const clientId = ws.data.clientId;
+            if (!clientId) {
+                logWs('message_missing_client_id', {type: t});
+                return;
+            }
             if (t !== 'sse') {
                 logWs('message_received', {
                     clientId,
@@ -323,9 +327,9 @@ export function createWebSocketHandlers(cfg: AppConfig) {
         close(ws: ServerWebSocket<WsData>) {
             const clientId = ws.data.clientId;
             logWs('socket_closed', {clientId});
-            if (clientId) {
-                removeClient(clientId);
-            }
+            if (!clientId) return;
+
+            removeClient(clientId);
             const inflight = getInflight(clientId);
             if (inflight) {
                 emitResponseCompleted(clientId, 'error', {error: 'WebSocket closed'});

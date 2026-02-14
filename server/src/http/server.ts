@@ -30,7 +30,7 @@ export function startServer(cfg: AppConfig): void {
     Bun.serve<WsData>({
         port: cfg.port,
 
-        async fetch(req: Request, server: Server) {
+        async fetch(req: Request, server: Server<WsData>) {
             const url = new URL(req.url);
 
             // WebSocket upgrade

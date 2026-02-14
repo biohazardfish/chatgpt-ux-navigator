@@ -27,8 +27,9 @@ function loadEnvFile(): void {
 
         const keyValueMatch = trimmed.match(/^([^=]+)=(.*)$/);
         if (keyValueMatch) {
-            const key = keyValueMatch[1].trim();
-            const value = keyValueMatch[2].trim();
+            const [, rawKey = '', rawValue = ''] = keyValueMatch;
+            const key = rawKey.trim();
+            const value = rawValue.trim();
 
             const notAlreadyDefined = process.env[key] === undefined;
             if (notAlreadyDefined) {
