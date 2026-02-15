@@ -1,8 +1,5 @@
 import {describe, it, expect, beforeEach, afterEach, mock} from 'bun:test';
-import {
-    handlePostResponsesById,
-    handlePostResponsesByIdNew,
-} from '../src/http/routes/responses';
+import {handlePostResponsesById, handlePostResponsesByIdNew} from '../src/http/routes/responses';
 import type {AppConfig} from '../src/config/config';
 import {setClient, removeClient} from '../src/ws/hub';
 import {
@@ -181,13 +178,10 @@ describe('POST /responses/:id', () => {
         });
         setClient(CLIENT_ID, {send: mockSend} as any);
 
-        const req = new Request(
-            `http://localhost/responses/${CLIENT_ID}/new?temporary=false`,
-            {
-                method: 'POST',
-                body: JSON.stringify({input: 'Hello no temp'}),
-            }
-        );
+        const req = new Request(`http://localhost/responses/${CLIENT_ID}/new?temporary=false`, {
+            method: 'POST',
+            body: JSON.stringify({input: 'Hello no temp'}),
+        });
 
         const res = await handlePostResponsesByIdNew(req, config, new URL(req.url));
         expect(res.status).toBe(200);

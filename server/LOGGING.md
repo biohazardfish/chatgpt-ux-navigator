@@ -38,11 +38,11 @@ Each line is one object:
 
 ```json
 {
-  "timestamp": "2026-02-14T12:00:00.000Z",
-  "level": "debug",
-  "category": "sse.summary",
-  "event": "text_update",
-  "meta": {}
+    "timestamp": "2026-02-14T12:00:00.000Z",
+    "level": "debug",
+    "category": "sse.summary",
+    "event": "text_update",
+    "meta": {}
 }
 ```
 
@@ -104,7 +104,7 @@ This keeps logs safe and manageable while preserving debugging value.
 1. Set `DEBUG=true`.
 2. Reproduce the issue once.
 3. Inspect `DEBUG_LOG_FILE` for:
-   - request/inflight summary lifecycle
-   - SSE summary transitions
-   - completion rollup
-   - forced raw error context (if failures occurred)
+    - request/inflight summary lifecycle
+    - SSE summary transitions
+    - completion rollup
+    - forced raw error context (if failures occurred)

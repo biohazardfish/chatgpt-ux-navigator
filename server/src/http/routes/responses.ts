@@ -185,7 +185,11 @@ function handleStreamingResponse(
 
     const stream = new ReadableStream<Uint8Array>({
         start(controller) {
-            logResponseRoute(cfg, 'stream_start', {id, clientId, messageType: messageType || 'prompt'});
+            logResponseRoute(cfg, 'stream_start', {
+                id,
+                clientId,
+                messageType: messageType || 'prompt',
+            });
             const timeoutHandle = setTimeout(() => {
                 if (!getInflight(clientId)) return;
 
@@ -326,28 +330,28 @@ async function handleJsonResponse(
                 reject(new Error('Timed out waiting for completion'));
             }, timeoutMs);
 
-        if (clientId) {
-            const expectsImage = messageType === 'prompt.image';
-            createInflight(clientId, {
-                id,
-                createdAt,
-                mode: 'json',
-                controller: null,
-                encoder: null,
-                timeoutHandle,
-                response: responseObj,
-                messageItemId,
-                expectsImage,
-                jsonResolve: resolve,
-                jsonReject: reject,
-            });
-            logResponseRoute(cfg, 'inflight_created', {
-                id,
-                clientId,
-                mode: 'json',
-                expectsImage,
-            });
-        }
+            if (clientId) {
+                const expectsImage = messageType === 'prompt.image';
+                createInflight(clientId, {
+                    id,
+                    createdAt,
+                    mode: 'json',
+                    controller: null,
+                    encoder: null,
+                    timeoutHandle,
+                    response: responseObj,
+                    messageItemId,
+                    expectsImage,
+                    jsonResolve: resolve,
+                    jsonReject: reject,
+                });
+                logResponseRoute(cfg, 'inflight_created', {
+                    id,
+                    clientId,
+                    mode: 'json',
+                    expectsImage,
+                });
+            }
 
             const ok = sendPromptToExtension(id, createdAt, prompt, {
                 createTemporaryChat,
@@ -522,7 +526,11 @@ export async function handleResponsesRequest(
     }
 }
 
-export async function handlePostResponsesById(req: Request, cfg: AppConfig, url: URL): Promise<Response> {
+export async function handlePostResponsesById(
+    req: Request,
+    cfg: AppConfig,
+    url: URL
+): Promise<Response> {
     const pathParts = url.pathname.split('/');
     const clientId = pathParts[pathParts.length - 1];
 

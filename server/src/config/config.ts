@@ -21,7 +21,6 @@ export type AppConfig = {
     // Request timeout in seconds for agent/judge responses.
     // Default: 360 seconds (6 minutes).
     requestTimeout: number;
-
 };
 
 export function makeConfig(partial: Partial<AppConfig>): AppConfig {
@@ -32,9 +31,7 @@ export function makeConfig(partial: Partial<AppConfig>): AppConfig {
         imagesDir: partial.imagesDir ?? resolve(process.cwd(), 'images'),
         noStream: partial.noStream ?? false,
         debug: partial.debug ?? false,
-        debugLogFile:
-            partial.debugLogFile ??
-            resolve(process.cwd(), 'logs', 'server-debug.jsonl'),
+        debugLogFile: partial.debugLogFile ?? resolve(process.cwd(), 'logs', 'server-debug.jsonl'),
         requestTimeout: partial.requestTimeout ?? 360,
     };
 }

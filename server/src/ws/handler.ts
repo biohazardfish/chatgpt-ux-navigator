@@ -20,9 +20,7 @@ import {
     emitSseRollup,
 } from '../http/responses/inflight';
 import {sanitizeAssistantText} from '../http/responses/sanitize';
-import {
-    saveGeneratedImage,
-} from '../http/images/capture';
+import {saveGeneratedImage} from '../http/images/capture';
 import {debugSummary, debugRaw} from '../logging/debug';
 
 export function createWebSocketHandlers(cfg: AppConfig) {
@@ -87,7 +85,11 @@ export function createWebSocketHandlers(cfg: AppConfig) {
         return Array.from(fileIds);
     }
 
-    function summarizeSsePayload(obj: any, clientId: string, inflightId: string): Record<string, unknown> {
+    function summarizeSsePayload(
+        obj: any,
+        clientId: string,
+        inflightId: string
+    ): Record<string, unknown> {
         const payloadJson = obj?.payload?.json;
         const op = typeof payloadJson?.o === 'string' ? payloadJson.o : null;
         const type = typeof payloadJson?.type === 'string' ? payloadJson.type : null;
@@ -207,7 +209,8 @@ export function createWebSocketHandlers(cfg: AppConfig) {
                             ? (obj as any).conversationId
                             : null,
                     mimeType: typeof obj?.mimeType === 'string' ? obj.mimeType : null,
-                    dataBase64Length: typeof obj?.dataBase64 === 'string' ? obj.dataBase64.length : 0,
+                    dataBase64Length:
+                        typeof obj?.dataBase64 === 'string' ? obj.dataBase64.length : 0,
                 });
                 try {
                     const imagePath = await saveGeneratedImage({
@@ -228,7 +231,10 @@ export function createWebSocketHandlers(cfg: AppConfig) {
                             waitingForImage: inflight.waitingForImage,
                         });
                         inflight.response.image_path = imagePath;
-                        inflight.response.meta = {...(inflight.response.meta || {}), image_path: imagePath};
+                        inflight.response.meta = {
+                            ...(inflight.response.meta || {}),
+                            image_path: imagePath,
+                        };
 
                         if (inflight.waitingForImage) {
                             completeAndTerminate(clientId);
@@ -258,10 +264,13 @@ export function createWebSocketHandlers(cfg: AppConfig) {
                         clientId,
                         inflightId: inflight.id,
                         messageType: t,
-                        lastTextLength: typeof inflight.lastText === 'string' ? inflight.lastText.length : 0,
+                        lastTextLength:
+                            typeof inflight.lastText === 'string' ? inflight.lastText.length : 0,
                         expectsImage: inflight.expectsImage,
                         waitingForImage: inflight.waitingForImage,
-                        hasImagePath: !!(inflight.response?.image_path || inflight.response?.meta?.image_path),
+                        hasImagePath: !!(
+                            inflight.response?.image_path || inflight.response?.meta?.image_path
+                        ),
                     });
                 }
 
@@ -325,7 +334,8 @@ export function createWebSocketHandlers(cfg: AppConfig) {
                                 expectsImage: inflight.expectsImage,
                                 waitingForImage: inflight.waitingForImage,
                                 hasImagePath: !!(
-                                    inflight.response?.image_path || inflight.response?.meta?.image_path
+                                    inflight.response?.image_path ||
+                                    inflight.response?.meta?.image_path
                                 ),
                                 event: obj?.payload?.event || null,
                                 raw: obj?.payload?.raw || null,

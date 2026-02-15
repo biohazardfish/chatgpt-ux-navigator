@@ -14,7 +14,11 @@ function extractClientIdFromImagesPath(pathname: string, mode: 'base' | 'activat
     return match[1];
 }
 
-export async function handlePostImagesById(req: Request, cfg: AppConfig, url: URL): Promise<Response> {
+export async function handlePostImagesById(
+    req: Request,
+    cfg: AppConfig,
+    url: URL
+): Promise<Response> {
     const clientId = extractClientIdFromImagesPath(url.pathname, 'base');
 
     if (!clientId || clientId.trim() === '') {
@@ -60,10 +64,13 @@ export async function handlePostImagesByIdActivate(
     });
 
     if (!ok) {
-        return new Response(JSON.stringify({error: 'Failed to send image-activate command to WS client'}), {
-            status: 502,
-            headers: {...cors, 'Content-Type': 'application/json'},
-        });
+        return new Response(
+            JSON.stringify({error: 'Failed to send image-activate command to WS client'}),
+            {
+                status: 502,
+                headers: {...cors, 'Content-Type': 'application/json'},
+            }
+        );
     }
 
     return new Response(

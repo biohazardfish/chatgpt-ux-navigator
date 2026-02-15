@@ -12,7 +12,6 @@ import {createRunLogger, createResumeLogger} from './logging/createRunLogger';
 import type {RunnerDeps} from './runner/types';
 import {preflightCheckClients} from './server/preflight';
 import {loadRunState} from './resume/loadRunState';
-import {startViewer} from './viewer/server';
 import {join, resolve} from 'path';
 
 const USAGE = `
@@ -21,17 +20,14 @@ Nexus - Multi-Agent Conversation Orchestrator
 Usage:
   bun run src/cli.ts <config.yml> [options]
   bun run src/cli.ts --resume <run_dir> [options]
-  bun run src/cli.ts --viewer <runs_root>
 
 Example:
   bun run src/cli.ts examples/debate.yml
   bun run src/cli.ts examples/debate.yml --debug
-  bun run src/cli.ts --viewer runs
 
 Options:
   <config.yml>    Path to YAML configuration file (required unless --resume)
   --resume        Resume an existing run directory
-  --viewer        Serve run-browser UI from runs root directory (port 8787)
   --debug         Enable debug logging (prints to console and logs.jsonl)
   --help, -h      Show this help message
 
@@ -53,60 +49,6 @@ Description:
     - judge/          (evaluation records)
 `;
 
-type ViewerHandlerDeps = {
-    startViewer: typeof startViewer;
-    log: (...args: unknown[]) => void;
-    error: (...args: unknown[]) => void;
-    exit: (code: number) => void;
-};
-
-const defaultViewerDeps: ViewerHandlerDeps = {
-    startViewer,
-    log: console.log,
-    error: console.error,
-    exit: process.exit,
-};
-
-export async function handleViewerArgs(
-    args: string[],
-    deps: Partial<ViewerHandlerDeps> = {}
-): Promise<boolean> {
-    const {startViewer: startViewerDep, log, error, exit} = {
-        ...defaultViewerDeps,
-        ...deps,
-    };
-
-    const viewerIndex = args.indexOf('--viewer');
-    if (viewerIndex === -1) {
-        return false;
-    }
-
-    const viewerRoot = args[viewerIndex + 1];
-    if (!viewerRoot || viewerRoot.startsWith('--')) {
-        error('Error: --viewer requires a runs root directory path');
-        log(USAGE);
-        exit(1);
-        return true;
-    }
-
-    log('👀 Nexus Run Viewer\n');
-    log(`📁 Loading runs root: ${viewerRoot}`);
-    log('🎨 Serving UI at port 8787\n');
-
-    try {
-        await startViewerDep({
-            runsRoot: viewerRoot,
-            port: 8787,
-        });
-        return true;
-    } catch (errorValue) {
-        error('❌ Failed to start viewer:');
-        error(errorValue instanceof Error ? errorValue.message : String(errorValue));
-        exit(1);
-        return true;
-    }
-}
-
 async function main() {
     const args = process.argv.slice(2);
 
@@ -116,9 +58,10 @@ async function main() {
         process.exit(args.length === 0 ? 1 : 0);
     }
 
-    const viewerHandled = await handleViewerArgs(args);
-    if (viewerHandled) {
-        return;
+    if (args.includes('--viewer')) {
+        console.error('Error: --viewer has been removed and is no longer supported');
+        console.log(USAGE);
+        process.exit(1);
     }
 
     const debugMode = args.includes('--debug');
