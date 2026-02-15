@@ -13,13 +13,20 @@ const SUBCOMMANDS = new Set([
     'image-prompt-chapters',
     'image-precondition',
     'image-gen-chapters',
+    'translation-context',
+    'translate-chapters',
 ]);
 
 type ParsedArgs = {
     command: string | null;
     runDir: string | null;
+    language: string | null;
+    improve: boolean;
+    contextFile: string | null;
     showHelp: boolean;
 };
+
+const SUPPORTED_TRANSLATE_LANGUAGES = new Set(['vi', 'ko', 'ja']);
 
 function usage(): string {
     return [
@@ -27,23 +34,38 @@ function usage(): string {
         '',
         'Commands:',
         '  clean                  Clean messages/*_writer_senior.md -> processed/*_writer_senior_out.md',
-        '  story-summary          Generate story-summary.txt from cleaned chapters',
+        '  story-summary          Generate story-summary.txt (5 title+summary options) from cleaned chapters',
         '  image-prompt-chapters  Generate *_with_image_prompt.md from cleaned chapters',
         '  image-precondition     Generate image-gen-precondition.md from prompted chapters',
         '  image-gen-chapters     Generate chapter images and inject markdown image markers',
+        '  translation-context    Generate translation context guide from cleaned chapters',
+        '  translate-chapters     Translate prompted chapters and remove image_prompt blocks',
+        '',
+        'Language options:',
+        '  --language <code>      Required language code (vi, ko, ja)',
+        '  --improve              For translate-chapters: improve translated files in-place',
+        '  --context <file>       Optional context file (auto-detected when omitted for story-summary/translate-chapters)',
         '',
         'Examples:',
         '  bun run writer-cli clean --run ./runs/2026-02-13T17-09-22Z_vn-cyber-longstory',
         '  bun run writer-cli story-summary --run ./runs/2026-02-13T17-09-22Z_vn-cyber-longstory',
+        '  bun run writer-cli story-summary --run ./runs/2026-02-13T17-09-22Z_vn-cyber-longstory --language vi',
         '  bun run writer-cli image-prompt-chapters --run ./runs/2026-02-13T17-09-22Z_vn-cyber-longstory',
         '  bun run writer-cli image-precondition --run ./runs/2026-02-13T17-09-22Z_vn-cyber-longstory',
         '  bun run writer-cli image-gen-chapters --run ./runs/2026-02-13T17-09-22Z_vn-cyber-longstory',
+        '  bun run writer-cli translation-context --run ./runs/2026-02-13T17-09-22Z_vn-cyber-longstory --language vi',
+        '  bun run writer-cli translate-chapters --run ./runs/2026-02-13T17-09-22Z_vn-cyber-longstory --language vi',
+        '  bun run writer-cli translate-chapters --run ./runs/2026-02-13T17-09-22Z_vn-cyber-longstory --language vi --improve',
+        '  bun run writer-cli translate-chapters --run ./runs/2026-02-13T17-09-22Z_vn-cyber-longstory --language vi --context ./glossary-vi.md',
     ].join('\n');
 }
 
 function parseArgs(argv: string[]): ParsedArgs {
     let command: string | null = null;
     let runDir: string | null = null;
+    let language: string | null = null;
+    let improve = false;
+    let contextFile: string | null = null;
     let showHelp = false;
 
     for (let i = 0; i < argv.length; i += 1) {
@@ -73,6 +95,49 @@ function parseArgs(argv: string[]): ParsedArgs {
             continue;
         }
 
+        if (arg === '--language') {
+            const next = argv[i + 1];
+            if (!next || next.startsWith('-')) {
+                throw new Error('Missing value for --language');
+            }
+            language = next;
+            i += 1;
+            continue;
+        }
+
+        if (arg.startsWith('--language=')) {
+            const value = arg.slice('--language='.length).trim();
+            if (!value) {
+                throw new Error('Missing value for --language');
+            }
+            language = value.toLowerCase();
+            continue;
+        }
+
+        if (arg === '--improve') {
+            improve = true;
+            continue;
+        }
+
+        if (arg === '--context') {
+            const next = argv[i + 1];
+            if (!next || next.startsWith('-')) {
+                throw new Error('Missing value for --context');
+            }
+            contextFile = next;
+            i += 1;
+            continue;
+        }
+
+        if (arg.startsWith('--context=')) {
+            const value = arg.slice('--context='.length).trim();
+            if (!value) {
+                throw new Error('Missing value for --context');
+            }
+            contextFile = value;
+            continue;
+        }
+
         if (arg.startsWith('-')) {
             throw new Error(`Unknown option: ${arg}`);
         }
@@ -84,7 +149,14 @@ function parseArgs(argv: string[]): ParsedArgs {
         command = arg;
     }
 
-    return {command, runDir, showHelp};
+    return {
+        command,
+        runDir,
+        language: language?.toLowerCase() ?? null,
+        improve,
+        contextFile,
+        showHelp,
+    };
 }
 
 function listFilesMatching(dir: string, matcher: (name: string) => boolean): string[] {
@@ -112,6 +184,15 @@ function isWriterSeniorOutPromptedFile(fileName: string): boolean {
 
 function promptedPathFor(cleanedFilePath: string): string {
     return cleanedFilePath.replace(/\.md$/i, '_with_image_prompt.md');
+}
+
+function translatedPathFor(promptedFilePath: string, language: string): string {
+    return promptedFilePath.replace(/\.md$/i, `_${language}.md`);
+}
+
+function isWriterSeniorOutPromptedTranslatedFile(fileName: string, language: string): boolean {
+    const escapedLanguage = language.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    return new RegExp(`_writer_senior_out_with_image_prompt_${escapedLanguage}\\.md$`, 'i').test(fileName);
 }
 
 type PromptBlock = {
@@ -277,43 +358,130 @@ async function runImagePromptChapters(runDir: string): Promise<void> {
     await runBunScript('image-prompter.ts', pendingPrompted);
 }
 
-async function runStorySummary(runDir: string): Promise<void> {
+async function runStorySummary(runDir: string, language: string | null, contextFile: string | null): Promise<void> {
     const paths = assertRunLayout(runDir);
 
-    if (existsSync(paths.storySummaryPath)) {
-        const existing = (await Bun.file(paths.storySummaryPath).text()).trim();
-        if (existing) {
+    const resolvedContextFromArg = contextFile ? resolve(contextFile) : null;
+
+    if (!language) {
+        if (existsSync(paths.storySummaryPath)) {
+            const existing = (await Bun.file(paths.storySummaryPath).text()).trim();
+            if (existing) {
+                console.log(`[${SCRIPT}] Run: ${paths.runDir}`);
+                console.log(`[${SCRIPT}] Story summary already exists at ${paths.storySummaryPath}`);
+                console.log(`[${SCRIPT}] Nothing to do`);
+                return;
+            }
+        }
+
+        const cleanedFiles = listFilesMatching(paths.processedDir, isWriterSeniorOutFile);
+
+        if (cleanedFiles.length === 0) {
+            throw new Error(`No cleaned chapter files found in ${paths.processedDir}`);
+        }
+
+        console.log(`[${SCRIPT}] Run: ${paths.runDir}`);
+        console.log(`[${SCRIPT}] Generating story summary from ${cleanedFiles.length} cleaned chapter file(s)`);
+
+        const proc = Bun.spawn(['bun', join('scripts', 'story-summary.ts'), ...cleanedFiles], {
+            cwd: ORCHESTRATOR_DIR,
+            stdout: 'pipe',
+            stderr: 'inherit',
+        });
+
+        const outputText = await new Response(proc.stdout).text();
+        const code = await proc.exited;
+
+        if (code !== 0) {
+            throw new Error(`story-summary.ts failed with exit code ${code}`);
+        }
+
+        await Bun.write(paths.storySummaryPath, outputText.trimEnd() + '\n');
+        console.log(`[${SCRIPT}] Wrote ${paths.storySummaryPath}`);
+        return;
+    }
+
+    const translatedSummaryPath = join(paths.runDir, `story-summary_${language}.txt`);
+
+    if (existsSync(translatedSummaryPath)) {
+        const existingTranslated = (await Bun.file(translatedSummaryPath).text()).trim();
+        if (existingTranslated) {
             console.log(`[${SCRIPT}] Run: ${paths.runDir}`);
-            console.log(`[${SCRIPT}] Story summary already exists at ${paths.storySummaryPath}`);
+            console.log(`[${SCRIPT}] Translated summary already exists at ${translatedSummaryPath}`);
             console.log(`[${SCRIPT}] Nothing to do`);
             return;
         }
     }
 
-    const cleanedFiles = listFilesMatching(paths.processedDir, isWriterSeniorOutFile);
-
-    if (cleanedFiles.length === 0) {
-        throw new Error(`No cleaned chapter files found in ${paths.processedDir}`);
+    let baseSummaryExists = false;
+    if (existsSync(paths.storySummaryPath)) {
+        const existing = (await Bun.file(paths.storySummaryPath).text()).trim();
+        baseSummaryExists = existing.length > 0;
     }
 
-    console.log(`[${SCRIPT}] Run: ${paths.runDir}`);
-    console.log(`[${SCRIPT}] Generating story summary from ${cleanedFiles.length} cleaned chapter file(s)`);
+    if (!baseSummaryExists) {
+        const cleanedFiles = listFilesMatching(paths.processedDir, isWriterSeniorOutFile);
 
-    const proc = Bun.spawn(['bun', join('scripts', 'story-summary.ts'), ...cleanedFiles], {
+        if (cleanedFiles.length === 0) {
+            throw new Error(`No cleaned chapter files found in ${paths.processedDir}`);
+        }
+
+        console.log(`[${SCRIPT}] Run: ${paths.runDir}`);
+        console.log(`[${SCRIPT}] Generating base story summary from ${cleanedFiles.length} cleaned chapter file(s)`);
+
+        const generateProc = Bun.spawn(['bun', join('scripts', 'story-summary.ts'), ...cleanedFiles], {
+            cwd: ORCHESTRATOR_DIR,
+            stdout: 'pipe',
+            stderr: 'inherit',
+        });
+
+        const generatedSummary = await new Response(generateProc.stdout).text();
+        const generateCode = await generateProc.exited;
+
+        if (generateCode !== 0) {
+            throw new Error(`story-summary.ts failed with exit code ${generateCode}`);
+        }
+
+        await Bun.write(paths.storySummaryPath, generatedSummary.trimEnd() + '\n');
+        console.log(`[${SCRIPT}] Wrote ${paths.storySummaryPath}`);
+    } else {
+        console.log(`[${SCRIPT}] Run: ${paths.runDir}`);
+        console.log(`[${SCRIPT}] Reusing base story summary at ${paths.storySummaryPath}`);
+    }
+
+    const autoContextPath = join(paths.runDir, `translation-context_${language}.md`);
+    let resolvedContextPath: string | null = resolvedContextFromArg;
+
+    if (!resolvedContextPath && existsSync(autoContextPath)) {
+        const autoContext = (await Bun.file(autoContextPath).text()).trim();
+        if (autoContext) {
+            resolvedContextPath = autoContextPath;
+            console.log(`[${SCRIPT}] Auto-detected context file: ${resolvedContextPath}`);
+        }
+    }
+
+    const translateArgs = ['bun', join('scripts', 'story-summary.ts'), '--language', language, '--summary-file', paths.storySummaryPath];
+    if (resolvedContextPath) {
+        console.log(`[${SCRIPT}] Context file: ${resolvedContextPath}`);
+        translateArgs.push('--context', resolvedContextPath);
+    }
+
+    console.log(`[${SCRIPT}] Translating story summary to ${language}`);
+    const translateProc = Bun.spawn(translateArgs, {
         cwd: ORCHESTRATOR_DIR,
         stdout: 'pipe',
         stderr: 'inherit',
     });
 
-    const outputText = await new Response(proc.stdout).text();
-    const code = await proc.exited;
+    const translatedSummary = await new Response(translateProc.stdout).text();
+    const translateCode = await translateProc.exited;
 
-    if (code !== 0) {
-        throw new Error(`story-summary.ts failed with exit code ${code}`);
+    if (translateCode !== 0) {
+        throw new Error(`story-summary.ts translation failed with exit code ${translateCode}`);
     }
 
-    await Bun.write(paths.storySummaryPath, outputText.trimEnd() + '\n');
-    console.log(`[${SCRIPT}] Wrote ${paths.storySummaryPath}`);
+    await Bun.write(translatedSummaryPath, translatedSummary.trimEnd() + '\n');
+    console.log(`[${SCRIPT}] Wrote ${translatedSummaryPath}`);
 }
 
 async function runImagePrecondition(runDir: string): Promise<void> {
@@ -353,6 +521,50 @@ async function runImagePrecondition(runDir: string): Promise<void> {
 
     await Bun.write(paths.preconditionPath, outputText.trimEnd() + '\n');
     console.log(`[${SCRIPT}] Wrote ${paths.preconditionPath}`);
+}
+
+async function runTranslationContext(runDir: string, language: string): Promise<void> {
+    const paths = assertRunLayout(runDir);
+    const translationContextPath = join(paths.runDir, `translation-context_${language}.md`);
+
+    if (existsSync(translationContextPath)) {
+        const existing = (await Bun.file(translationContextPath).text()).trim();
+        if (existing) {
+            console.log(`[${SCRIPT}] Run: ${paths.runDir}`);
+            console.log(`[${SCRIPT}] Translation context already exists at ${translationContextPath}`);
+            console.log(`[${SCRIPT}] Nothing to do`);
+            return;
+        }
+    }
+
+    const cleanedFiles = listFilesMatching(paths.processedDir, isWriterSeniorOutFile);
+
+    if (cleanedFiles.length === 0) {
+        throw new Error(`No cleaned chapter files found in ${paths.processedDir}`);
+    }
+
+    console.log(`[${SCRIPT}] Run: ${paths.runDir}`);
+    console.log(`[${SCRIPT}] Target language: ${language}`);
+    console.log(`[${SCRIPT}] Generating translation context from ${cleanedFiles.length} cleaned chapter file(s)`);
+
+    const proc = Bun.spawn(
+        ['bun', join('scripts', 'translation-context.ts'), '--language', language, ...cleanedFiles],
+        {
+            cwd: ORCHESTRATOR_DIR,
+            stdout: 'pipe',
+            stderr: 'inherit',
+        }
+    );
+
+    const outputText = await new Response(proc.stdout).text();
+    const code = await proc.exited;
+
+    if (code !== 0) {
+        throw new Error(`translation-context.ts failed with exit code ${code}`);
+    }
+
+    await Bun.write(translationContextPath, outputText.trimEnd() + '\n');
+    console.log(`[${SCRIPT}] Wrote ${translationContextPath}`);
 }
 
 async function runImageGenChapters(runDir: string): Promise<void> {
@@ -401,8 +613,84 @@ async function runImageGenChapters(runDir: string): Promise<void> {
     ]);
 }
 
+async function runTranslateChapters(
+    runDir: string,
+    language: string,
+    improve: boolean,
+    contextFile: string | null
+): Promise<void> {
+    const paths = assertRunLayout(runDir);
+    const autoContextPath = join(paths.runDir, `translation-context_${language}.md`);
+    const sourceFiles = improve
+        ? listFilesMatching(paths.processedDir, file => isWriterSeniorOutPromptedTranslatedFile(file, language))
+        : listFilesMatching(paths.processedDir, isWriterSeniorOutPromptedFile);
+
+    if (sourceFiles.length === 0) {
+        if (improve) {
+            throw new Error(
+                `No translated prompted chapter files found in ${paths.processedDir} for language '${language}'`
+            );
+        }
+        throw new Error(`No prompted chapter files found in ${paths.processedDir}`);
+    }
+
+    console.log(`[${SCRIPT}] Run: ${paths.runDir}`);
+    console.log(`[${SCRIPT}] Target language: ${language}`);
+    console.log(`[${SCRIPT}] Mode: ${improve ? 'improve (in-place)' : 'translate'}`);
+    console.log(`[${SCRIPT}] Found ${sourceFiles.length} source chapter file(s)`);
+
+    let resolvedContextFile: string | null = contextFile;
+
+    if (!resolvedContextFile && existsSync(autoContextPath)) {
+        const autoContextBody = (await Bun.file(autoContextPath).text()).trim();
+        if (autoContextBody) {
+            resolvedContextFile = autoContextPath;
+            console.log(`[${SCRIPT}] Auto-detected context file: ${resolvedContextFile}`);
+        } else {
+            console.log(`[${SCRIPT}] Ignoring empty auto-detected context file: ${autoContextPath}`);
+        }
+    }
+
+    if (resolvedContextFile) {
+        console.log(`[${SCRIPT}] Context file: ${resolvedContextFile}`);
+    }
+
+    const translatorArgs = ['--language', language];
+    if (resolvedContextFile) {
+        translatorArgs.push('--context', resolvedContextFile);
+    }
+
+    if (improve) {
+        await runBunScript('chapter-translator.ts', [...translatorArgs, '--improve', ...sourceFiles]);
+        return;
+    }
+
+    const existingTranslated: string[] = [];
+    const pendingFiles = sourceFiles.filter(file => {
+        const translatedPath = translatedPathFor(file, language);
+        if (existsSync(translatedPath)) {
+            existingTranslated.push(translatedPath);
+            return false;
+        }
+        return true;
+    });
+
+    if (existingTranslated.length > 0) {
+        console.log(
+            `[${SCRIPT}] Skipping ${existingTranslated.length} file(s) because translated output already exists`
+        );
+    }
+
+    if (pendingFiles.length === 0) {
+        console.log(`[${SCRIPT}] Nothing to translate`);
+        return;
+    }
+
+    await runBunScript('chapter-translator.ts', [...translatorArgs, ...pendingFiles]);
+}
+
 async function main(): Promise<void> {
-    const {command, runDir, showHelp} = parseArgs(process.argv.slice(2));
+    const {command, runDir, language, improve, contextFile, showHelp} = parseArgs(process.argv.slice(2));
 
     if (showHelp) {
         console.log(usage());
@@ -421,6 +709,23 @@ async function main(): Promise<void> {
         process.exit(1);
     }
 
+    if ((command === 'translate-chapters' || command === 'translation-context') && !language) {
+        console.error(`[${SCRIPT}] Missing --language <language_code> for ${command}`);
+        console.error(usage());
+        process.exit(1);
+    }
+
+    if (
+        (command === 'translate-chapters' || command === 'translation-context' || command === 'story-summary') &&
+        language &&
+        !SUPPORTED_TRANSLATE_LANGUAGES.has(language)
+    ) {
+        console.error(
+            `[${SCRIPT}] Unsupported language '${language}'. Supported ISO 639 codes: ${Array.from(SUPPORTED_TRANSLATE_LANGUAGES).join(', ')}`
+        );
+        process.exit(1);
+    }
+
     if (command === 'clean') {
         await runClean(runDir);
         return;
@@ -432,12 +737,22 @@ async function main(): Promise<void> {
     }
 
     if (command === 'story-summary') {
-        await runStorySummary(runDir);
+        await runStorySummary(runDir, language, contextFile);
         return;
     }
 
     if (command === 'image-precondition') {
         await runImagePrecondition(runDir);
+        return;
+    }
+
+    if (command === 'translation-context') {
+        await runTranslationContext(runDir, String(language));
+        return;
+    }
+
+    if (command === 'translate-chapters') {
+        await runTranslateChapters(runDir, String(language), improve, contextFile);
         return;
     }
 
