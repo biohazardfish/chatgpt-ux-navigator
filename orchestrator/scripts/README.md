@@ -7,7 +7,7 @@ This directory contains Bun scripts used to post-process story run outputs and d
 - Run commands from `orchestrator/` unless noted otherwise.
 - Ensure local server is running at `http://localhost:8765`.
 - Ensure the Chrome extension is connected with a ChatGPT tab for:
-  - `client_id = story-summary` (for story summary generation)
+  - `client_id = writer-client` (for story summary and translation workflows)
   - `client_id = image-gen` (for image prompting and image generation)
 - Scripts use `bun` directly (`#!/usr/bin/env bun`).
 
@@ -20,6 +20,9 @@ The intended pipeline for a run folder is:
 3. `image-prompt-chapters` -> create `processed/*_with_image_prompt.md`
 4. `image-precondition` -> create `image-gen-precondition.md`
 5. `image-gen-chapters` -> generate images and insert markdown image markers
+6. `translation-context` -> generate translation context for target language
+7. `translate-chapters` -> translate prompted chapters and remove `image_prompt` blocks
+8. `translate-chapters --improve` -> refine translated chapters in place for more natural style
 
 You can run each step via the unified CLI:
 
@@ -47,9 +50,16 @@ Commands:
 
 - `clean`: Reads `messages/*_writer_senior.md`, runs `clean-chapter.ts`, writes to `processed/*_writer_senior_out.md`.
 - `story-summary`: Runs `story-summary.ts` on cleaned chapters and writes `story-summary.txt` at run root.
+  - With `--language <code>`, writes translated output to `story-summary_<language>.txt`.
+  - Translation is automatically followed by an improvement pass for more natural target-language prose.
+  - If `story-summary.txt` already exists and is non-empty, it reuses it and only performs translation.
+  - Auto-detects translation context from `<run_dir>/translation-context_<language>.md` when `--context` is not provided.
 - `image-prompt-chapters`: Runs `image-prompter.ts` on cleaned chapters and writes `*_with_image_prompt.md` beside each cleaned file.
 - `image-precondition`: Runs `image-gen-precondition.ts` on prompted chapters and writes `image-gen-precondition.md`.
 - `image-gen-chapters`: Runs `image-gen-by-chapter.ts` for prompted chapters that still contain unfulfilled image prompts.
+- `translation-context`: Runs `translation-context.ts --language <code>` on cleaned chapters and writes `translation-context_<language>.md` at run root.
+- `translate-chapters`: Runs `chapter-translator.ts --language <code> [--context <file>]` on prompted chapters and writes `*_<language>.md` beside them.
+- `translate-chapters --improve`: Runs `chapter-translator.ts --language <code> --improve [--context <file>]` on translated prompted chapters and overwrites those files in place.
 
 Behavior details:
 
@@ -80,19 +90,44 @@ Notes:
 
 ## `story-summary.ts`
 
-Generates a teaser summary from one or more chapter files.
+Generates 5 title-and-summary options from one or more chapter files.
 
 Usage:
 
 ```bash
 bun scripts/story-summary.ts <story1.md> <story2.md> ...
+bun scripts/story-summary.ts --language <code> <story1.md> <story2.md> ...
+bun scripts/story-summary.ts --language <code> --summary-file <file> [--context <file>]
 ```
 
 What it does:
 
 - Combines input files into a single prompt (with per-file headings).
-- Sends one request to `POST /responses/story-summary`.
-- Prints resulting summary text to stdout.
+- Sends one request to `POST /responses/writer-client` for base summary generation.
+- Optional translation step (`--language vi|ko|ja`) translates the summary, then automatically runs an improvement pass in a second follow-up request.
+- Optional `--context <file>` is used as guidance for translation quality and term consistency.
+- Prints resulting options markdown to stdout.
+
+Output format:
+
+```markdown
+## Option 1
+### <title>
+
+<summary>
+
+## Option 2
+### <title>
+
+<summary>
+
+...
+
+## Option 5
+### <title>
+
+<summary>
+```
 
 Timeout:
 
@@ -179,6 +214,61 @@ Timeout:
 
 - `IMAGE_GEN_TIMEOUT_MS` (default: `300000`).
 
+## `chapter-translator.ts`
+
+Translates chapter files to a target language while preserving generated image markers.
+
+Usage:
+
+```bash
+bun scripts/chapter-translator.ts --language <code> <chapter1.md> <chapter2.md> ...
+bun scripts/chapter-translator.ts --language <code> --improve <chapter1_<code>.md> <chapter2_<code>.md> ...
+bun scripts/chapter-translator.ts --language <code> --context <file> <chapter1.md> <chapter2.md> ...
+```
+
+What it does:
+
+- Sends a one-time conditioning prompt to `POST /responses/writer-client`.
+- Sends each chapter for translation or style improvement, chapter-by-chapter.
+- Supports language codes: `vi`, `ko`, `ja`.
+- Optional `--context <file>` provides translation guidance (names, terms, and style suggestions).
+- Preserves markdown image lines like `![Image N](...)`.
+- Removes all fenced ` ```image_prompt ` blocks.
+- Default mode writes output as `<input>_<language>.md` in the same directory.
+- Improve mode (`--improve`) overwrites each provided input file in place.
+
+Context note:
+
+- Context is treated as guidance (suggestion), not strict rules.
+- The translator can adapt context terms to keep output natural and rich in the target language.
+- In `writer-cli translate-chapters`, when `--context` is omitted, it auto-detects `<run_dir>/translation-context_<language>.md` if present and non-empty.
+
+Timeout:
+
+- `CHAPTER_TRANSLATOR_TIMEOUT_MS` (default: `300000`).
+
+## `translation-context.ts`
+
+Generates translation context guidance for a target language from story chapters.
+
+Usage:
+
+```bash
+bun scripts/translation-context.ts --language <code> <story1.md> <story2.md> ...
+```
+
+What it does:
+
+- Supports language codes: `vi`, `ko`, `ja`.
+- Combines input story files into a single request.
+- Sends one request to `POST /responses/writer-client`.
+- Returns concise markdown context guidance for names, terminology, tone, and style.
+- Prints context text to stdout.
+
+Timeout:
+
+- `TRANSLATION_CONTEXT_TIMEOUT_MS` (default: `300000`).
+
 ## API Endpoints Used
 
 - `POST /responses/:clientId`
@@ -198,7 +288,10 @@ Given `<run_dir>`:
 - Inputs: `<run_dir>/messages/*_writer_senior.md`
 - Cleaned: `<run_dir>/processed/*_writer_senior_out.md`
 - Prompted: `<run_dir>/processed/*_writer_senior_out_with_image_prompt.md`
-- Story summary: `<run_dir>/story-summary.txt`
+- Story summary (base): `<run_dir>/story-summary.txt`
+- Story summary (translated): `<run_dir>/story-summary_<language>.txt`
+- Translation context: `<run_dir>/translation-context_<language>.md`
+- Translated: `<run_dir>/processed/*_writer_senior_out_with_image_prompt_<language>.md`
 - Image precondition: `<run_dir>/image-gen-precondition.md`
 - Copied images (optional): `<run_dir>/output/*`
 
@@ -209,7 +302,12 @@ From `orchestrator/`:
 ```bash
 bun run writer-cli clean --run <run_dir>
 bun run writer-cli story-summary --run <run_dir>
+bun run writer-cli story-summary --run <run_dir> --language vi
 bun run writer-cli image-prompt-chapters --run <run_dir>
 bun run writer-cli image-precondition --run <run_dir>
 bun run writer-cli image-gen-chapters --run <run_dir>
+bun run writer-cli translation-context --run <run_dir> --language vi
+bun run writer-cli translate-chapters --run <run_dir> --language vi
+bun run writer-cli translate-chapters --run <run_dir> --language vi --improve
+bun run writer-cli translate-chapters --run <run_dir> --language vi --context ./glossary-vi.md
 ```
