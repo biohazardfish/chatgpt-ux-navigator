@@ -26,9 +26,65 @@ import {
 import {debugSummary, debugRaw} from '../logging/debug';
 
 export function createWebSocketHandlers(cfg: AppConfig) {
+    const FILE_ID_RE = /file_[a-zA-Z0-9]+/g;
+
     function logWs(event: string, meta: Record<string, unknown> = {}) {
         if (!cfg.debug) return;
         debugSummary('ws.responses', event, meta);
+    }
+
+    function extractFileIdFromPointer(pointer: unknown): string | null {
+        if (typeof pointer !== 'string') return null;
+        const match = pointer.match(FILE_ID_RE);
+        if (!match || match.length === 0) return null;
+        return match[0] || null;
+    }
+
+    function collectImageFileIdsFromSsePayload(payloadJson: any): string[] {
+        const fileIds = new Set<string>();
+
+        const parts = payloadJson?.v?.message?.content?.parts;
+        if (Array.isArray(parts)) {
+            for (const part of parts) {
+                if (!part || typeof part !== 'object') continue;
+                if (part.content_type !== 'image_asset_pointer') continue;
+                const fileId = extractFileIdFromPointer(part.asset_pointer);
+                if (fileId) {
+                    fileIds.add(fileId);
+                }
+            }
+        }
+
+        const patches = Array.isArray(payloadJson?.p)
+            ? payloadJson.p
+            : Array.isArray(payloadJson?.patches)
+              ? payloadJson.patches
+              : [];
+
+        for (const patch of patches) {
+            if (!patch || typeof patch !== 'object') continue;
+
+            const path =
+                typeof patch.p === 'string'
+                    ? patch.p
+                    : typeof patch.path === 'string'
+                      ? patch.path
+                      : '';
+            if (!/\/message\/content\/parts\/\d+\/asset_pointer$/.test(path)) continue;
+
+            const value =
+                typeof patch.v === 'string'
+                    ? patch.v
+                    : typeof patch.value === 'string'
+                      ? patch.value
+                      : null;
+            const fileId = extractFileIdFromPointer(value);
+            if (fileId) {
+                fileIds.add(fileId);
+            }
+        }
+
+        return Array.from(fileIds);
     }
 
     function summarizeSsePayload(obj: any, clientId: string, inflightId: string): Record<string, unknown> {
@@ -37,7 +93,9 @@ export function createWebSocketHandlers(cfg: AppConfig) {
         const type = typeof payloadJson?.type === 'string' ? payloadJson.type : null;
         const conversationId =
             typeof payloadJson?.conversation_id === 'string' ? payloadJson.conversation_id : null;
+        const imageFileIds = collectImageFileIdsFromSsePayload(payloadJson);
         const hasImagePointer = !!(
+            imageFileIds.length > 0 ||
             payloadJson?.v?.message?.content?.parts?.[0]?.asset_pointer ||
             payloadJson?.v?.message?.content?.parts?.[0]?.content_type === 'image_asset_pointer'
         );
@@ -49,6 +107,7 @@ export function createWebSocketHandlers(cfg: AppConfig) {
             type,
             conversationId,
             hasImagePointer,
+            imageFileIds,
         };
     }
 
@@ -143,6 +202,10 @@ export function createWebSocketHandlers(cfg: AppConfig) {
                 logWs('image_generated_received', {
                     clientId,
                     fileId: typeof obj?.fileId === 'string' ? obj.fileId : null,
+                    conversationId:
+                        typeof (obj as any)?.conversationId === 'string'
+                            ? (obj as any).conversationId
+                            : null,
                     mimeType: typeof obj?.mimeType === 'string' ? obj.mimeType : null,
                     dataBase64Length: typeof obj?.dataBase64 === 'string' ? obj.dataBase64.length : 0,
                 });
@@ -207,6 +270,11 @@ export function createWebSocketHandlers(cfg: AppConfig) {
                     const upd = extractTextUpdateFromChatGPTPayload(obj);
                     const hasText = !!(upd && typeof upd.text === 'string' && upd.text.length > 0);
                     const isPatch = sseMeta.op === 'patch';
+                    const imageFileIds = Array.isArray(sseMeta.imageFileIds)
+                        ? sseMeta.imageFileIds.filter(v => typeof v === 'string')
+                        : [];
+                    const isImageCompletion =
+                        inflight.expectsImage && sseMeta.type === 'message_stream_complete';
 
                     pushSseRawContext(clientId, {
                         ...sseMeta,
@@ -236,6 +304,35 @@ export function createWebSocketHandlers(cfg: AppConfig) {
                             ...sseMeta,
                             hasText,
                         });
+                    }
+
+                    if (imageFileIds.length > 0 || isImageCompletion) {
+                        debugSummary('sse.summary', 'image_frame', {
+                            ...sseMeta,
+                            imageFileIds,
+                            expectsImage: inflight.expectsImage,
+                            waitingForImage: inflight.waitingForImage,
+                            hasImagePath: !!(
+                                inflight.response?.image_path || inflight.response?.meta?.image_path
+                            ),
+                        });
+                        debugRaw(
+                            'sse.raw',
+                            'image_frame',
+                            {
+                                ...sseMeta,
+                                imageFileIds,
+                                expectsImage: inflight.expectsImage,
+                                waitingForImage: inflight.waitingForImage,
+                                hasImagePath: !!(
+                                    inflight.response?.image_path || inflight.response?.meta?.image_path
+                                ),
+                                event: obj?.payload?.event || null,
+                                raw: obj?.payload?.raw || null,
+                                json: obj?.payload?.json || null,
+                            },
+                            {force: true}
+                        );
                     }
 
                     if (upd && typeof upd.text === 'string' && upd.text.length > 0) {

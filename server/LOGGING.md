@@ -65,6 +65,11 @@ Categories used for SSE diagnostics:
 - `hasImagePointer`
 - `textLen`
 - `mode`
+- `imageFileIds` (when image pointers are present)
+
+Image-specific summary markers:
+
+- `image_frame`: emitted when SSE includes image asset pointer updates, and when an image-request stream reaches `message_stream_complete`.
 
 Rollups are emitted at completion with:
 
@@ -78,6 +83,8 @@ Rollups are emitted at completion with:
 ### Raw events
 
 `sse.raw` is sampled by default (`1 in 20` frames).
+
+For image debugging, `sse.raw` emits forced `image_frame` records so image pointer transitions are always captured.
 
 Raw context is buffered per inflight request (last 50 entries) and forced to JSONL on error paths (timeout, extension error, websocket closed, image save failure).
 
