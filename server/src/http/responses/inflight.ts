@@ -52,7 +52,6 @@ export type InflightResponses = {
     // SSE diagnostics
     sseStats: SseStats;
     sseRawContext: Array<Record<string, unknown>>;
-
 };
 
 // --- Multi-client inflight tracking: Map of clientId -> InflightResponses ---
@@ -543,7 +542,10 @@ export function emitResponseCompleted(clientIdOrStatus?: string, statusOrExtra?:
     let status: ResponseObject['status'];
     let extraData: any;
     const isResponseStatus = (value: unknown): value is ResponseObject['status'] =>
-        value === 'error' || value === 'in_progress' || value === 'completed' || value === 'cancelled';
+        value === 'error' ||
+        value === 'in_progress' ||
+        value === 'completed' ||
+        value === 'cancelled';
 
     // Helper to determine if the first argument is a status string (global mode)
     // or a client ID (specific mode).
@@ -657,7 +659,10 @@ export function trackSseFrame(
     }
 }
 
-export function pushSseRawContext(clientId: string | undefined, context: Record<string, unknown>): void {
+export function pushSseRawContext(
+    clientId: string | undefined,
+    context: Record<string, unknown>
+): void {
     const id = clientId || defaultClientId;
     const inflight = inflights.get(id);
     if (!inflight) return;

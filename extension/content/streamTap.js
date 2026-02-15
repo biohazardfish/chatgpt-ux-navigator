@@ -115,7 +115,6 @@
             return null;
         }
 
-
         async function ensureComposerReady() {
             // Prefer your chatInput finder if present; otherwise DOM fallback
             const ok = await waitFor(() => {
@@ -172,7 +171,9 @@
                 return true;
             } catch (_) {
                 try {
-                    const interactiveChild = el.querySelector('button, [role="menuitemradio"], [role="menuitem"]');
+                    const interactiveChild = el.querySelector(
+                        'button, [role="menuitemradio"], [role="menuitem"]'
+                    );
                     if (interactiveChild instanceof HTMLElement) {
                         firePointerClick(interactiveChild);
                         return true;
@@ -211,13 +212,16 @@
         }
 
         async function ensureImageModeEnabled() {
-            const plusBtn = await waitFor(() => {
-                return (
-                    document.querySelector('#composer-plus-btn') ||
-                    document.querySelector('[data-testid="composer-plus-btn"]') ||
-                    document.querySelector('button[aria-label="Add files and more"]')
-                );
-            }, {timeoutMs: 7000, intervalMs: 120});
+            const plusBtn = await waitFor(
+                () => {
+                    return (
+                        document.querySelector('#composer-plus-btn') ||
+                        document.querySelector('[data-testid="composer-plus-btn"]') ||
+                        document.querySelector('button[aria-label="Add files and more"]')
+                    );
+                },
+                {timeoutMs: 7000, intervalMs: 120}
+            );
 
             if (!(plusBtn instanceof HTMLElement)) return false;
 
@@ -234,7 +238,9 @@
                         document.querySelectorAll('[role="menuitemradio"], [role="menuitem"]')
                     );
 
-                    const byText = nodes.find(node => getMenuItemText(node).includes('create image'));
+                    const byText = nodes.find(node =>
+                        getMenuItemText(node).includes('create image')
+                    );
                     if (byText) return byText;
 
                     const byIcon = nodes.find(node => {
@@ -508,7 +514,10 @@
                 if (m.type === 'attributes' && m.target instanceof HTMLImageElement) {
                     const src = m.target.getAttribute('src') || '';
                     const alt = m.target.getAttribute('alt') || '';
-                    if (src.includes('/backend-api/estuary/content?id=file_') && alt === 'Generated image') {
+                    if (
+                        src.includes('/backend-api/estuary/content?id=file_') &&
+                        alt === 'Generated image'
+                    ) {
                         latestGeneratedImageSrc = src;
                     }
                     continue;
@@ -674,7 +683,8 @@
 
             const arrayBuffer = await imageResp.arrayBuffer();
             const dataBase64 = arrayBufferToBase64(arrayBuffer);
-            const mimeType = imageResp.headers.get('content-type') || meta?.mime_type || 'image/png';
+            const mimeType =
+                imageResp.headers.get('content-type') || meta?.mime_type || 'image/png';
 
             wsSend({
                 type: 'image.generated',
@@ -872,7 +882,6 @@
         connectWs(currentClientId);
         injectPageHook();
         startImageObserver();
-
     }
 
     function disable() {

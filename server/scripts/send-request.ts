@@ -57,7 +57,7 @@ async function sendRequest() {
     }
 
     try {
-		// console.log(">>>", endpoint, requestBody);
+        // console.log(">>>", endpoint, requestBody);
         const response = await fetch(endpoint, {
             method: 'POST',
             headers: {

@@ -69,7 +69,6 @@ const handlers = {
         if (!r.ok) throw new Error(`HTTP ${r.status} ${r.statusText}`);
         return {ok: true};
     },
-
 };
 
 chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {

@@ -99,7 +99,8 @@ function writeRecord(record: DebugRecord, printToConsole: boolean): void {
 
     if (!printToConsole) return;
 
-    const method = record.level === 'warn' || record.level === 'error' ? console.error : console.log;
+    const method =
+        record.level === 'warn' || record.level === 'error' ? console.error : console.log;
     method(`[${record.category}]`, record.event, JSON.stringify(record.meta || {}));
 }
 
