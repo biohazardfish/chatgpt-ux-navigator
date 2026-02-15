@@ -215,12 +215,6 @@ bun start examples/planner-critic.yml
 # Run simple conversation (2 agents, no judge)
 bun start examples/simple.yml
 
-# Build CSS for run viewer UI
-bun run viewer:css
-
-# Browse completed runs in browser (port 8787)
-bun start --viewer runs
-
 # Type check code
 bun typecheck
 

@@ -7,19 +7,15 @@
         "writer-cli": "bun scripts/writer-cli.ts",
         "test": "bun test",
         "typecheck": "tsc --noEmit",
-        "format": "prettier --write .",
-        "viewer:css": "tailwindcss -i ./src/viewer/styles.css -o ./src/viewer/public/viewer.css --minify"
+        "format": "prettier --write ."
     },
     "dependencies": {
         "yaml": "^2.4.0",
         "zod": "^3.22.4"
     },
     "devDependencies": {
-        "@tailwindcss/cli": "^4",
-        "@tailwindcss/typography": "^0.5.19",
         "@types/bun": "latest",
         "prettier": "^3.0.0",
-        "tailwindcss": "^4",
         "typescript": "^5"
     },
     "private": true

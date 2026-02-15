@@ -8,7 +8,6 @@
     ],
     "scripts": {
         "server": "bun --filter @repo/server start",
-        "viewer": "bun --filter @repo/orchestrator start --viewer runs",
         "orchestrator": "bun --filter @repo/orchestrator start",
         "test": "bun --filter '*' test",
         "lint": "bun --filter '*' lint",
