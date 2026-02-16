@@ -82,7 +82,9 @@ export type IncomingWebSocketMessage = {
     type: 'sse' | 'done' | 'closed' | 'error' | string;
     payload?: WsPayload;
     error?: unknown;
+    requestId?: string;
     fileId?: string;
+    conversationId?: string;
     mimeType?: string;
     dataBase64?: string;
     fileName?: string;

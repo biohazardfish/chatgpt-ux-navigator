@@ -9,6 +9,9 @@ let soleClient: WebSocket | null = null;
  */
 export function setClient(clientId: string, ws: WebSocket): void {
     const existing = clients.get(clientId);
+    if (existing === ws) {
+        return;
+    }
     if (existing) {
         try {
             existing.close();
@@ -29,7 +32,13 @@ export function getClient(clientId: string): WebSocket | null {
 /**
  * Remove a client from the registry by ID.
  */
-export function removeClient(clientId: string): void {
+export function removeClient(clientId: string, ws?: WebSocket): void {
+    if (ws) {
+        const current = clients.get(clientId);
+        if (current && current !== ws) {
+            return;
+        }
+    }
     clients.delete(clientId);
 }
 

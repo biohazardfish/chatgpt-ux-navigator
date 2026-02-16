@@ -1,7 +1,7 @@
 import type {ServerWebSocket} from 'bun';
 import type {WsData} from '../types/ws';
 import type {AppConfig} from '../config/config';
-import {setClient, removeClient} from './hub';
+import {setClient, removeClient, getClient} from './hub';
 import {safeParseJson} from './parse';
 import {extractTextUpdateFromChatGPTPayload, computeDelta} from './extract';
 import {
@@ -24,6 +24,19 @@ import {saveGeneratedImage} from '../http/images/capture';
 import {debugSummary, debugRaw} from '../logging/debug';
 
 export function createWebSocketHandlers(cfg: AppConfig) {
+    const IMAGE_WAIT_TIMEOUT_MS = 30000;
+    const SOCKET_CLOSE_GRACE_MS = 20000;
+    const closeGraceTimers = new Map<string, ReturnType<typeof setTimeout>>();
+
+    function clearSocketCloseGrace(clientId: string): void {
+        const timer = closeGraceTimers.get(clientId);
+        if (!timer) return;
+        try {
+            clearTimeout(timer);
+        } catch {}
+        closeGraceTimers.delete(clientId);
+    }
+
     const FILE_ID_RE = /file_[a-zA-Z0-9]+/g;
 
     function logWs(event: string, meta: Record<string, unknown> = {}) {
@@ -57,6 +70,8 @@ export function createWebSocketHandlers(cfg: AppConfig) {
             ? payloadJson.p
             : Array.isArray(payloadJson?.patches)
               ? payloadJson.patches
+              : Array.isArray(payloadJson?.v)
+                ? payloadJson.v
               : [];
 
         for (const patch of patches) {
@@ -116,6 +131,7 @@ export function createWebSocketHandlers(cfg: AppConfig) {
     function completeAndTerminate(clientId: string, reason?: {reason: string}) {
         const inflight = getInflight(clientId);
         if (!inflight) return;
+        clearSocketCloseGrace(clientId);
 
         logWs('complete_and_terminate', {
             clientId,
@@ -156,7 +172,12 @@ export function createWebSocketHandlers(cfg: AppConfig) {
         if (!inflight.imageWaitHandle) {
             inflight.imageWaitHandle = setTimeout(() => {
                 completeAndTerminate(clientId, reason);
-            }, 15000);
+            }, IMAGE_WAIT_TIMEOUT_MS);
+            logWs('image_wait_started', {
+                clientId,
+                inflightId: inflight.id,
+                timeoutMs: IMAGE_WAIT_TIMEOUT_MS,
+            });
         }
 
         return true;
@@ -170,6 +191,7 @@ export function createWebSocketHandlers(cfg: AppConfig) {
                 ws.close();
                 return;
             }
+            clearSocketCloseGrace(clientId);
             setClient(clientId, ws as unknown as WebSocket);
             ws.send(JSON.stringify({type: 'welcome', at: Date.now()}));
         },
@@ -201,8 +223,15 @@ export function createWebSocketHandlers(cfg: AppConfig) {
             }
 
             if (t === 'image.generated') {
+                const requestId =
+                    typeof (obj as any)?.requestId === 'string' ? (obj as any).requestId : null;
+                const inflight = getInflight(clientId);
                 logWs('image_generated_received', {
                     clientId,
+                    requestId,
+                    inflightId: inflight?.id || null,
+                    expectsImage: inflight?.expectsImage ?? null,
+                    waitingForImage: inflight?.waitingForImage ?? null,
                     fileId: typeof obj?.fileId === 'string' ? obj.fileId : null,
                     conversationId:
                         typeof (obj as any)?.conversationId === 'string'
@@ -212,6 +241,45 @@ export function createWebSocketHandlers(cfg: AppConfig) {
                     dataBase64Length:
                         typeof obj?.dataBase64 === 'string' ? obj.dataBase64.length : 0,
                 });
+
+                if (!inflight) {
+                    logWs('image_generated_rejected', {
+                        clientId,
+                        requestId,
+                        reason: 'no_inflight',
+                    });
+                    return;
+                }
+
+                if (!inflight.expectsImage) {
+                    logWs('image_generated_rejected', {
+                        clientId,
+                        requestId,
+                        inflightId: inflight.id,
+                        reason: 'expects_image_false',
+                    });
+                    return;
+                }
+
+                if (!requestId) {
+                    logWs('image_generated_rejected', {
+                        clientId,
+                        inflightId: inflight.id,
+                        reason: 'missing_request_id',
+                    });
+                    return;
+                }
+
+                if (requestId !== inflight.id) {
+                    logWs('image_generated_rejected', {
+                        clientId,
+                        requestId,
+                        inflightId: inflight.id,
+                        reason: 'request_id_mismatch',
+                    });
+                    return;
+                }
+
                 try {
                     const imagePath = await saveGeneratedImage({
                         imagesDir: cfg.imagesDir,
@@ -222,23 +290,21 @@ export function createWebSocketHandlers(cfg: AppConfig) {
                         fileId: typeof obj?.fileId === 'string' ? obj.fileId : null,
                     });
 
-                    const inflight = getInflight(clientId);
-                    if (inflight) {
-                        logWs('image_saved_for_inflight', {
-                            clientId,
-                            inflightId: inflight.id,
-                            imagePath,
-                            waitingForImage: inflight.waitingForImage,
-                        });
-                        inflight.response.image_path = imagePath;
-                        inflight.response.meta = {
-                            ...(inflight.response.meta || {}),
-                            image_path: imagePath,
-                        };
+                    logWs('image_saved_for_inflight', {
+                        clientId,
+                        requestId,
+                        inflightId: inflight.id,
+                        imagePath,
+                        waitingForImage: inflight.waitingForImage,
+                    });
+                    inflight.response.image_path = imagePath;
+                    inflight.response.meta = {
+                        ...(inflight.response.meta || {}),
+                        image_path: imagePath,
+                    };
 
-                        if (inflight.waitingForImage) {
-                            completeAndTerminate(clientId);
-                        }
+                    if (inflight.waitingForImage) {
+                        completeAndTerminate(clientId);
                     }
                 } catch (err) {
                     console.warn('[images] save failed:', err);
@@ -246,6 +312,34 @@ export function createWebSocketHandlers(cfg: AppConfig) {
                         detail: String((err as Error)?.message || err),
                     });
                 }
+                return;
+            }
+
+            if (t === 'trace') {
+                logWs('extension_trace', {
+                    clientId,
+                    traceEvent: typeof (obj as any)?.traceEvent === 'string' ? (obj as any).traceEvent : null,
+                    traceAt: typeof (obj as any)?.traceAt === 'string' ? (obj as any).traceAt : null,
+                    requestId: typeof (obj as any)?.requestId === 'string' ? (obj as any).requestId : null,
+                    conversationId:
+                        typeof (obj as any)?.conversationId === 'string'
+                            ? (obj as any).conversationId
+                            : null,
+                    fileId: typeof (obj as any)?.fileId === 'string' ? (obj as any).fileId : null,
+                    selectedFileId:
+                        typeof (obj as any)?.selectedFileId === 'string'
+                            ? (obj as any).selectedFileId
+                            : null,
+                    reason: typeof (obj as any)?.reason === 'string' ? (obj as any).reason : null,
+                    status:
+                        typeof (obj as any)?.status === 'number'
+                            ? (obj as any).status
+                            : typeof (obj as any)?.status === 'string'
+                              ? (obj as any).status
+                              : null,
+                    byteLength:
+                        typeof (obj as any)?.byteLength === 'number' ? (obj as any).byteLength : null,
+                });
                 return;
             }
 
@@ -436,15 +530,38 @@ export function createWebSocketHandlers(cfg: AppConfig) {
             logWs('socket_closed', {clientId});
             if (!clientId) return;
 
-            removeClient(clientId);
+            removeClient(clientId, ws as unknown as WebSocket);
             const inflight = getInflight(clientId);
             if (inflight) {
-                emitResponseCompleted(clientId, 'error', {error: 'WebSocket closed'});
-                flushSseRawContext(clientId, 'websocket_closed');
-                inflightTerminate(clientId, 'response.error', {
-                    type: 'response.error',
-                    error: {message: 'WebSocket closed'},
-                });
+                if (!closeGraceTimers.has(clientId)) {
+                    logWs('socket_close_grace_started', {
+                        clientId,
+                        inflightId: inflight.id,
+                        graceMs: SOCKET_CLOSE_GRACE_MS,
+                    });
+                    const timer = setTimeout(() => {
+                        closeGraceTimers.delete(clientId);
+
+                        const stillInflight = getInflight(clientId);
+                        if (!stillInflight) return;
+                        if (getClient(clientId)) {
+                            logWs('socket_close_grace_cancelled', {
+                                clientId,
+                                inflightId: stillInflight.id,
+                                reason: 'client_reconnected',
+                            });
+                            return;
+                        }
+
+                        emitResponseCompleted(clientId, 'error', {error: 'WebSocket closed'});
+                        flushSseRawContext(clientId, 'websocket_closed');
+                        inflightTerminate(clientId, 'response.error', {
+                            type: 'response.error',
+                            error: {message: 'WebSocket closed'},
+                        });
+                    }, SOCKET_CLOSE_GRACE_MS);
+                    closeGraceTimers.set(clientId, timer);
+                }
             }
         },
     };
