@@ -11,7 +11,7 @@ import {
 } from '../core/files';
 import {resolveLanguage} from '../core/language';
 import {normalizeOutput} from '../core/markdown';
-import {postResponses} from '../core/http';
+import {postResponses, postResponsesNewThread} from '../core/http';
 import {
     buildImproveChapterPrompt,
     buildImproveConditioningPrompt,
@@ -127,7 +127,7 @@ export async function runTranslateChapters(
     }
 
     console.log(`[${ctx.config.scriptName}] Sending improve conditioning prompt`);
-    await postResponses(
+    await postResponsesNewThread(
         ctx.config.serverUrl,
         [
             {

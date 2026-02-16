@@ -7,7 +7,7 @@ import {
     readNonEmptyFile,
 } from '../core/files';
 import {resolveLanguage} from '../core/language';
-import {postResponses} from '../core/http';
+import {postResponses, postResponsesNewThread} from '../core/http';
 import {buildStorySummaryImprovePrompt, buildStorySummaryTranslationPrompt} from '../prompts/story';
 import type {CommandContext} from '../types';
 import {generateStorySummaryFromFiles} from './shared';
@@ -114,7 +114,7 @@ export async function runStorySummary(
     }
 
     console.log(`[${ctx.config.scriptName}] Translating story summary to ${resolvedLanguage.code}`);
-    const translatedSummary = await postResponses(
+    const translatedSummary = await postResponsesNewThread(
         ctx.config.serverUrl,
         [
             {

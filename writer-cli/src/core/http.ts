@@ -8,6 +8,14 @@ export function buildResponsesEndpoint(serverUrl: string, clientId: string): str
     return parsed.toString();
 }
 
+export function buildResponsesNewThreadEndpoint(serverUrl: string, clientId: string): string {
+    const parsed = new URL(serverUrl);
+    const pathPrefix = parsed.pathname.replace(/\/+$/, '');
+    parsed.pathname = `${pathPrefix}/responses/${encodeURIComponent(clientId)}/new`;
+    parsed.search = '';
+    return parsed.toString();
+}
+
 export function formatHttpError(status: number, body: string, clientId: string): string {
     const snippet = body.trim().slice(0, 500) || '<empty response body>';
     if (status === 404) {
@@ -52,6 +60,25 @@ export async function postResponses(
     timeoutMs: number
 ): Promise<string> {
     const endpoint = buildResponsesEndpoint(serverUrl, clientId);
+    return postResponsesToEndpoint(endpoint, messages, clientId, timeoutMs);
+}
+
+export async function postResponsesNewThread(
+    serverUrl: string,
+    messages: ApiMessage[],
+    clientId: string,
+    timeoutMs: number
+): Promise<string> {
+    const endpoint = buildResponsesNewThreadEndpoint(serverUrl, clientId);
+    return postResponsesToEndpoint(endpoint, messages, clientId, timeoutMs);
+}
+
+async function postResponsesToEndpoint(
+    endpoint: string,
+    messages: ApiMessage[],
+    clientId: string,
+    timeoutMs: number
+): Promise<string> {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), timeoutMs);
 
