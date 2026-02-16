@@ -52,6 +52,12 @@ Options:
 7. `translate-chapters --language <code>`
 8. `translate-chapters --language <code> --improve`
 
+## Chat Context Behavior
+
+- `story-summary` starts each summary job with `POST /responses/:client_id/new` (temporary chat by default) to avoid carrying prior context.
+- `translate-chapters --improve` starts improve conditioning with `POST /responses/:client_id/new` (temporary chat by default) for the same reason.
+- `image-gen-chapters` continues to use `POST /responses/:client_id/new?temporary=false` because image generation depends on non-temporary chat behavior.
+
 ## Output Conventions
 
 Given `<run_dir>`:
