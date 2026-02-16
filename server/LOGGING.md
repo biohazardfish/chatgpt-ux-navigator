@@ -11,7 +11,7 @@ This document defines how debug logging works in `@repo/server`.
 ## Flags
 
 - `DEBUG`: master switch for debug behavior.
-- `DEBUG_LOG_FILE`: JSONL output path (default `./logs/server-debug.jsonl`).
+- `DEBUG_LOG_DIR`: JSONL output directory (default `./logs`).
 
 When `DEBUG=false`, debug logs are disabled.
 
@@ -31,6 +31,8 @@ Debug logging is split into two internal channels:
 
 - Always receives summary events while debug is enabled.
 - Receives raw events only when sampled or forced.
+- Writes one file per client id using `server-debug-<client_id>.jsonl`.
+- Rotates each client file when it reaches `100_000` lines.
 
 ## JSONL Schema
 
@@ -103,7 +105,7 @@ This keeps logs safe and manageable while preserving debugging value.
 
 1. Set `DEBUG=true`.
 2. Reproduce the issue once.
-3. Inspect `DEBUG_LOG_FILE` for:
+3. Inspect the generated client files inside `DEBUG_LOG_DIR` (for example `server-debug-<client_id>.jsonl`) for:
     - request/inflight summary lifecycle
     - SSE summary transitions
     - completion rollup

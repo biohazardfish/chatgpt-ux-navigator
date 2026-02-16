@@ -129,7 +129,7 @@ chatgpt-ux-navigator/
 ## Server Debug Logging
 
 - **Single Flag**: Use `DEBUG=true` to enable server debug diagnostics.
-- **Persisted Logs**: Set `DEBUG_LOG_FILE` to control JSONL output path (default: `./logs/server-debug.jsonl`).
+- **Persisted Logs**: Set `DEBUG_LOG_DIR` to control JSONL output directory (default: `./logs`).
 - **Event Behavior**: When `DEBUG=true`, server debug logs are written and raw upstream events may be emitted as `response.event` for troubleshooting.
 - **Policy Reference**: See `server/LOGGING.md` for summary/raw policy, SSE sampling, truncation, and error-context capture.
 
@@ -159,7 +159,7 @@ Please refer to [CODE_CONVENTIONS.md](./CODE_CONVENTIONS.md) for detailed coding
 - **"Run a command in a specific workspace"**: Use `bun --filter <package-name> <script>` from the root.
 - **"Verify local changes"**:
     - For server: Run `bun test` from the root or from `server/`.
-    - For server debug investigations: enable `DEBUG=true`, reproduce once, then inspect `DEBUG_LOG_FILE` JSONL entries.
+    - For server debug investigations: enable `DEBUG=true`, reproduce once, then inspect `DEBUG_LOG_DIR` JSONL entries.
     - For extension: Reload the extension in `chrome://extensions` and refresh ChatGPT.
 
 ## Image Generation SSE Notes

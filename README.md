@@ -96,8 +96,8 @@ NO_STREAM=false
 # If true, enable server debug logging and raw response.event passthrough
 DEBUG=false
 
-# JSONL file for debug events (used when DEBUG=true)
-DEBUG_LOG_FILE=./logs/server-debug.jsonl
+# Directory for debug JSONL events (used when DEBUG=true)
+DEBUG_LOG_DIR=./logs
 ```
 
 Debug logging behavior, SSE sampling, and JSONL policy are documented in `server/LOGGING.md`.

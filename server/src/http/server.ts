@@ -9,7 +9,7 @@ import {handleListClients} from './routes/clients';
 import {createWebSocketHandlers} from '../ws/handler';
 import type {WsData} from '../types/ws';
 import type {Server} from 'bun';
-import {isDebugEnabled, getDebugLogFile} from '../logging/debug';
+import {isDebugEnabled, getDebugLogDir} from '../logging/debug';
 
 export function startServer(cfg: AppConfig): void {
     const router = new Router();
@@ -71,6 +71,7 @@ export function startServer(cfg: AppConfig): void {
     console.log(`WebSocket endpoint:        ws://localhost:${cfg.port}/ws`);
     if (isDebugEnabled()) {
         console.log(`Debug logs:                enabled`);
-        console.log(`Debug log file:            ${getDebugLogFile()}`);
+        console.log(`Debug log dir:             ${getDebugLogDir()}`);
+        console.log(`Debug log format:          server-debug-<client_id>.jsonl`);
     }
 }

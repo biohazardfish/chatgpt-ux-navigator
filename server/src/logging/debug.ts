@@ -1,5 +1,5 @@
-import {appendFile, mkdir} from 'node:fs/promises';
-import {dirname} from 'node:path';
+import {appendFile, mkdir, readFile, rename} from 'node:fs/promises';
+import {extname, join} from 'node:path';
 
 type DebugLevel = 'debug' | 'info' | 'warn' | 'error';
 
@@ -13,24 +13,91 @@ type DebugRecord = {
 
 type DebugLoggerState = {
     enabled: boolean;
-    logFile: string;
+    logDir: string;
     writeChain: Promise<void>;
     rawSampleEvery: number;
     rawCounter: number;
+    clientLogs: Map<string, ClientLogState>;
+};
+
+type ClientLogState = {
+    filePath: string;
+    lineCount: number;
 };
 
 export const DEBUG_LOG_RAW_SAMPLE_EVERY = 20;
+export const DEBUG_LOG_MAX_LINES = 100_000;
 export const DEBUG_LOG_STRING_LIMIT = 500;
 export const DEBUG_LOG_ARRAY_LIMIT = 20;
 export const DEBUG_LOG_OBJECT_KEYS_LIMIT = 40;
 
 const state: DebugLoggerState = {
     enabled: false,
-    logFile: '',
+    logDir: '',
     writeChain: Promise.resolve(),
     rawSampleEvery: DEBUG_LOG_RAW_SAMPLE_EVERY,
     rawCounter: 0,
+    clientLogs: new Map(),
 };
+
+function extractClientId(meta: Record<string, unknown> | undefined): string {
+    const raw = meta?.clientId;
+    if (typeof raw !== 'string') return 'server';
+    const trimmed = raw.trim();
+    return trimmed.length > 0 ? trimmed : 'server';
+}
+
+function sanitizeClientIdForFile(clientId: string): string {
+    const clean = clientId.replace(/[^a-zA-Z0-9_-]/g, '_').slice(0, 120);
+    if (clean.length === 0) return 'server';
+    return clean;
+}
+
+function clientLogFilePath(clientId: string): string {
+    const safeClientId = sanitizeClientIdForFile(clientId);
+    return join(state.logDir, `server-debug-${safeClientId}.jsonl`);
+}
+
+function countLines(content: string): number {
+    if (content.length === 0) return 0;
+    const newlineCount = content.split('\n').length - 1;
+    if (content.endsWith('\n')) return newlineCount;
+    return newlineCount + 1;
+}
+
+async function getOrInitClientLogState(clientId: string): Promise<ClientLogState> {
+    const existing = state.clientLogs.get(clientId);
+    if (existing) return existing;
+
+    const filePath = clientLogFilePath(clientId);
+    let lineCount = 0;
+    try {
+        const content = await readFile(filePath, 'utf8');
+        lineCount = countLines(content);
+    } catch {
+        lineCount = 0;
+    }
+
+    const next: ClientLogState = {filePath, lineCount};
+    state.clientLogs.set(clientId, next);
+    return next;
+}
+
+async function rotateIfNeeded(clientLog: ClientLogState): Promise<void> {
+    if (clientLog.lineCount < DEBUG_LOG_MAX_LINES) return;
+
+    const ext = extname(clientLog.filePath) || '.jsonl';
+    const base = ext ? clientLog.filePath.slice(0, -ext.length) : clientLog.filePath;
+    const rotatedPath = `${base}.${Date.now()}${ext}`;
+
+    try {
+        await rename(clientLog.filePath, rotatedPath);
+    } catch {
+        // Ignore rename failures and continue writing a fresh file.
+    }
+
+    clientLog.lineCount = 0;
+}
 
 function truncateString(value: string): string {
     if (value.length <= DEBUG_LOG_STRING_LIMIT) return value;
@@ -91,8 +158,14 @@ function sanitizeValue(value: unknown, depth: number = 0): unknown {
 
 function writeRecord(record: DebugRecord, printToConsole: boolean): void {
     const line = JSON.stringify(record) + '\n';
+    const clientId = extractClientId(record.meta);
     state.writeChain = state.writeChain
-        .then(() => appendFile(state.logFile, line, 'utf8'))
+        .then(async () => {
+            const clientLog = await getOrInitClientLogState(clientId);
+            await rotateIfNeeded(clientLog);
+            await appendFile(clientLog.filePath, line, 'utf8');
+            clientLog.lineCount += 1;
+        })
         .catch(err => {
             console.warn('[debug] failed to append log line', String(err));
         });
@@ -124,17 +197,18 @@ function makeRecord(
     };
 }
 
-export async function configureDebugLogger(enabled: boolean, logFile: string): Promise<void> {
+export async function configureDebugLogger(enabled: boolean, logDir: string): Promise<void> {
     state.enabled = enabled;
-    state.logFile = logFile;
+    state.logDir = logDir;
     state.rawCounter = 0;
+    state.clientLogs.clear();
 
     if (!enabled) {
         return;
     }
 
     try {
-        await mkdir(dirname(logFile), {recursive: true});
+        await mkdir(state.logDir, {recursive: true});
     } catch (err) {
         console.warn('[debug] failed to create log directory', String(err));
     }
@@ -144,8 +218,8 @@ export function isDebugEnabled(): boolean {
     return state.enabled;
 }
 
-export function getDebugLogFile(): string {
-    return state.logFile;
+export function getDebugLogDir(): string {
+    return state.logDir;
 }
 
 export async function flushDebugLogs(): Promise<void> {
