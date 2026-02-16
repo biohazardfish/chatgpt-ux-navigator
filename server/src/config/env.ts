@@ -66,8 +66,8 @@ export function parseEnv(): Partial<AppConfig> {
     config.noStream = parseBooleanEnv(process.env.NO_STREAM, false);
     config.debug = parseBooleanEnv(process.env.DEBUG, false);
 
-    if (process.env.DEBUG_LOG_FILE) {
-        config.debugLogFile = resolve(process.env.DEBUG_LOG_FILE);
+    if (process.env.DEBUG_LOG_DIR) {
+        config.debugLogDir = resolve(process.env.DEBUG_LOG_DIR);
     }
 
     if (process.env.REQUEST_TIMEOUT) {

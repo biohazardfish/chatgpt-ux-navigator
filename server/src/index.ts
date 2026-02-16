@@ -12,5 +12,5 @@ const config = makeConfig({
 });
 
 await validateConfig(config);
-await configureDebugLogger(config.debug, config.debugLogFile);
+await configureDebugLogger(config.debug, config.debugLogDir);
 startServer(config);
