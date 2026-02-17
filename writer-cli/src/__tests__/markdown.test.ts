@@ -40,4 +40,13 @@ Notes.
         expect(output).toContain('Bye');
         expect(output).not.toContain('image_prompt');
     });
+
+    it('keeps image markers while removing image_prompt blocks', () => {
+        const input = `![Image 1](images/a.png)\n\n\`\`\`image_prompt\nA misty forest\n\`\`\`\n\nBody`;
+        const output = normalizeOutput(input);
+        expect(output).toContain('![Image 1](images/a.png)');
+        expect(output).toContain('Body');
+        expect(output).not.toContain('A misty forest');
+        expect(output).not.toContain('image_prompt');
+    });
 });

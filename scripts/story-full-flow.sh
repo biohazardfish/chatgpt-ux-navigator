@@ -51,6 +51,21 @@ run_writer() {
     run_step "writer-cli $command_name" bun run writer-cli "$command_name" --run "$RUN_DIR" "$@"
 }
 
+write_release_files() {
+    local release_file="$RUN_DIR/release_files.txt"
+
+    {
+        printf '%s/story-summary.txt\n' "$RUN_DIR"
+        printf '%s/story-summary_%s.txt\n' "$RUN_DIR" "$TARGET_LANGUAGE"
+        printf '%s/translation-context_%s.md\n' "$RUN_DIR" "$TARGET_LANGUAGE"
+        printf '%s/processed/*_writer_senior_out_with_image_prompt.md\n' "$RUN_DIR"
+        printf '%s/processed/*_writer_senior_out_with_image_prompt_%s.md\n' "$RUN_DIR" "$TARGET_LANGUAGE"
+        printf '%s/images/\n' "$RUN_DIR"
+    } >"$release_file"
+
+    printf '[%s] Release file list: %s\n' "$SCRIPT_NAME" "$release_file"
+}
+
 extract_run_dir_from_log() {
     local log_file="$1"
     local line
@@ -131,6 +146,8 @@ run_writer translation-context --language "$TARGET_LANGUAGE"
 run_writer translate-chapters --language "$TARGET_LANGUAGE"
 run_writer translate-chapters --language "$TARGET_LANGUAGE" --improve
 run_writer story-summary --language "$TARGET_LANGUAGE"
+
+write_release_files
 
 printf '\n[%s] Done. Key outputs:\n' "$SCRIPT_NAME"
 printf '  - %s/story-summary.txt\n' "$RUN_DIR"

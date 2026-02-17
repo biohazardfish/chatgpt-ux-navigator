@@ -8,6 +8,7 @@ import {
 } from '../core/files';
 import {resolveLanguage} from '../core/language';
 import {postResponses, postResponsesNewThread} from '../core/http';
+import {normalizeOutput} from '../core/markdown';
 import {buildStorySummaryImprovePrompt, buildStorySummaryTranslationPrompt} from '../prompts/story';
 import type {CommandContext} from '../types';
 import {generateStorySummaryFromFiles} from './shared';
@@ -45,7 +46,7 @@ export async function runStorySummary(
         );
 
         const outputText = await generateStorySummaryFromFiles(ctx, cleanedFiles);
-        await Bun.write(paths.storySummaryPath, outputText.trimEnd() + '\n');
+        await Bun.write(paths.storySummaryPath, normalizeOutput(outputText));
         console.log(`[${ctx.config.scriptName}] Wrote ${paths.storySummaryPath}`);
         return;
     }
@@ -85,7 +86,7 @@ export async function runStorySummary(
         );
 
         baseSummary = await generateStorySummaryFromFiles(ctx, cleanedFiles);
-        await Bun.write(paths.storySummaryPath, baseSummary.trimEnd() + '\n');
+        await Bun.write(paths.storySummaryPath, normalizeOutput(baseSummary));
         console.log(`[${ctx.config.scriptName}] Wrote ${paths.storySummaryPath}`);
     } else {
         console.log(`[${ctx.config.scriptName}] Run: ${paths.runDir}`);
@@ -146,6 +147,6 @@ export async function runStorySummary(
         ctx.config.timeouts.storySummaryMs
     );
 
-    await Bun.write(translatedSummaryPath, improvedSummary.trimEnd() + '\n');
+    await Bun.write(translatedSummaryPath, normalizeOutput(improvedSummary));
     console.log(`[${ctx.config.scriptName}] Wrote ${translatedSummaryPath}`);
 }

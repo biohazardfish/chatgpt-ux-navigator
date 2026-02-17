@@ -3,6 +3,7 @@ import {join, resolve} from 'node:path';
 import {assertRunLayout, isWriterSeniorOutFile, listFilesMatching} from '../core/files';
 import {resolveLanguage} from '../core/language';
 import {postResponses} from '../core/http';
+import {normalizeOutput} from '../core/markdown';
 import {buildStorySection} from '../prompts/story';
 import {buildTranslationContextPrompt} from '../prompts/translation';
 import type {CommandContext} from '../types';
@@ -53,6 +54,6 @@ export async function runTranslationContext(
         ctx.config.timeouts.translationContextMs
     );
 
-    await Bun.write(translationContextPath, outputText.trimEnd() + '\n');
+    await Bun.write(translationContextPath, normalizeOutput(outputText));
     console.log(`[${ctx.config.scriptName}] Wrote ${translationContextPath}`);
 }

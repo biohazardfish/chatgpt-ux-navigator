@@ -58,6 +58,11 @@ Options:
 - `translate-chapters --improve` starts improve conditioning with `POST /responses/:client_id/new` (temporary chat by default) for the same reason.
 - `image-gen-chapters` continues to use `POST /responses/:client_id/new?temporary=false` because image generation depends on non-temporary chat behavior.
 
+## Output Normalization
+
+- `translate-chapters`, `story-summary`, and `translation-context` apply script-side normalization before writing files.
+- Fenced ```image_prompt``` blocks are removed during normalization so downstream artifacts stay clean even if model output includes them.
+
 ## Output Conventions
 
 Given `<run_dir>`:
