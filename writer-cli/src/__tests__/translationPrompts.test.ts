@@ -1,8 +1,5 @@
 import {describe, expect, it} from 'bun:test';
-import {
-    buildImproveChapterPrompt,
-    buildImproveConditioningPrompt,
-} from '../prompts/translation';
+import {buildImproveChapterPrompt, buildImproveConditioningPrompt} from '../prompts/translation';
 
 describe('translation prompts', () => {
     it('includes context only in improve conditioning prompt', () => {

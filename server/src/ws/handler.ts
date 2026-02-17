@@ -72,7 +72,7 @@ export function createWebSocketHandlers(cfg: AppConfig) {
               ? payloadJson.patches
               : Array.isArray(payloadJson?.v)
                 ? payloadJson.v
-              : [];
+                : [];
 
         for (const patch of patches) {
             if (!patch || typeof patch !== 'object') continue;
@@ -318,9 +318,14 @@ export function createWebSocketHandlers(cfg: AppConfig) {
             if (t === 'trace') {
                 logWs('extension_trace', {
                     clientId,
-                    traceEvent: typeof (obj as any)?.traceEvent === 'string' ? (obj as any).traceEvent : null,
-                    traceAt: typeof (obj as any)?.traceAt === 'string' ? (obj as any).traceAt : null,
-                    requestId: typeof (obj as any)?.requestId === 'string' ? (obj as any).requestId : null,
+                    traceEvent:
+                        typeof (obj as any)?.traceEvent === 'string'
+                            ? (obj as any).traceEvent
+                            : null,
+                    traceAt:
+                        typeof (obj as any)?.traceAt === 'string' ? (obj as any).traceAt : null,
+                    requestId:
+                        typeof (obj as any)?.requestId === 'string' ? (obj as any).requestId : null,
                     conversationId:
                         typeof (obj as any)?.conversationId === 'string'
                             ? (obj as any).conversationId
@@ -338,7 +343,9 @@ export function createWebSocketHandlers(cfg: AppConfig) {
                               ? (obj as any).status
                               : null,
                     byteLength:
-                        typeof (obj as any)?.byteLength === 'number' ? (obj as any).byteLength : null,
+                        typeof (obj as any)?.byteLength === 'number'
+                            ? (obj as any).byteLength
+                            : null,
                 });
                 return;
             }

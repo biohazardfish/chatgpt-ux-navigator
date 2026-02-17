@@ -58,10 +58,7 @@ ${buildContextSection(contextText)}
 Confirm you understand these rules.\n`;
 }
 
-export function buildImproveChapterPrompt(
-    chapterText: string,
-    languageName: string
-): string {
+export function buildImproveChapterPrompt(chapterText: string, languageName: string): string {
     return `Improve this chapter in ${languageName} so it reads naturally with polished narrative style.
 
 Remember:

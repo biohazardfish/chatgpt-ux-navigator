@@ -61,7 +61,7 @@ Options:
 ## Output Normalization
 
 - `translate-chapters`, `story-summary`, and `translation-context` apply script-side normalization before writing files.
-- Fenced ```image_prompt``` blocks are removed during normalization so downstream artifacts stay clean even if model output includes them.
+- Fenced `image_prompt` blocks are removed during normalization so downstream artifacts stay clean even if model output includes them.
 
 ## Output Conventions
 
