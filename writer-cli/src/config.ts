@@ -43,7 +43,7 @@ export function usage(): string {
         '  image-precondition     Generate image-gen-precondition.md from prompted chapters',
         '  image-gen-chapters     Generate chapter images and inject markdown image markers',
         '  translation-context    Generate translation context guide from cleaned chapters',
-        '  translate-chapters     Translate prompted chapters and remove image_prompt blocks',
+        '  translate-chapters     Translate prompted chapters (image_prompt cleanup handled by script)',
         '',
         'Language options:',
         '  --language <code>      Required language code (vi, ko, ja)',

@@ -143,11 +143,7 @@ export async function runTranslateChapters(
     for (const filePath of sourceFiles) {
         console.log(`[${ctx.config.scriptName}] Processing: ${filePath}`);
         const chapterText = await Bun.file(filePath).text();
-        const improvePrompt = buildImproveChapterPrompt(
-            chapterText,
-            resolvedLanguage.name,
-            contextText
-        );
+        const improvePrompt = buildImproveChapterPrompt(chapterText, resolvedLanguage.name);
         const improvedChapter = await postResponses(
             ctx.config.serverUrl,
             [{role: 'user', content: improvePrompt}],
