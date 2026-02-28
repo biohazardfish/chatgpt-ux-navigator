@@ -5,13 +5,15 @@ set -euo pipefail
 SCRIPT_NAME="$(basename "$0")"
 DEFAULT_LANGUAGE="vi"
 SERVER_URL="${WRITER_CLI_SERVER_URL:-http://localhost:8765}"
+MAX_RETRIES=3
+RETRY_DELAY_SECONDS=5
 
 CONFIG_PATH=""
 TARGET_LANGUAGE="$DEFAULT_LANGUAGE"
 RUN_DIR=""
 
 usage() {
-    cat <<EOF
+	cat <<EOF
 Usage: $SCRIPT_NAME [options]
 
 Run full story pipeline with orchestrator + writer-cli.
@@ -30,87 +32,111 @@ EOF
 }
 
 fail() {
-    printf '[%s] %s\n' "$SCRIPT_NAME" "$1" >&2
-    exit 1
+	printf '[%s] %s\n' "$SCRIPT_NAME" "$1" >&2
+	exit 1
 }
 
 require_cmd() {
-    command -v "$1" >/dev/null 2>&1 || fail "Missing required command: $1"
+	command -v "$1" >/dev/null 2>&1 || fail "Missing required command: $1"
 }
 
 run_step() {
-    local label="$1"
-    shift
-    printf '\n[%s] %s\n' "$SCRIPT_NAME" "$label"
-    "$@"
+	local label="$1"
+	shift
+
+	local attempt=1
+	local exit_code=0
+
+	while ((attempt <= MAX_RETRIES)); do
+		if ((attempt == 1)); then
+			printf '\n[%s] %s\n' "$SCRIPT_NAME" "$label"
+		else
+			printf '\n[%s] %s (retry %d/%d)\n' "$SCRIPT_NAME" "$label" "$attempt" "$MAX_RETRIES"
+		fi
+
+		if "$@"; then
+			return 0
+		fi
+
+		exit_code=$?
+
+		if ((attempt < MAX_RETRIES)); then
+			printf '[%s] Step failed (exit %d). Retrying in %ds...\n' "$SCRIPT_NAME" "$exit_code" "$RETRY_DELAY_SECONDS" >&2
+			sleep "$RETRY_DELAY_SECONDS"
+		fi
+
+		((attempt++))
+	done
+
+	fail "Step failed after ${MAX_RETRIES} attempts: ${label}"
 }
 
 run_writer() {
-    local command_name="$1"
-    shift
-    run_step "writer-cli $command_name" bun run writer-cli "$command_name" --run "$RUN_DIR" "$@"
+	local command_name="$1"
+	shift
+	run_step "writer-cli $command_name" bun run writer-cli "$command_name" --run "$RUN_DIR" "$@"
 }
 
 write_release_files() {
-    local release_file="$RUN_DIR/release_files.txt"
+	local release_file="$RUN_DIR/release_files.txt"
 
-    {
-        printf '%s/story-summary.txt\n' "$RUN_DIR"
-        printf '%s/story-summary_%s.txt\n' "$RUN_DIR" "$TARGET_LANGUAGE"
-        printf '%s/translation-context_%s.md\n' "$RUN_DIR" "$TARGET_LANGUAGE"
-        printf '%s/processed/*_writer_senior_out_with_image_prompt.md\n' "$RUN_DIR"
-        printf '%s/processed/*_writer_senior_out_with_image_prompt_%s.md\n' "$RUN_DIR" "$TARGET_LANGUAGE"
-        printf '%s/images/\n' "$RUN_DIR"
-    } >"$release_file"
+	{
+		printf '%s/story-summary.txt\n' "$RUN_DIR"
+		printf '%s/story-summary_%s.txt\n' "$RUN_DIR" "$TARGET_LANGUAGE"
+		printf '%s/translation-context_%s.md\n' "$RUN_DIR" "$TARGET_LANGUAGE"
+		printf '%s/processed/*_writer_senior_out_with_image_prompt.md\n' "$RUN_DIR"
+		printf '%s/processed/*_writer_senior_out_with_image_prompt_%s.md\n' "$RUN_DIR" "$TARGET_LANGUAGE"
+		printf '%s/images/\n' "$RUN_DIR"
+	} >"$release_file"
 
-    printf '[%s] Release file list: %s\n' "$SCRIPT_NAME" "$release_file"
+	printf '[%s] Release file list: %s\n' "$SCRIPT_NAME" "$release_file"
 }
 
 extract_run_dir_from_log() {
-    local log_file="$1"
-    local line
-    local found=""
+	local log_file="$1"
+	local line
+	local found=""
 
-    while IFS= read -r line; do
-        if [[ "$line" =~ Run\ directory:\ (.+)$ ]]; then
-            found="${BASH_REMATCH[1]}"
-        elif [[ "$line" =~ Artifacts\ saved\ to:\ (.+)$ ]]; then
-            found="${BASH_REMATCH[1]}"
-        fi
-    done <"$log_file"
+	while IFS= read -r line; do
+		if [[ "$line" =~ Run\ directory:\ (.+)$ ]]; then
+			found="${BASH_REMATCH[1]}"
+		elif [[ "$line" =~ Artifacts\ saved\ to:\ (.+)$ ]]; then
+			found="${BASH_REMATCH[1]}"
+		fi
+	done <"$log_file"
 
-    printf '%s' "$found"
+	printf '%s' "$found"
 }
 
 while [[ $# -gt 0 ]]; do
-    case "$1" in
-        --config)
-            [[ $# -ge 2 ]] || fail "--config requires a value"
-            CONFIG_PATH="$2"
-            shift 2
-            ;;
-        --language)
-            [[ $# -ge 2 ]] || fail "--language requires a value"
-            TARGET_LANGUAGE="$2"
-            shift 2
-            ;;
-        --run)
-            [[ $# -ge 2 ]] || fail "--run requires a value"
-            RUN_DIR="$2"
-            shift 2
-            ;;
-        -h|--help)
-            usage
-            exit 0
-            ;;
-        *)
-            fail "Unknown option: $1"
-            ;;
-    esac
+	case "$1" in
+	--config)
+		[[ $# -ge 2 ]] || fail "--config requires a value"
+		CONFIG_PATH="$2"
+		shift 2
+		;;
+	--language)
+		[[ $# -ge 2 ]] || fail "--language requires a value"
+		TARGET_LANGUAGE="$2"
+		shift 2
+		;;
+	--run)
+		[[ $# -ge 2 ]] || fail "--run requires a value"
+		RUN_DIR="$2"
+		shift 2
+		;;
+	-h | --help)
+		usage
+		exit 0
+		;;
+	*)
+		fail "Unknown option: $1"
+		;;
+	esac
 done
 
 if [[ "$TARGET_LANGUAGE" != "vi" ]]; then
-    fail "Unsupported language '$TARGET_LANGUAGE'. Currently only 'vi' is supported."
+	fail "Unsupported language '$TARGET_LANGUAGE'. Currently only 'vi' is supported."
 fi
 
 require_cmd bun
@@ -119,22 +145,22 @@ require_cmd curl
 run_step "Server preflight ($SERVER_URL/clients)" curl -fsS "$SERVER_URL/clients" >/dev/null
 
 if [[ -n "$RUN_DIR" ]]; then
-    [[ -d "$RUN_DIR" ]] || fail "Run directory not found: $RUN_DIR"
-    RUN_DIR="$(cd "$RUN_DIR" && pwd)"
-    printf '[%s] Using existing run: %s\n' "$SCRIPT_NAME" "$RUN_DIR"
+	[[ -d "$RUN_DIR" ]] || fail "Run directory not found: $RUN_DIR"
+	RUN_DIR="$(cd "$RUN_DIR" && pwd)"
+	printf '[%s] Using existing run: %s\n' "$SCRIPT_NAME" "$RUN_DIR"
 else
-    [[ -f "$CONFIG_PATH" ]] || fail "Config file not found: $CONFIG_PATH"
+	[[ -f "$CONFIG_PATH" ]] || fail "Config file not found: $CONFIG_PATH"
 
-    log_file="$(mktemp -t story-full-flow.XXXXXX.log)"
-    trap 'rm -f "$log_file"' EXIT
+	log_file="$(mktemp -t story-full-flow.XXXXXX.log)"
+	trap 'rm -f "$log_file"' EXIT
 
-    run_step "orchestrator ($CONFIG_PATH)" bash -lc "bun run orchestrator \"$CONFIG_PATH\" 2>&1 | tee \"$log_file\""
+	run_step "orchestrator ($CONFIG_PATH)" bash -lc "set -o pipefail; bun run orchestrator \"$CONFIG_PATH\" 2>&1 | tee \"$log_file\""
 
-    RUN_DIR="$(extract_run_dir_from_log "$log_file")"
-    [[ -n "$RUN_DIR" ]] || fail "Unable to detect run directory from orchestrator output"
-    [[ -d "$RUN_DIR" ]] || fail "Detected run directory does not exist: $RUN_DIR"
+	RUN_DIR="$(extract_run_dir_from_log "$log_file")"
+	[[ -n "$RUN_DIR" ]] || fail "Unable to detect run directory from orchestrator output"
+	[[ -d "$RUN_DIR" ]] || fail "Detected run directory does not exist: $RUN_DIR"
 
-    printf '[%s] Detected run: %s\n' "$SCRIPT_NAME" "$RUN_DIR"
+	printf '[%s] Detected run: %s\n' "$SCRIPT_NAME" "$RUN_DIR"
 fi
 
 run_writer clean

@@ -96,7 +96,12 @@ describe('debug logger', () => {
             debugLog('test', 'client_a_event_2', {clientId: 'clientA'});
 
             for (let i = 1; i <= 10; i += 1) {
-                debugRaw('sse.raw', 'frame_sample', {clientId: 'clientA', idx: i}, {sampleEvery: 3});
+                debugRaw(
+                    'sse.raw',
+                    'frame_sample',
+                    {clientId: 'clientA', idx: i},
+                    {sampleEvery: 3}
+                );
             }
 
             await flushDebugLogs();

@@ -637,7 +637,8 @@
             for (const [conversationId, state] of imageStateByConversation.entries()) {
                 if (conversationId === UNRESOLVED_IMAGE_STATE_KEY) continue;
                 if (!state || !state.streamComplete) continue;
-                if (!Array.isArray(state.candidateOrder) || !state.candidateOrder.includes(fileId)) continue;
+                if (!Array.isArray(state.candidateOrder) || !state.candidateOrder.includes(fileId))
+                    continue;
                 trace('prefetch_retrigger_finalize', {
                     requestId,
                     fileId,
@@ -1185,7 +1186,7 @@
               ? data.patches
               : Array.isArray(data?.v)
                 ? data.v
-              : [];
+                : [];
 
         let statusFinished = false;
         let lastPatchedFileId = null;
@@ -1249,7 +1250,9 @@
             console.debug('[cgpt-nav:image-stream-complete]', {
                 conversationId: conversationId || null,
                 stateKey,
-                candidateCount: Array.isArray(state.candidateOrder) ? state.candidateOrder.length : 0,
+                candidateCount: Array.isArray(state.candidateOrder)
+                    ? state.candidateOrder.length
+                    : 0,
             });
         }
     }
@@ -1291,18 +1294,23 @@
                     : null;
 
             const finalCandidatesBySlot = Array.from(state.slotFileIds.values()).filter(
-                fileId => fileId && !seenImageFileIds.has(fileId) && !pendingImageFileIds.has(fileId)
+                fileId =>
+                    fileId && !seenImageFileIds.has(fileId) && !pendingImageFileIds.has(fileId)
             );
             const finalCandidatesByOrder = Array.isArray(state.candidateOrder)
                 ? state.candidateOrder.filter(
                       fileId =>
-                          fileId && !seenImageFileIds.has(fileId) && !pendingImageFileIds.has(fileId)
+                          fileId &&
+                          !seenImageFileIds.has(fileId) &&
+                          !pendingImageFileIds.has(fileId)
                   )
                 : [];
             const uniqueOrder = Array.from(new Set(finalCandidatesByOrder));
-            const activeSlotEntries = Array.from(state.slotFileIds.entries()).filter(([slot, fileId]) => {
-                return Number.isInteger(slot) && slot >= 0 && !!fileId;
-            });
+            const activeSlotEntries = Array.from(state.slotFileIds.entries()).filter(
+                ([slot, fileId]) => {
+                    return Number.isInteger(slot) && slot >= 0 && !!fileId;
+                }
+            );
             const activeSlotIndexes = new Set(activeSlotEntries.map(([slot]) => slot));
             const activeSlotFileIds = Array.from(
                 new Set(activeSlotEntries.map(([, fileId]) => String(fileId)))
@@ -1317,9 +1325,11 @@
                     ? state.slotFileIds.get(0)
                     : null;
 
-            const newestOrderCandidate = uniqueOrder.length > 0 ? uniqueOrder[uniqueOrder.length - 1] : null;
+            const newestOrderCandidate =
+                uniqueOrder.length > 0 ? uniqueOrder[uniqueOrder.length - 1] : null;
 
-            const strictSingleCandidate = strictFinalCandidate || slotZeroCandidate || newestOrderCandidate;
+            const strictSingleCandidate =
+                strictFinalCandidate || slotZeroCandidate || newestOrderCandidate;
 
             trace('candidate_mode_classified', {
                 requestId: activeImageRequestId,
@@ -1340,7 +1350,9 @@
                         .reverse();
                     finalCandidates = [strictFinalCandidate, ...newestFallbacks];
                 } else {
-                    finalCandidates = Array.from(new Set([...finalCandidatesBySlot, ...uniqueOrder])).reverse();
+                    finalCandidates = Array.from(
+                        new Set([...finalCandidatesBySlot, ...uniqueOrder])
+                    ).reverse();
                 }
             } else if (strictSingleCandidate) {
                 finalCandidates = [strictSingleCandidate];
@@ -1360,8 +1372,12 @@
 
                 for (const selectedFileId of finalCandidates) {
                     const isStrict =
-                        (isCompareMode && !!strictFinalCandidate && selectedFileId === strictFinalCandidate) ||
-                        (!isCompareMode && !!strictSingleCandidate && selectedFileId === strictSingleCandidate);
+                        (isCompareMode &&
+                            !!strictFinalCandidate &&
+                            selectedFileId === strictFinalCandidate) ||
+                        (!isCompareMode &&
+                            !!strictSingleCandidate &&
+                            selectedFileId === strictSingleCandidate);
                     if (
                         sendPrefetchedImage(
                             selectedFileId,
@@ -1379,7 +1395,10 @@
                         break;
                     }
 
-                    const result = await fetchAndForwardGeneratedImage(selectedFileId, conversationId);
+                    const result = await fetchAndForwardGeneratedImage(
+                        selectedFileId,
+                        conversationId
+                    );
                     if (result?.ok) {
                         sent = true;
                         trace('final_candidate_success', {
@@ -1418,16 +1437,19 @@
                         sendPrefetchedImage(
                             latestFileId,
                             conversationId,
-                            expectedDomFileId && latestMatchesExpected ? IMAGE_FINAL_SETTLE_DELAY_MS : 0
+                            expectedDomFileId && latestMatchesExpected
+                                ? IMAGE_FINAL_SETTLE_DELAY_MS
+                                : 0
                         )
                     ) {
                         sent = true;
                     }
 
                     if (!sent) {
-                        const fallbackResult = latestMatchesExpected || isCompareMode
-                            ? await forwardImageBySrc(latestGeneratedImageSrc)
-                            : {ok: false, reason: 'latest_dom_not_expected_candidate'};
+                        const fallbackResult =
+                            latestMatchesExpected || isCompareMode
+                                ? await forwardImageBySrc(latestGeneratedImageSrc)
+                                : {ok: false, reason: 'latest_dom_not_expected_candidate'};
                         if (fallbackResult?.ok) {
                             sent = true;
                         } else {
@@ -1520,7 +1542,9 @@
                 const latestFileId = extractFileIdFromUrl(latestGeneratedImageSrc);
                 const fallbackAllowed = isCompareMode
                     ? true
-                    : !!strictSingleCandidate && !!latestFileId && latestFileId === strictSingleCandidate;
+                    : !!strictSingleCandidate &&
+                      !!latestFileId &&
+                      latestFileId === strictSingleCandidate;
 
                 if (fallbackAllowed) {
                     const fallbackResult = await forwardImageBySrc(latestGeneratedImageSrc);

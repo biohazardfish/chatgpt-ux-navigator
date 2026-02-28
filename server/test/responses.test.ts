@@ -349,6 +349,30 @@ describe('POST /responses/:id', () => {
         expect(body.output_text).toBe('The final answer');
     });
 
+    it('sanitizes leading thought preamble in final response text', async () => {
+        const mockSend = mock((msg: string) => {
+            const current = getInflight(CLIENT_ID);
+            if (current) {
+                current.lastText = 'Thought for a couple of seconds\nThe final answer';
+                emitResponseCompleted(CLIENT_ID, 'completed');
+                inflightTerminate(CLIENT_ID, null, null);
+            }
+        });
+
+        setClient(CLIENT_ID, {send: mockSend} as any);
+
+        const req = new Request(`http://localhost/responses/${CLIENT_ID}`, {
+            method: 'POST',
+            body: JSON.stringify({input: 'Cleanup thought preamble'}),
+        });
+
+        const res = await handlePostResponsesById(req, config, new URL(req.url));
+        const body = (await res.json()) as any;
+
+        expect(body.status).toBe('completed');
+        expect(body.output_text).toBe('The final answer');
+    });
+
     it('should not overwrite output_text when lastText is empty', async () => {
         const mockSend = mock((msg: string) => {
             const current = getInflight(CLIENT_ID);

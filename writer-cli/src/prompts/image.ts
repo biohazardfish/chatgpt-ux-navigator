@@ -4,7 +4,7 @@ export const IMAGE_PROMPTER_CONDITIONING_PROMPT = `I have a story that requires 
 ...
 \`\`\`
 
-Note that I have conditioned the AI to recognize specific character names. Use them in your prompts whenever appropriate.
+Note that I have conditioned the AI to recognize specific character names and places. Use them in your prompts whenever appropriate.
 
 Do not overdo the number of images. Only include prompts for scenes that are visually rich or important to the story. Each prompt should be concise but descriptive, focusing on key visual elements, characters, and mood.
 

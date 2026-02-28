@@ -44,4 +44,26 @@ describe('sanitizeAssistantText', () => {
         const raw = 'finished_successfullyHello finished_successfully World';
         expect(sanitizeAssistantText(raw)).toBe('Hello  World');
     });
+
+    it('removes leading thought preamble with a second', () => {
+        const raw = 'Thought for a second\nThe answer starts here.';
+        expect(sanitizeAssistantText(raw)).toBe('The answer starts here.');
+    });
+
+    it('removes leading thought preamble with a couple of seconds', () => {
+        const raw = 'Thought for a couple of seconds\nThe answer starts here.';
+        expect(sanitizeAssistantText(raw)).toBe('The answer starts here.');
+    });
+
+    it('removes leading thought preamble with punctuation', () => {
+        const raw = 'Thought for 3 seconds: The answer starts here.';
+        expect(sanitizeAssistantText(raw)).toBe('The answer starts here.');
+    });
+
+    it('does not remove thought text when not at start', () => {
+        const raw = 'The model said: Thought for a second before replying.';
+        expect(sanitizeAssistantText(raw)).toBe(
+            'The model said: Thought for a second before replying.'
+        );
+    });
 });
