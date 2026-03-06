@@ -2,8 +2,9 @@ import {existsSync} from 'node:fs';
 import {join, resolve} from 'node:path';
 import {
     assertRunLayout,
+    isWriterSeniorOutFile,
     isWriterSeniorOutPromptedFile,
-    isWriterSeniorOutPromptedTranslatedFile,
+    isWriterSeniorOutTranslatedFile,
     listFilesMatching,
     outputPathFor,
     readNonEmptyFile,
@@ -30,19 +31,27 @@ export async function runTranslateChapters(
     const resolvedLanguage = resolveLanguage(language);
     const autoContextPath = join(paths.runDir, `translation-context_${resolvedLanguage.code}.md`);
 
-    const sourceFiles = improve
-        ? listFilesMatching(paths.processedDir, file =>
-              isWriterSeniorOutPromptedTranslatedFile(file, resolvedLanguage.code)
-          )
-        : listFilesMatching(paths.processedDir, isWriterSeniorOutPromptedFile);
+    let sourceFiles: string[] = [];
+
+    if (improve) {
+        sourceFiles = listFilesMatching(paths.processedDir, file =>
+            isWriterSeniorOutTranslatedFile(file, resolvedLanguage.code)
+        );
+    } else {
+        // Try prompted files first, then fallback to standard cleaned files
+        sourceFiles = listFilesMatching(paths.processedDir, isWriterSeniorOutPromptedFile);
+        if (sourceFiles.length === 0) {
+            sourceFiles = listFilesMatching(paths.processedDir, isWriterSeniorOutFile);
+        }
+    }
 
     if (sourceFiles.length === 0) {
         if (improve) {
             throw new Error(
-                `No translated prompted chapter files found in ${paths.processedDir} for language '${resolvedLanguage.code}'`
+                `No translated chapter files found in ${paths.processedDir} for language '${resolvedLanguage.code}'`
             );
         }
-        throw new Error(`No prompted chapter files found in ${paths.processedDir}`);
+        throw new Error(`No chapter files to translate found in ${paths.processedDir}`);
     }
 
     console.log(`[${ctx.config.scriptName}] Run: ${paths.runDir}`);

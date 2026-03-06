@@ -12,7 +12,16 @@ export function listFilesMatching(dir: string, matcher: (name: string) => boolea
 }
 
 export function assertRunLayout(runDir: string): RunPaths {
-    const resolvedRunDir = resolve(runDir);
+    let resolvedRunDir = resolve(runDir);
+
+    // Fallback: If not found relative to CWD (e.g. writer-cli/), try resolving relative to monorepo root
+    if (!existsSync(resolvedRunDir)) {
+        const rootResolved = resolve(process.cwd(), '..', runDir);
+        if (existsSync(rootResolved)) {
+            resolvedRunDir = rootResolved;
+        }
+    }
+
     const messagesDir = join(resolvedRunDir, 'messages');
     const processedDir = join(resolvedRunDir, 'processed');
     const imagesDir = join(resolvedRunDir, 'images');
@@ -58,16 +67,13 @@ export function promptedPathFor(cleanedFilePath: string): string {
     return cleanedFilePath.replace(/\.md$/i, '_with_image_prompt.md');
 }
 
-export function translatedPathFor(promptedFilePath: string, language: string): string {
-    return promptedFilePath.replace(/\.md$/i, `_${language}.md`);
+export function translatedPathFor(filePath: string, language: string): string {
+    return filePath.replace(/\.md$/i, `_${language}.md`);
 }
 
-export function isWriterSeniorOutPromptedTranslatedFile(
-    fileName: string,
-    language: string
-): boolean {
+export function isWriterSeniorOutTranslatedFile(fileName: string, language: string): boolean {
     const escapedLanguage = language.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    return new RegExp(`_writer_senior_out_with_image_prompt_${escapedLanguage}\\.md$`, 'i').test(
+    return new RegExp(`_writer_senior_out(_with_image_prompt)?_${escapedLanguage}\\.md$`, 'i').test(
         fileName
     );
 }

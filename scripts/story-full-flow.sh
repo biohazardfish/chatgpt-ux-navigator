@@ -11,6 +11,7 @@ RETRY_DELAY_SECONDS=5
 CONFIG_PATH=""
 TARGET_LANGUAGE="$DEFAULT_LANGUAGE"
 RUN_DIR=""
+SKIP_IMAGES=false
 
 usage() {
 	cat <<EOF
@@ -22,6 +23,7 @@ Options:
   --config <path>      Orchestrator config file
   --language <code>    Translation language (currently only: vi)
   --run <run_dir>      Existing run directory. Skip orchestrator and only post-process.
+  --skip-images        Skip image generation steps
   -h, --help           Show this help message
 
 Examples:
@@ -84,9 +86,16 @@ write_release_files() {
 		printf '%s/story-summary.txt\n' "$RUN_DIR"
 		printf '%s/story-summary_%s.txt\n' "$RUN_DIR" "$TARGET_LANGUAGE"
 		printf '%s/translation-context_%s.md\n' "$RUN_DIR" "$TARGET_LANGUAGE"
-		printf '%s/processed/*_writer_senior_out_with_image_prompt.md\n' "$RUN_DIR"
-		printf '%s/processed/*_writer_senior_out_with_image_prompt_%s.md\n' "$RUN_DIR" "$TARGET_LANGUAGE"
-		printf '%s/images/\n' "$RUN_DIR"
+
+		# Find all writer senior output files (with or without image prompts)
+		find "$RUN_DIR/processed" -maxdepth 1 -name "*_writer_senior_out.md" -o -name "*_writer_senior_out_with_image_prompt.md" 2>/dev/null | sort
+
+		# Find all translated files
+		find "$RUN_DIR/processed" -maxdepth 1 -name "*_writer_senior_out*_${TARGET_LANGUAGE}.md" 2>/dev/null | sort
+
+		if ! $SKIP_IMAGES; then
+			printf '%s/images/\n' "$RUN_DIR"
+		fi
 	} >"$release_file"
 
 	printf '[%s] Release file list: %s\n' "$SCRIPT_NAME" "$release_file"
@@ -124,6 +133,10 @@ while [[ $# -gt 0 ]]; do
 		[[ $# -ge 2 ]] || fail "--run requires a value"
 		RUN_DIR="$2"
 		shift 2
+		;;
+	--skip-images)
+		SKIP_IMAGES=true
+		shift
 		;;
 	-h | --help)
 		usage
@@ -164,9 +177,13 @@ else
 fi
 
 run_writer clean
-run_writer image-prompt-chapters
-run_writer image-precondition
-run_writer image-gen-chapters
+
+if ! $SKIP_IMAGES; then
+	run_writer image-prompt-chapters
+	run_writer image-precondition
+	run_writer image-gen-chapters
+fi
+
 run_writer story-summary
 run_writer translation-context --language "$TARGET_LANGUAGE"
 run_writer translate-chapters --language "$TARGET_LANGUAGE"
@@ -179,6 +196,9 @@ printf '\n[%s] Done. Key outputs:\n' "$SCRIPT_NAME"
 printf '  - %s/story-summary.txt\n' "$RUN_DIR"
 printf '  - %s/story-summary_%s.txt\n' "$RUN_DIR" "$TARGET_LANGUAGE"
 printf '  - %s/translation-context_%s.md\n' "$RUN_DIR" "$TARGET_LANGUAGE"
-printf '  - %s/processed/*_writer_senior_out_with_image_prompt.md\n' "$RUN_DIR"
-printf '  - %s/processed/*_writer_senior_out_with_image_prompt_%s.md\n' "$RUN_DIR" "$TARGET_LANGUAGE"
-printf '  - %s/images/\n' "$RUN_DIR"
+printf '  - %s/processed/*_writer_senior_out*.md\n' "$RUN_DIR"
+printf '  - %s/processed/*_writer_senior_out*_%s.md\n' "$RUN_DIR" "$TARGET_LANGUAGE"
+
+if ! $SKIP_IMAGES; then
+	printf '  - %s/images/\n' "$RUN_DIR"
+fi
