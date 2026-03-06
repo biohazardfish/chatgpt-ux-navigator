@@ -24,6 +24,8 @@ export function createServerAgentCaller(
 ): {
     callAgent: (input: AgentCallInput) => Promise<AgentCallOutput>;
 } {
+    const systemPromptSentForAgent = new Set<string>();
+
     return {
         callAgent: async (input: AgentCallInput): Promise<AgentCallOutput> => {
             const {agent_id, client_id, turn, inbox} = input;
@@ -51,18 +53,21 @@ export function createServerAgentCaller(
                 throw new Error(errorMsg);
             }
 
+            // Prepare the request
+            const useNewChat = agentConfig.new_chat ?? false;
+            const includeSystemPrompt = useNewChat || !systemPromptSentForAgent.has(agent_id);
+
             // Build the prompt
-            const prompt = buildPrompt(agentConfig.system, inbox);
+            const prompt = buildPrompt(agentConfig.system, inbox, {includeSystemPrompt});
 
             await jsonLogger?.debug('agent_caller', 'prompt_built', {
                 agent_id,
                 turn,
                 prompt_length: prompt.length,
                 inbox_items: inbox.length,
+                include_system_prompt: includeSystemPrompt,
             });
 
-            // Prepare the request
-            const useNewChat = agentConfig.new_chat ?? false;
             const url = `${config.server.url}/responses/${client_id}${useNewChat ? '/new' : ''}`;
             const requestBody = {
                 input: prompt,
@@ -158,6 +163,10 @@ export function createServerAgentCaller(
                     content_length: content.length,
                     response_time_ms: responseTime,
                 });
+
+                if (!useNewChat) {
+                    systemPromptSentForAgent.add(agent_id);
+                }
 
                 return {content};
             } catch (err) {

@@ -421,4 +421,141 @@ describe('createServerAgentCaller integration tests', () => {
             expect(message.length).toBeLessThanOrEqual('Server error: 500 '.length + 500);
         }
     });
+
+    /**
+     * Test 9: non-new-chat sends system prompt only once
+     * Verifies: first call includes system prompt, second call omits it
+     */
+    it('test 9: non-new-chat sends system prompt only once across turns', async () => {
+        const capturedInputs: string[] = [];
+
+        mockFetchImpl = mock(async (_url: string, options: any) => {
+            const body = JSON.parse(options.body);
+            capturedInputs.push(body.input);
+
+            return {
+                ok: true,
+                status: 200,
+                headers: {
+                    get: (name: string) => {
+                        if (name === 'Content-Type') return 'application/json';
+                        return null;
+                    },
+                },
+                text: async () =>
+                    JSON.stringify({
+                        id: 'resp_test9',
+                        status: 'completed',
+                        output_text: 'ok',
+                    }),
+            };
+        });
+
+        globalThis.fetch = mockFetchImpl as any;
+
+        const config: AppConfig = {
+            version: 1,
+            server: {url: 'http://localhost:8080'},
+            run: {id: 'run_009', out_dir: '/tmp/run_009'},
+            agents: {
+                agent_h: {client_id: 'client_h', system: 'You are agent H', new_chat: false},
+            },
+            workflow: {type: 'round_robin', order: ['agent_h'], start: 'agent_h'},
+            delivery: {type: 'next_speaker'},
+            seed: {from: 'user', content: 'Start'},
+            judge: {enabled: false},
+            termination: {max_turns: 2, judge_stop: false},
+        };
+
+        const caller = createServerAgentCaller(config);
+
+        await caller.callAgent({
+            agent_id: 'agent_h',
+            client_id: 'client_h',
+            turn: 1,
+            inbox: [{turn: 0, from: 'user', content: 'First input'}],
+        });
+
+        await caller.callAgent({
+            agent_id: 'agent_h',
+            client_id: 'client_h',
+            turn: 2,
+            inbox: [{turn: 1, from: 'agent_x', content: 'Second input'}],
+        });
+
+        expect(mockFetchImpl).toHaveBeenCalledTimes(2);
+        expect(capturedInputs[0]).toContain('You are agent H');
+        expect(capturedInputs[1]).not.toContain('You are agent H');
+        expect(
+            capturedInputs[1].startsWith(
+                'You are an AI agent participating in a multi-agent conversation run.'
+            )
+        ).toBe(true);
+    });
+
+    /**
+     * Test 10: new-chat mode re-sends system prompt every turn
+     * Verifies: both calls include system prompt
+     */
+    it('test 10: new-chat mode includes system prompt on every call', async () => {
+        const capturedInputs: string[] = [];
+
+        mockFetchImpl = mock(async (_url: string, options: any) => {
+            const body = JSON.parse(options.body);
+            capturedInputs.push(body.input);
+
+            return {
+                ok: true,
+                status: 200,
+                headers: {
+                    get: (name: string) => {
+                        if (name === 'Content-Type') return 'application/json';
+                        return null;
+                    },
+                },
+                text: async () =>
+                    JSON.stringify({
+                        id: 'resp_test10',
+                        status: 'completed',
+                        output_text: 'ok',
+                    }),
+            };
+        });
+
+        globalThis.fetch = mockFetchImpl as any;
+
+        const config: AppConfig = {
+            version: 1,
+            server: {url: 'http://localhost:8080'},
+            run: {id: 'run_010', out_dir: '/tmp/run_010'},
+            agents: {
+                agent_i: {client_id: 'client_i', system: 'You are agent I', new_chat: true},
+            },
+            workflow: {type: 'round_robin', order: ['agent_i'], start: 'agent_i'},
+            delivery: {type: 'next_speaker'},
+            seed: {from: 'user', content: 'Start'},
+            judge: {enabled: false},
+            termination: {max_turns: 2, judge_stop: false},
+        };
+
+        const caller = createServerAgentCaller(config);
+
+        await caller.callAgent({
+            agent_id: 'agent_i',
+            client_id: 'client_i',
+            turn: 1,
+            inbox: [{turn: 0, from: 'user', content: 'First input'}],
+        });
+
+        await caller.callAgent({
+            agent_id: 'agent_i',
+            client_id: 'client_i',
+            turn: 2,
+            inbox: [{turn: 1, from: 'agent_x', content: 'Second input'}],
+        });
+
+        expect(mockFetchImpl).toHaveBeenCalledTimes(2);
+        expect(capturedInputs[0]).toContain('You are agent I');
+        expect(capturedInputs[1]).toContain('You are agent I');
+    });
 });

@@ -171,4 +171,29 @@ describe('buildPrompt', () => {
         expect(result.startsWith('System\n\n---\n\n')).toBe(true);
         expect(result).toContain('You are an AI agent');
     });
+
+    it('test 8: omits system prompt when includeSystemPrompt is false', () => {
+        const systemPrompt = 'System prompt to omit';
+        const inbox: InboxItem[] = [
+            {
+                turn: 2,
+                from: 'agent_a',
+                content: 'Inbox content',
+            },
+        ];
+
+        const result = buildPrompt(systemPrompt, inbox, {includeSystemPrompt: false});
+
+        expect(result).not.toContain('System prompt to omit');
+        expect(
+            result.startsWith(
+                'You are an AI agent participating in a multi-agent conversation run.'
+            )
+        ).toBe(true);
+        expect(result).toContain(
+            'You are about to speak. Here are the messages you received since you last spoke (oldest to newest):'
+        );
+        expect(result).toContain('[1] From: agent_a (turn 2)');
+        expect(result).toContain('Now write your response.');
+    });
 });

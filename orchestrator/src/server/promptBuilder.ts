@@ -18,19 +18,24 @@ Follow these rules:
 
 /**
  * Builds a complete prompt for an agent call by combining:
- * 1. System prompt (trimmed)
- * 2. Separator: \n\n---\n\n
- * 3. Developer preamble + inbox bundle
+ * 1. Optional system prompt (trimmed)
+ * 2. Developer preamble + inbox bundle
  *
  * @param systemPrompt - The agent's persona/system prompt
  * @param inbox - Array of pending messages for the agent
+ * @param options - Prompt construction options
  * @returns Complete prompt string ready to send to ChatGPT
  */
-export function buildPrompt(systemPrompt: string, inbox: InboxItem[]): string {
+export function buildPrompt(
+    systemPrompt: string,
+    inbox: InboxItem[],
+    options?: {includeSystemPrompt?: boolean}
+): string {
+    const includeSystemPrompt = options?.includeSystemPrompt ?? true;
     const trimmedSystem = systemPrompt.trim();
 
-    // Start with system prompt and separator
-    let prompt = `${trimmedSystem}\n\n---\n\n`;
+    // Optionally start with system prompt and separator
+    let prompt = includeSystemPrompt ? `${trimmedSystem}\n\n---\n\n` : '';
 
     // Add developer preamble
     prompt += DEVELOPER_PREAMBLE;
