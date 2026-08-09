@@ -96,7 +96,7 @@
 
         const codeIds = getCodeBlockIds(roleNode, role);
 
-        return {id, role, preview, anchor, codeIds};
+        return {id, role, preview, anchor, codeIds, roleNode};
     }
 
     function sameStringArray(a, b) {
@@ -131,6 +131,11 @@
                 preview: next.preview,
                 anchor: next.anchor,
                 codeIds: next.codeIds,
+                roleNode: next.roleNode,
+                // Wall-clock time this message was first observed. On a fresh page
+                // load every message is seen at once, so this is only meaningful
+                // for messages that arrived while the tab was open.
+                firstSeenAt: Date.now(),
             });
             order.push(next.id);
             return {changed: true, id: next.id};
@@ -142,6 +147,9 @@
         if (existing.role !== next.role) {
             existing.role = next.role;
             changed = true;
+        }
+        if (existing.roleNode !== next.roleNode) {
+            existing.roleNode = next.roleNode;
         }
         if (existing.preview !== next.preview) {
             existing.preview = next.preview;
@@ -184,6 +192,9 @@
                 preview: entry.preview,
                 anchor: entry.anchor,
                 codeIds: entry.codeIds,
+                roleNode: entry.roleNode,
+                // Preserve the original sighting across rescans.
+                firstSeenAt: entryById.get(entry.id)?.firstSeenAt ?? Date.now(),
             });
             freshIds.push(entry.id);
         }
@@ -204,10 +215,36 @@
         return {entryById, order};
     }
 
+    /**
+     * Most recent entries in DOM order, oldest first.
+     * @param {number} n
+     * @returns {Array<object>}
+     */
+    function getRecentEntries(n) {
+        const count = Number.isFinite(n) && n > 0 ? Math.floor(n) : 1;
+        const ids = order.slice(-count);
+        const out = [];
+        for (const id of ids) {
+            const entry = entryById.get(id);
+            if (entry) out.push(entry);
+        }
+        return out;
+    }
+
+    /**
+     * Total number of messages currently modelled.
+     * @returns {number}
+     */
+    function size() {
+        return order.length;
+    }
+
     window.CGPT_NAV.model = {
         upsertFromRoleNode,
         fullRescan,
         reset,
         getState,
+        getRecentEntries,
+        size,
     };
 })();

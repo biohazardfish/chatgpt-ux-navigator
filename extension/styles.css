@@ -408,3 +408,222 @@ pre.cgpt-nav-selected-code {
     white-space: normal;
     word-break: break-word;
 }
+
+/* ---------------------------------------------------------------
+   Conversation State Ledger
+   Shows the CURRENT state of the thread, not a chronological summary.
+   --------------------------------------------------------------- */
+#cgpt-nav .ledger {
+    border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+    display: flex;
+    flex-direction: column;
+}
+
+#cgpt-nav .ledger-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 10px;
+    user-select: none;
+}
+
+#cgpt-nav .ledger-title {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+    opacity: 0.95;
+    cursor: pointer;
+}
+
+#cgpt-nav .ledger-title:hover {
+    opacity: 1;
+}
+
+#cgpt-nav .ledger-right {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    min-width: 0;
+}
+
+#cgpt-nav #cgpt-nav-ledger-client-id {
+    width: 120px;
+    max-width: 34vw;
+    min-width: 0;
+
+    background: rgba(255, 255, 255, 0.1);
+    color: #fff;
+
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    border-radius: 8px;
+
+    padding: 6px 8px;
+    font-size: 11px;
+}
+
+#cgpt-nav #cgpt-nav-ledger-client-id::placeholder {
+    color: rgba(255, 255, 255, 0.4);
+}
+
+#cgpt-nav #cgpt-nav-ledger-client-id:focus {
+    outline: none;
+    border-color: rgba(255, 255, 255, 0.3);
+}
+
+#cgpt-nav .ledger-body {
+    display: none; /* collapsed by default */
+    gap: 10px;
+    padding: 0 10px 10px 10px;
+    max-height: 320px;
+    overflow: auto;
+}
+
+#cgpt-nav .ledger.open .ledger-body {
+    display: flex;
+    flex-direction: column;
+}
+
+#cgpt-nav .ledger-status {
+    font-size: 11px;
+    opacity: 0.7;
+    padding: 2px 0;
+}
+
+#cgpt-nav .ledger-status-interpreting {
+    opacity: 1;
+    color: #8ab4f8;
+}
+
+#cgpt-nav .ledger-status-local_only {
+    color: #e0b354;
+    opacity: 0.9;
+}
+
+#cgpt-nav .ledger-status-error {
+    color: #f28b82;
+    opacity: 0.95;
+}
+
+/* Resume view: what to pick up when returning to a long thread */
+#cgpt-nav .ledger-resume {
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+    padding: 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+#cgpt-nav .ledger-resume-head {
+    font-size: 10px;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    opacity: 0.6;
+}
+
+#cgpt-nav .ledger-resume-next {
+    font-size: 12px;
+    line-height: 1.4;
+}
+
+#cgpt-nav .ledger-section {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+}
+
+#cgpt-nav .ledger-label {
+    font-size: 10px;
+    letter-spacing: 0.06em;
+    opacity: 0.55;
+}
+
+#cgpt-nav .ledger-text {
+    font-size: 12px;
+    line-height: 1.4;
+}
+
+#cgpt-nav .ledger-empty {
+    font-size: 12px;
+    opacity: 0.35;
+}
+
+#cgpt-nav .ledger-list {
+    margin: 0;
+    padding-left: 16px;
+    font-size: 12px;
+    line-height: 1.4;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+/* Surfaced, never acted on: the conversation is not redirected. */
+#cgpt-nav .ledger-branches {
+    border-left: 2px solid #e0b354;
+    padding-left: 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+}
+
+#cgpt-nav .ledger-history {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    padding-top: 8px;
+}
+
+#cgpt-nav .ledger-history-toggle {
+    background: transparent;
+    border: none;
+    padding: 0;
+    font-size: 11px;
+    opacity: 0.7;
+    text-align: left;
+    cursor: pointer;
+}
+
+#cgpt-nav .ledger-history-toggle:hover {
+    opacity: 1;
+    background: transparent;
+}
+
+#cgpt-nav .ledger-history-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+#cgpt-nav .ledger-history-item {
+    border-left: 2px solid rgba(255, 255, 255, 0.15);
+    padding-left: 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+#cgpt-nav .ledger-history-stamp {
+    font-size: 10px;
+    opacity: 0.6;
+    font-variant-numeric: tabular-nums;
+}
+
+#cgpt-nav .ledger-history-reason {
+    font-size: 11px;
+    opacity: 0.75;
+}
+
+#cgpt-nav .ledger-history-focus {
+    font-size: 12px;
+    line-height: 1.35;
+}
+
+#cgpt-nav .ledger-history-next {
+    font-size: 11px;
+    opacity: 0.8;
+}

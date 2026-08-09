@@ -266,6 +266,26 @@
      </div>
 </header>
 
+<div class="ledger" id="cgpt-nav-ledger">
+    <div class="ledger-header">
+        <div class="ledger-title">
+            <span id="cgpt-nav-ledger-chevron">▸</span>
+            <span>State</span>
+        </div>
+
+        <div class="ledger-right">
+            <input
+                id="cgpt-nav-ledger-client-id"
+                type="text"
+                placeholder="Interpreter ID"
+                title="Client ID of the dedicated State Interpreter ChatGPT tab"
+            />
+            <button id="cgpt-nav-ledger-checkpoint" title="Create checkpoint">📌</button>
+        </div>
+    </div>
+    <div class="ledger-body" id="cgpt-nav-ledger-body"></div>
+</div>
+
 <div class="prompts" id="cgpt-nav-prompts">
     <div class="prompts-header">
         <div class="prompts-title">

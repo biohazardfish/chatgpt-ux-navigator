@@ -28,6 +28,9 @@ This is a **Bun-managed monorepo** consisting of:
 - **WebSocket Streaming**: Toggle between standard and real-time streaming modes for instant response saving.
 - **Temporary Chat**: Start a new, temporary chat session with one click.
 - **Token Estimation**: Real-time token count estimation for your messages.
+- **Conversation State Ledger**: Maintains the *current state* of a long thread
+  (GOAL / NOW / CONFIRMED / DECISIONS / OPEN / NEXT) instead of a chronological
+  summary, with timestamped checkpoints and a Resume view.
 
 ### Local Prompt Server
 
@@ -154,6 +157,45 @@ Refactor the following code to be more functional:
 3.  Use the dropdown at the top to select `my-task.md`.
 4.  Click the prompt text in the sidebar to insert it into the chat input.
 5.  After ChatGPT replies, click the **Save** icon in the sidebar to append the response to `my-task.md`.
+
+### Conversation State Ledger
+
+For long threads, the sidebar's **State** section tracks where the conversation
+currently stands rather than what was said in what order:
+
+```
+GOAL       What we are ultimately trying to solve
+NOW        What we are currently working on
+CONFIRMED  Facts/conclusions already established
+DECISIONS  Choices we have made
+OPEN       Unresolved questions
+NEXT       The most immediate continuation point
+```
+
+The state updates when the conversation *meaningfully changes* — a decision is
+made, an option is rejected, a hypothesis is confirmed, the focus shifts — not on
+a fixed turn cadence. Each meaningful transition writes a timestamped checkpoint,
+and the history is kept so earlier states can be inspected.
+
+**Setup.** Semantic interpretation runs in a **separate ChatGPT tab**, so your
+main conversation is never sent state-management prompts:
+
+1. Start the server (`bun dev`) and open a second ChatGPT tab.
+2. In that second tab's sidebar, set a WebSocket **Client ID** (e.g. `interpreter`)
+   and enable WebSocket mode.
+3. In your *main* conversation tab, open the **State** section and put that same
+   id in the **Interpreter ID** field.
+
+Without an interpreter tab the ledger degrades to local-only: turn tracking,
+manual checkpoints and history still work, but the semantic fields stop updating.
+The sidebar shows which mode it is in.
+
+Notes:
+
+- 📌 **Create checkpoint** is always available and forces an interpretation.
+- If recent discussion drifts from the GOAL, a possible **branch** is surfaced in
+  the sidebar. It is only reported — the conversation is never redirected.
+- Ledgers are stored per conversation in `chrome.storage.local`.
 
 ### Response and Image APIs
 
