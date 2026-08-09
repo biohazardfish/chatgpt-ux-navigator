@@ -1,5 +1,14 @@
 (() => {
-    const {store, model, observer, sidebar, activeSection} = window.CGPT_NAV;
+    const {
+        store,
+        model,
+        observer,
+        sidebar,
+        activeSection,
+        conversationId,
+        ledgerState,
+        ledgerPanel,
+    } = window.CGPT_NAV;
 
     function init() {
         sidebar.ensureShowButton();
@@ -12,11 +21,34 @@
         if (store.isHidden()) sidebar.hideSidebar();
         else sidebar.showSidebar();
 
-        // observer updates
-        observer.startObserver(() => {
-            sidebar.renderFromModelIncremental();
-            if (activeSection?.recomputeActive) activeSection.recomputeActive();
+        // Conversation State Ledger
+        ledgerPanel.mount();
+        ledgerState.init();
+
+        // ChatGPT swaps threads without a page load. Without this the model would
+        // keep entries from the previous thread and the ledger would write one
+        // conversation's state onto another.
+        conversationId.watchNavigation((nextKey, prevKey) => {
+            sidebar.resetList(); // clears the model and the rendered list
+            model.fullRescan();
+            sidebar.renderAll(true);
+
+            // Rescan first: the ledger measures conversation size on load, and
+            // reading it against an empty model would make the next turn look like
+            // a huge influx of new content.
+            ledgerState.switchConversation(nextKey, prevKey);
         });
+
+        // observer updates
+        observer.startObserver(
+            () => {
+                sidebar.renderFromModelIncremental();
+                if (activeSection?.recomputeActive) activeSection.recomputeActive();
+            },
+            () => {
+                ledgerState.handleTurnSettled();
+            }
+        );
 
         // keyboard toggle
         window.addEventListener('keydown', e => {

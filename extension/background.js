@@ -69,6 +69,34 @@ const handlers = {
         if (!r.ok) throw new Error(`HTTP ${r.status} ${r.statusText}`);
         return {ok: true};
     },
+
+    // Conversation State Ledger: ask the dedicated State Interpreter tab to read
+    // the current ledger + recent turns and return structured state.
+    //
+    // Always uses /new so each interpretation is self-contained: the ledger is the
+    // state, so the interpreter never needs to remember anything between calls.
+    // That avoids drift and context-limit failures on long-lived conversations.
+    'cgpt-nav-interpret-state': async msg => {
+        const {clientId, input} = msg || {};
+        if (!clientId || typeof clientId !== 'string') throw new Error('Missing clientId');
+        if (!input || typeof input !== 'string') throw new Error('Missing input');
+
+        const server = await getServerUrl();
+        const r = await fetch(`${server}/responses/${encodeURIComponent(clientId)}/new`, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({input, stream: false}),
+        });
+
+        // Distinguish the two states the caller must degrade on, rather than
+        // collapsing everything into a generic failure.
+        if (r.status === 404) return {ok: false, reason: 'not_connected'};
+        if (r.status === 409) return {ok: false, reason: 'busy'};
+        if (!r.ok) throw new Error(`HTTP ${r.status} ${r.statusText}`);
+
+        const data = await r.json();
+        return {ok: true, text: typeof data?.output_text === 'string' ? data.output_text : ''};
+    },
 };
 
 chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {

@@ -90,10 +90,52 @@
     /**
      * Start the mutation observer (idempotent).
      * Calls onEntriesChanged() if any model entries were changed/added.
+     *
+     * onTurnSettled() fires once a turn has finished rather than on every mutation.
+     * There is no reliable completion event available here: streamTap's
+     * `message_stream_complete` only exists in WebSocket mode and lives inside the
+     * image path, so "settled" is inferred from the DOM going quiet while the
+     * composer's stop button is absent. It is a heuristic and will occasionally
+     * fire mid-answer if ChatGPT pauses long enough; the cost of that is one extra
+     * interpretation, which the ledger's throttle absorbs.
+     *
      * @param {() => void} onEntriesChanged
+     * @param {() => void} [onTurnSettled]
      */
-    function startObserver(onEntriesChanged) {
+    function startObserver(onEntriesChanged, onTurnSettled) {
         if (observer) return;
+
+        /** @type {ReturnType<typeof setTimeout>|null} */
+        let settleTimer = null;
+        let dirtySinceSettle = false;
+
+        function isStreaming() {
+            return !!document.querySelector(C.STOP_BTN_SEL);
+        }
+
+        function scheduleSettleCheck() {
+            if (typeof onTurnSettled !== 'function') return;
+
+            dirtySinceSettle = true;
+            if (settleTimer) clearTimeout(settleTimer);
+
+            settleTimer = setTimeout(function check() {
+                if (isStreaming()) {
+                    settleTimer = setTimeout(check, C.LEDGER.SETTLE_MS);
+                    return;
+                }
+
+                settleTimer = null;
+                if (!dirtySinceSettle) return;
+                dirtySinceSettle = false;
+
+                try {
+                    onTurnSettled();
+                } catch (e) {
+                    console.debug('[cgpt-nav:ledger] turn settled handler failed', e);
+                }
+            }, C.LEDGER.SETTLE_MS);
+        }
 
         function processPending() {
             if (pendingRoots.size === 0) return;
@@ -116,7 +158,10 @@
                 }
             }
 
-            if (anyChanged) onEntriesChanged();
+            if (anyChanged) {
+                onEntriesChanged();
+                scheduleSettleCheck();
+            }
         }
 
         observer = new MutationObserver(mutations => {
